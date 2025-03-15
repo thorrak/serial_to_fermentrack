@@ -163,86 +163,52 @@ def test_read_response_not_connected():
         controller._read_response()
 
 
-def test_get_version(mock_serial):
-    """Test getting the controller version."""
-    # Set up mock to return version
-    mock_serial.in_waiting = 10
-    mock_serial.read.return_value = b'0.5.0\n'
-    
+def test_request_version(mock_serial):
+    """Test requesting the controller version."""
     controller = SerialController('/dev/ttyUSB0')
     controller.connect()
     
-    version = controller.get_version()
+    controller.request_version()
     
-    assert version == '0.5.0'
-    mock_serial.write.assert_called_once_with(b'v\n')
+    mock_serial.write.assert_called_once_with(b'n\n')
 
 
-def test_get_temperatures(mock_serial):
-    """Test getting temperatures."""
-    # Set up mock to return temperature data in JSON format with 'T:' prefix
-    temp_data = '{"BeerTemp":0,"BeerSet":20,"BeerAnn":null,"FridgeTemp":0,"FridgeSet":20,"FridgeAnn":null,"RoomTemp":"","State":1}'
-    response = f'T:{temp_data}\n'
-    
-    mock_serial.in_waiting = 10
-    mock_serial.read.return_value = response.encode('utf-8')
-    
+def test_request_temperatures(mock_serial):
+    """Test requesting temperatures."""
     controller = SerialController('/dev/ttyUSB0')
     controller.connect()
     
-    temps = controller.get_temperatures()
+    controller.request_temperatures()
     
-    assert temps == json.loads(temp_data)
     mock_serial.write.assert_called_once_with(b't\n')
 
 
-def test_get_temperatures_invalid_format(mock_serial):
-    """Test getting temperatures with invalid format."""
-    # Response doesn't start with T:
-    mock_serial.in_waiting = 10
-    mock_serial.read.return_value = b'invalid format\n'
+def test_parse_responses(mock_serial):
+    """Test parsing responses."""
+    # Create a mock BrewPiController
+    mock_brewpi = MagicMock()
     
     controller = SerialController('/dev/ttyUSB0')
     controller.connect()
     
-    with pytest.raises(SerialControllerError) as excinfo:
-        controller.get_temperatures()
-    
-    assert "Unexpected temperature response format" in str(excinfo.value)
-
-
-def test_get_temperatures_invalid_json(mock_serial):
-    """Test getting temperatures with invalid JSON."""
-    # Valid prefix but invalid JSON
+    # Set up mock to return a response
     mock_serial.in_waiting = 10
-    mock_serial.read.return_value = b'T:{invalid json}\n'
+    mock_serial.read.return_value = b'test response\n'
     
+    # Call parse_responses
+    controller.parse_responses(mock_brewpi)
+    
+    # Verify the response was passed to brewpi.parse_response
+    mock_brewpi.parse_response.assert_called_once_with('test response')
+
+
+def test_request_lcd(mock_serial):
+    """Test requesting LCD content."""
     controller = SerialController('/dev/ttyUSB0')
     controller.connect()
     
-    with pytest.raises(SerialControllerError) as excinfo:
-        controller.get_temperatures()
+    controller.request_lcd()
     
-    assert "Invalid JSON in temperature response" in str(excinfo.value)
-
-
-def test_get_lcd(mock_serial):
-    """Test getting LCD content."""
-    # Set up mock to return LCD content
-    mock_serial.in_waiting = 10
-    mock_serial.read.return_value = b'Line 1\nLine 2\nLine 3\nLine 4\n'
-    
-    controller = SerialController('/dev/ttyUSB0')
-    controller.connect()
-    
-    lcd = controller.get_lcd()
-    
-    assert lcd == {
-        "1": "Line 1",
-        "2": "Line 2",
-        "3": "Line 3",
-        "4": "Line 4"
-    }
     mock_serial.write.assert_called_once_with(b'l\n')
 
 

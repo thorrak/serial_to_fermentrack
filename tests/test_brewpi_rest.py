@@ -4,10 +4,16 @@ import pytest
 import time
 import os
 from unittest.mock import MagicMock, patch, ANY
-from ..utils.config import Config
-from ..brewpi_rest import BrewPiRest
-from ..controller.models import ControllerStatus, MessageStatus
-from ..api import APIError
+import sys
+import os
+
+# Add the parent directory to sys.path so that imports work correctly
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from utils.config import Config
+from brewpi_rest import BrewPiRest
+from controller.models import ControllerStatus, MessageStatus
+from api import APIError
 
 
 @pytest.fixture
@@ -42,7 +48,7 @@ def mock_config():
 @pytest.fixture
 def mock_controller():
     """Create a mock BrewPi controller."""
-    with patch("bpr.controller.brewpi_controller.BrewPiController") as mock:
+    with patch("controller.brewpi_controller.BrewPiController") as mock:
         mock_instance = MagicMock()
         mock_instance.connect.return_value = True
         mock_instance.firmware_version = "0.5.0"
@@ -85,7 +91,7 @@ def mock_controller():
 @pytest.fixture
 def mock_api_client():
     """Create a mock API client."""
-    with patch("bpr.api.client.FermentrackClient") as mock:
+    with patch("api.client.FermentrackClient") as mock:
         mock_instance = MagicMock()
         
         # Mock device ID and API key
@@ -110,11 +116,15 @@ def mock_api_client():
 @pytest.fixture
 def app(mock_controller, mock_api_client, mock_config):
     """Create a BrewPiRest app instance with mocks."""
-    with patch("bpr.brewpi_rest.BrewPiController", return_value=mock_controller):
-        with patch("bpr.brewpi_rest.FermentrackClient", return_value=mock_api_client):
-            with patch("bpr.brewpi_rest.logger"):
-                app = BrewPiRest(mock_config)
-                yield app
+    with patch("brewpi_rest.BrewPiController", return_value=mock_controller), \
+         patch("brewpi_rest.FermentrackClient", return_value=mock_api_client), \
+         patch("brewpi_rest.logger", MagicMock()):
+            # Mock the logger directly in the module
+            import brewpi_rest
+            brewpi_rest.logger = MagicMock()
+            
+            app = BrewPiRest(mock_config)
+            yield app
 
 
 def test_brewpi_rest_setup(app, mock_controller, mock_api_client, mock_config):

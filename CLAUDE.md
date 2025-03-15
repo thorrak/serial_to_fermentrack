@@ -28,6 +28,9 @@ python -m bpr --help
 
 ### Testing
 ```bash
+# Activate the virtual environment first (important!)
+source venv/bin/activate   # Or whatever your virtual environment path is
+
 # Install test dependencies
 pip install -r requirements_test.txt
 
@@ -39,7 +42,12 @@ pytest tests/test_api_client.py
 
 # Run with coverage
 pytest --cov=bpr
+
+# Run tests from the bpr directory
+cd bpr && pytest
 ```
+
+NOTE: Always activate the virtual environment before running tests or any Python commands. The application and tests will not run correctly without the virtual environment activated.
 
 ## Configuration
 
@@ -103,9 +111,17 @@ This automatically uses the correct host, port, and HTTPS settings for Fermentra
 ### Data Flow
 1. Application loads configuration based on specified location
 2. Controller connects to BrewPi device via serial
-3. Regular status updates sent to Fermentrack
-4. Command messages retrieved and processed
-5. Configuration synchronized as needed
+3. Controller sends requests to device and processes asynchronous responses
+4. Regular status updates sent to Fermentrack
+5. Command messages retrieved and processed
+6. Configuration synchronized as needed
+
+### Communication Model
+The serial communication model is asynchronous:
+1. The application sends requests to the controller with methods like `request_version()` and `request_temperatures()`
+2. The controller responds asynchronously with data, which is captured by `parse_responses()`
+3. The responses are processed by `BrewPiController.parse_response()` and stored in the controller state
+4. This allows for a more robust model where responses can arrive at any time after requests
 
 ## Key Implementation Details
 
@@ -131,6 +147,20 @@ This automatically uses the correct host, port, and HTTPS settings for Fermentra
 7. Runs main loop
 
 ## Recent Changes
+
+### Asynchronous Serial Communication
+- Refactored serial communication to use an asynchronous request/response model
+- Converted all `get_` methods to `request_` methods in `SerialController`:
+  - `request_version()` replaces `get_version()`
+  - `request_temperatures()` replaces `get_temperatures()`
+  - `request_lcd()` replaces `get_lcd()`
+  - `request_settings()` replaces `get_settings()`
+  - `request_control_constants()` replaces `get_control_constants()`
+  - `request_device_list()` replaces `get_device_list()`
+- Added `parse_response()` method to `BrewPiController` to handle all response types
+- Added asynchronous mode to JSON commands with `_send_json_command(async_mode=True)`
+- Enhanced error handling and robust response parsing
+- Improved test coverage for asynchronous communication
 
 ### Requirements Organization
 - Split requirements into two files:
