@@ -271,7 +271,7 @@ class SerialController:
             SerialControllerError: If communication failed
         """
         try:
-            self._send_json_command("getControlSettings")
+            self._send_command("s")
         except SerialControllerError:
             raise
 
@@ -298,7 +298,7 @@ class SerialController:
             SerialControllerError: If communication failed
         """
         try:
-            self._send_json_command("getControlConstants")
+            self._send_command("c")
         except SerialControllerError:
             raise
 
@@ -337,7 +337,7 @@ class SerialController:
             SerialControllerError: If communication failed
         """
         try:
-            self._send_json_command("getDeviceList")
+            self._send_command("h{}")
         except SerialControllerError:
             raise
 

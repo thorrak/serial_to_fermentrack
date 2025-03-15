@@ -212,6 +212,36 @@ def test_request_lcd(mock_serial):
     mock_serial.write.assert_called_once_with(b'l\n')
 
 
+def test_request_settings(mock_serial):
+    """Test requesting settings."""
+    controller = SerialController('/dev/ttyUSB0')
+    controller.connect()
+    
+    controller.request_settings()
+    
+    mock_serial.write.assert_called_once_with(b's\n')
+
+
+def test_request_control_constants(mock_serial):
+    """Test requesting control constants."""
+    controller = SerialController('/dev/ttyUSB0')
+    controller.connect()
+    
+    controller.request_control_constants()
+    
+    mock_serial.write.assert_called_once_with(b'c\n')
+
+
+def test_request_device_list(mock_serial):
+    """Test requesting device list."""
+    controller = SerialController('/dev/ttyUSB0')
+    controller.connect()
+    
+    controller.request_device_list()
+    
+    mock_serial.write.assert_called_once_with(b'h{}\n')
+
+
 def test_send_json_command(mock_serial):
     """Test sending a JSON command asynchronously."""
     controller = SerialController('/dev/ttyUSB0')

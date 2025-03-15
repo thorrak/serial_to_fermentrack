@@ -8,8 +8,9 @@ from typing import Dict, Any, Optional, List, Union, Tuple
 from .serial_controller import SerialController, SerialControllerError
 from .models import (
     ControllerMode, ControlSettings, ControlConstants,
-    MinimumTime, Device, FullConfig, TemperatureData,
-    ControllerStatus, MessageStatus, SerializedDevice
+    MinimumTime, Device, DeviceListItem, FullConfig, TemperatureData,
+    ControllerStatus, MessageStatus, SerializedDevice,
+    SensorType, DeviceFunction, PinType
 )
 
 logger = logging.getLogger(__name__)
@@ -358,29 +359,66 @@ class BrewPiController:
                 logger.error(f"Invalid JSON in LCD response: {e}, response: {response}")
                 return False
 
-        # Handle JSON responses (settings, control constants, device list)
+        # Handle settings response (starts with S:)
+        elif response.startswith('S:'):
+            json_str = response[2:]
+            try:
+                settings_data = json.loads(json_str)
+                self.control_settings = ControlSettings(**settings_data)
+                logger.debug(f"Received control settings: {settings_data}")
+                return True
+            except json.JSONDecodeError as e:
+                logger.error(f"Invalid JSON in settings response: {e}, response: {response}")
+                return False
+                
+        # Handle control constants response (starts with C:)
+        elif response.startswith('C:'):
+            json_str = response[2:]
+            try:
+                constants_data = json.loads(json_str)
+                self.control_constants = ControlConstants(**constants_data)
+                logger.debug(f"Received control constants: {constants_data}")
+                return True
+            except json.JSONDecodeError as e:
+                logger.error(f"Invalid JSON in constants response: {e}, response: {response}")
+                return False
+                
+        # Handle device list response (starts with h:)
+        elif response.startswith('h:'):
+            json_str = response[2:]
+            try:
+                devices_list = json.loads(json_str)
+                # Parse with DeviceListItem model first
+                device_items = [DeviceListItem(**d) for d in devices_list]
+                
+                # Convert to Device objects
+                self.devices = []
+                for item in device_items:
+                    device = Device(
+                        id=item.i,
+                        chamber=item.c,
+                        beer=item.b,
+                        function=DeviceFunction(str(item.f)) if item.f < 12 else DeviceFunction.NONE,
+                        hardware_type="UNKNOWN",  # Default value
+                        type=SensorType.TEMP_SENSOR,  # Default value
+                        pin=item.p,
+                        pin_type=PinType.DIGITAL_INPUT  # Default value
+                    )
+                    self.devices.append(device)
+                
+                logger.debug(f"Received device list with {len(self.devices)} devices")
+                return True
+            except json.JSONDecodeError as e:
+                logger.error(f"Invalid JSON in device list response: {e}, response: {response}")
+                return False
+                
+        # Handle other JSON responses
         else:
             try:
                 json_data = json.loads(response)
-
-                # Determine what type of response this is based on content
-                if "mode" in json_data and "beerSet" in json_data:
-                    # This is control settings
-                    self.control_settings = ControlSettings(**json_data)
-                    logger.debug("Received control settings")
-                    return True
-                elif "Kp" in json_data:
-                    # This is control constants
-                    self.control_constants = ControlConstants(**json_data)
-                    logger.debug("Received control constants")
-                    return True
-                elif "devices" in json_data:
-                    # This is device list
-                    devices_list = json_data["devices"]
-                    self.devices = [Device(**d) for d in devices_list]
-                    logger.debug(f"Received device list with {len(self.devices)} devices")
-                    return True
-                elif "success" in json_data:
+                
+                # Check for success responses
+                if "success" in json_data:
                     # This is a success response from a command
                     success = json_data.get("success", False)
                     if success:

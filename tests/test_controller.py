@@ -248,6 +248,25 @@ def test_brewpi_controller_parse_response(mock_serial_controller):
         "4": "Temp. control OFF   "
     }
     
+    # Test settings response
+    settings_response = 'S:{"mode":"o","beerSet":20,"fridgeSet":20,"heatEst":0.199,"coolEst":5}'
+    result = controller.parse_response(settings_response)
+    assert result is True
+    assert controller.control_settings.mode == "o"
+    assert controller.control_settings.beer_set == 20
+    
+    # Test control constants response
+    constants_response = 'C:{"tempFormat":"C","tempSetMin":1,"tempSetMax":30,"pidMax":10,"Kp":5,"Ki":0.25,"Kd":-1.5,"iMaxErr":0.5,"idleRangeH":1,"idleRangeL":-1,"heatTargetH":0.299,"heatTargetL":-0.199,"coolTargetH":0.199,"coolTargetL":-0.299,"maxHeatTimeForEst":600,"maxCoolTimeForEst":1200,"fridgeFastFilt":1,"fridgeSlowFilt":4,"fridgeSlopeFilt":3,"beerFastFilt":3,"beerSlowFilt":4,"beerSlopeFilt":4,"lah":0,"hs":0}'
+    result = controller.parse_response(constants_response)
+    assert result is True
+    assert controller.control_constants.k_p == 5
+    
+    # Test device list response
+    device_list_response = 'h:[{"c":1,"b":0,"f":0,"h":1,"p":5,"x":true,"d":false,"r":"Heat","i":-1},{"c":1,"b":0,"f":0,"h":1,"p":7,"x":true,"d":false,"r":"Cool","i":-1},{"c":1,"b":0,"f":0,"h":1,"p":11,"x":true,"d":false,"r":"Door","i":-1}]'
+    result = controller.parse_response(device_list_response)
+    assert result is True
+    assert len(controller.devices) == 3
+    
     # Test success response
     success_response = '{"success":true, "message":"Parameter set successfully"}'
     result = controller.parse_response(success_response)

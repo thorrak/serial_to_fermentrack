@@ -118,7 +118,13 @@ This automatically uses the correct host, port, and HTTPS settings for Fermentra
 
 ### Communication Model
 The serial communication model is fully asynchronous:
-1. The application sends requests to the controller with methods like `request_version()` and `request_temperatures()`
+1. The application sends requests to the controller with single character commands:
+   - `n` to request version (response starts with `N:`)
+   - `t` to request temperatures (response starts with `T:`)
+   - `l` to request LCD content (response starts with `L:`)
+   - `s` to request settings (response starts with `S:`)
+   - `c` to request control constants (response starts with `C:`)
+   - `h{}` to request device list (response starts with `h:`)
 2. All communications, including setters (`set_parameter`, `set_control_settings`, etc.), are asynchronous
 3. The controller responds asynchronously with data, which is captured by `parse_responses()`
 4. The responses are processed by `BrewPiController.parse_response()` and stored in the controller state
@@ -153,20 +159,23 @@ The serial communication model is fully asynchronous:
 ### Fully Asynchronous Serial Communication
 - Refactored serial communication to use a fully asynchronous request/response model
 - All communications between the application and controller are now asynchronous
-- Converted all `get_` methods to `request_` methods in `SerialController`:
-  - `request_version()` replaces `get_version()`
-  - `request_temperatures()` replaces `get_temperatures()`
-  - `request_lcd()` replaces `get_lcd()`
-  - `request_settings()` replaces `get_settings()`
-  - `request_control_constants()` replaces `get_control_constants()`
-  - `request_device_list()` replaces `get_device_list()`
-- Updated all setter methods to be asynchronous with no return value:
-  - `set_parameter()`
-  - `set_control_settings()`
-  - `set_control_constants()`
-  - `set_device_list()`
+- Updated controller commands to use the correct single-character format:
+  - `n` for requesting version (previously used `getControlSettings`)
+  - `t` for requesting temperatures (unchanged)
+  - `l` for requesting LCD content (unchanged)
+  - `s` for requesting settings (previously used `getControlSettings`)
+  - `c` for requesting control constants (previously used `getControlConstants`)
+  - `h{}` for requesting device list (previously used `getDeviceList`)
+- Updated response parsing to handle proper response formats:
+  - `N:` prefix for version responses
+  - `T:` prefix for temperature responses 
+  - `L:` prefix for LCD content responses (as JSON arrays)
+  - `S:` prefix for settings responses
+  - `C:` prefix for control constants responses
+  - `h:` prefix for device list responses
+- Added `DeviceListItem` model to handle the compact format of device list responses
+- Updated all setter methods to be asynchronous with no return value
 - Simplified `_send_json_command()` to always use asynchronous mode
-- Added `parse_response()` method to `BrewPiController` to handle all response types including success messages
 - Enhanced error handling and robust response parsing
 - Complete decoupling of command sending and response handling
 - Improved test coverage for the asynchronous communication model

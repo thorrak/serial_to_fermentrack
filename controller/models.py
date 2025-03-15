@@ -83,6 +83,20 @@ class Device(BaseModel):
         return value
 
 
+class DeviceListItem(BaseModel):
+    """Item in the device list response from controller."""
+    
+    c: int  # chamber
+    b: int  # beer
+    f: int  # function
+    h: int  # hardware type
+    p: int  # pin
+    x: bool  # value
+    d: bool  # deactivated
+    r: str  # name/role
+    i: int  # id
+
+
 class ControlSettings(BaseModel):
     """Controller settings."""
     
