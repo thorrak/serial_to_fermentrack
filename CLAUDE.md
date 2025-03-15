@@ -117,11 +117,13 @@ This automatically uses the correct host, port, and HTTPS settings for Fermentra
 6. Configuration synchronized as needed
 
 ### Communication Model
-The serial communication model is asynchronous:
+The serial communication model is fully asynchronous:
 1. The application sends requests to the controller with methods like `request_version()` and `request_temperatures()`
-2. The controller responds asynchronously with data, which is captured by `parse_responses()`
-3. The responses are processed by `BrewPiController.parse_response()` and stored in the controller state
-4. This allows for a more robust model where responses can arrive at any time after requests
+2. All communications, including setters (`set_parameter`, `set_control_settings`, etc.), are asynchronous
+3. The controller responds asynchronously with data, which is captured by `parse_responses()`
+4. The responses are processed by `BrewPiController.parse_response()` and stored in the controller state
+5. Response handling is decoupled from commands, providing a more robust communication model
+6. Success/failure responses are handled through the same asynchronous mechanism
 
 ## Key Implementation Details
 
@@ -148,8 +150,9 @@ The serial communication model is asynchronous:
 
 ## Recent Changes
 
-### Asynchronous Serial Communication
-- Refactored serial communication to use an asynchronous request/response model
+### Fully Asynchronous Serial Communication
+- Refactored serial communication to use a fully asynchronous request/response model
+- All communications between the application and controller are now asynchronous
 - Converted all `get_` methods to `request_` methods in `SerialController`:
   - `request_version()` replaces `get_version()`
   - `request_temperatures()` replaces `get_temperatures()`
@@ -157,10 +160,16 @@ The serial communication model is asynchronous:
   - `request_settings()` replaces `get_settings()`
   - `request_control_constants()` replaces `get_control_constants()`
   - `request_device_list()` replaces `get_device_list()`
-- Added `parse_response()` method to `BrewPiController` to handle all response types
-- Added asynchronous mode to JSON commands with `_send_json_command(async_mode=True)`
+- Updated all setter methods to be asynchronous with no return value:
+  - `set_parameter()`
+  - `set_control_settings()`
+  - `set_control_constants()`
+  - `set_device_list()`
+- Simplified `_send_json_command()` to always use asynchronous mode
+- Added `parse_response()` method to `BrewPiController` to handle all response types including success messages
 - Enhanced error handling and robust response parsing
-- Improved test coverage for asynchronous communication
+- Complete decoupling of command sending and response handling
+- Improved test coverage for the asynchronous communication model
 
 ### Requirements Organization
 - Split requirements into two files:

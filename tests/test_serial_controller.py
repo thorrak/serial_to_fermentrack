@@ -213,39 +213,40 @@ def test_request_lcd(mock_serial):
 
 
 def test_send_json_command(mock_serial):
-    """Test sending a JSON command."""
-    # Set up mock to return JSON response
-    mock_serial.in_waiting = 10
-    mock_serial.read.return_value = b'{"success":true}\n'
-    
+    """Test sending a JSON command asynchronously."""
     controller = SerialController('/dev/ttyUSB0')
     controller.connect()
     
-    response = controller._send_json_command('getControlSettings')
+    result = controller._send_json_command('getControlSettings')
     
-    assert response == {"success": True}
+    # With asynchronous commands, no response is expected
+    assert result is None
+    
     # Verify command was sent (don't check exact format due to JSON formatting differences)
     mock_serial.write.assert_called_once()
+    
     # Verify the command contains the correct information
     call_args = mock_serial.write.call_args[0][0].decode('utf-8')
     assert '"cmd"' in call_args
     assert '"getControlSettings"' in call_args
+    
+    # Verify that read was not called (asynchronous)
+    mock_serial.read.assert_not_called()
 
 
 def test_send_json_command_with_data(mock_serial):
-    """Test sending a JSON command with data."""
-    # Set up mock to return JSON response
-    mock_serial.in_waiting = 10
-    mock_serial.read.return_value = b'{"success":true}\n'
-    
+    """Test sending a JSON command with data asynchronously."""
     controller = SerialController('/dev/ttyUSB0')
     controller.connect()
     
-    response = controller._send_json_command('setParameter', {"parameter": "mode", "value": "f"})
+    result = controller._send_json_command('setParameter', {"parameter": "mode", "value": "f"})
     
-    assert response == {"success": True}
+    # With asynchronous commands, no response is expected
+    assert result is None
+    
     # Verify command was sent (don't check exact format due to JSON formatting differences)
     mock_serial.write.assert_called_once()
+    
     # Verify the command contains the correct information
     call_args = mock_serial.write.call_args[0][0].decode('utf-8')
     assert '"cmd"' in call_args
@@ -255,3 +256,6 @@ def test_send_json_command_with_data(mock_serial):
     assert '"mode"' in call_args
     assert '"value"' in call_args
     assert '"f"' in call_args
+    
+    # Verify that read was not called (asynchronous)
+    mock_serial.read.assert_not_called()

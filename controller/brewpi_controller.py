@@ -152,10 +152,11 @@ class BrewPiController:
                 logger.error(f"Invalid mode: {mode}")
                 return False
 
-            # Send command to controller
+            # Send command to controller asynchronously
             self.serial.set_parameter("mode", mode)
+            self.serial.parse_responses(self)
 
-            # Update local state
+            # Update local state immediately (will be confirmed by response)
             if self.control_settings:
                 self.control_settings.mode = mode
 
@@ -177,10 +178,11 @@ class BrewPiController:
             raise SerialControllerError("Not connected to controller")
 
         try:
-            # Send command to controller
+            # Send command to controller asynchronously
             self.serial.set_parameter("beerSet", temp)
+            self.serial.parse_responses(self)
 
-            # Update local state
+            # Update local state immediately (will be confirmed by response)
             if self.control_settings:
                 self.control_settings.beer_setting = temp
 
@@ -202,10 +204,11 @@ class BrewPiController:
             raise SerialControllerError("Not connected to controller")
 
         try:
-            # Send command to controller
+            # Send command to controller asynchronously
             self.serial.set_parameter("fridgeSet", temp)
+            self.serial.parse_responses(self)
 
-            # Update local state
+            # Update local state immediately (will be confirmed by response)
             if self.control_settings:
                 self.control_settings.fridge_setting = temp
 
@@ -230,10 +233,11 @@ class BrewPiController:
             # Create settings object
             settings = ControlSettings(**settings_data)
 
-            # Send settings to controller
+            # Send settings to controller asynchronously
             self.serial.set_control_settings(settings_data)
+            self.serial.parse_responses(self)
 
-            # Update local state
+            # Update local state immediately (will be confirmed by response)
             self.control_settings = settings
 
             return True
@@ -257,10 +261,11 @@ class BrewPiController:
             # Create constants object
             constants = ControlConstants(**constants_data)
 
-            # Send constants to controller
+            # Send constants to controller asynchronously
             self.serial.set_control_constants(constants_data)
+            self.serial.parse_responses(self)
 
-            # Update local state
+            # Update local state immediately (will be confirmed by response)
             self.control_constants = constants
 
             return True
@@ -289,10 +294,11 @@ class BrewPiController:
             # Create device objects
             devices = [Device(**d) for d in devices_data["devices"]]
 
-            # Send devices to controller
+            # Send devices to controller asynchronously
             self.serial.set_device_list(devices_data)
+            self.serial.parse_responses(self)
 
-            # Update local state
+            # Update local state immediately (will be confirmed by response)
             self.devices = devices
 
             return True
@@ -373,6 +379,14 @@ class BrewPiController:
                     devices_list = json_data["devices"]
                     self.devices = [Device(**d) for d in devices_list]
                     logger.debug(f"Received device list with {len(self.devices)} devices")
+                    return True
+                elif "success" in json_data:
+                    # This is a success response from a command
+                    success = json_data.get("success", False)
+                    if success:
+                        logger.debug(f"Received success response: {json_data}")
+                    else:
+                        logger.warning(f"Received failure response: {json_data}")
                     return True
                 else:
                     # Unknown JSON response

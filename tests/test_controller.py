@@ -159,17 +159,15 @@ def test_brewpi_controller_set_mode(mock_serial_controller):
     controller.connected = True
     controller.control_settings = MagicMock()
     
-    # Set up mock for set_parameter
-    mock_serial_controller.set_parameter.return_value = True
-    
     # Set mode
     result = controller.set_mode("f")
     
     # Check result
     assert result is True
     
-    # Check method call
+    # Check method calls - asynchronous with parse_responses
     mock_serial_controller.set_parameter.assert_called_once_with("mode", "f")
+    mock_serial_controller.parse_responses.assert_called_once_with(controller)
 
 
 def test_brewpi_controller_set_beer_temp(mock_serial_controller):
@@ -178,17 +176,15 @@ def test_brewpi_controller_set_beer_temp(mock_serial_controller):
     controller.connected = True
     controller.control_settings = MagicMock()
     
-    # Set up mock for set_parameter
-    mock_serial_controller.set_parameter.return_value = True
-    
     # Set beer temp
     result = controller.set_beer_temp(21.5)
     
     # Check result
     assert result is True
     
-    # Check method call
+    # Check method calls - asynchronous with parse_responses
     mock_serial_controller.set_parameter.assert_called_once_with("beerSet", 21.5)
+    mock_serial_controller.parse_responses.assert_called_once_with(controller)
 
 
 def test_brewpi_controller_set_fridge_temp(mock_serial_controller):
@@ -197,26 +193,21 @@ def test_brewpi_controller_set_fridge_temp(mock_serial_controller):
     controller.connected = True
     controller.control_settings = MagicMock()
     
-    # Set up mock for set_parameter
-    mock_serial_controller.set_parameter.return_value = True
-    
     # Set fridge temp
     result = controller.set_fridge_temp(19.5)
     
     # Check result
     assert result is True
     
-    # Check method call
+    # Check method calls - asynchronous with parse_responses
     mock_serial_controller.set_parameter.assert_called_once_with("fridgeSet", 19.5)
+    mock_serial_controller.parse_responses.assert_called_once_with(controller)
 
 
 def test_brewpi_controller_apply_settings(mock_serial_controller):
     """Test apply_settings method."""
     controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
     controller.connected = True
-    
-    # Set up mock for set_control_settings
-    mock_serial_controller.set_control_settings.return_value = True
     
     # Apply settings
     settings = {"mode": "b", "beerSet": 20.0}
@@ -225,8 +216,9 @@ def test_brewpi_controller_apply_settings(mock_serial_controller):
     # Check result
     assert result is True
     
-    # Check method call
+    # Check method calls - asynchronous with parse_responses
     mock_serial_controller.set_control_settings.assert_called_once_with(settings)
+    mock_serial_controller.parse_responses.assert_called_once_with(controller)
 
 
 def test_brewpi_controller_parse_response(mock_serial_controller):
@@ -255,6 +247,11 @@ def test_brewpi_controller_parse_response(mock_serial_controller):
         "3": "Fridge --.-  20.0 °C",
         "4": "Temp. control OFF   "
     }
+    
+    # Test success response
+    success_response = '{"success":true, "message":"Parameter set successfully"}'
+    result = controller.parse_response(success_response)
+    assert result is True
     
     # Test invalid response that is not LCD content
     # For this test, directly force the result to be what we expect

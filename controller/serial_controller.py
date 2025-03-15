@@ -178,16 +178,12 @@ class SerialController:
             logger.error(f"Serial communication error: {e}")
             raise SerialControllerError(f"Serial communication error: {e}")
 
-    def _send_json_command(self, command: str, data: Dict[str, Any] = None, async_mode: bool = False) -> Optional[Dict[str, Any]]:
-        """Send JSON command to controller.
+    def _send_json_command(self, command: str, data: Dict[str, Any] = None) -> None:
+        """Send JSON command to controller asynchronously.
 
         Args:
             command: JSON command name
             data: JSON data to send
-            async_mode: If True, don't wait for response (used by request_* methods)
-
-        Returns:
-            JSON response data if async_mode is False, None otherwise
 
         Raises:
             SerialControllerError: If communication failed
@@ -204,26 +200,12 @@ class SerialController:
             # Convert to string
             cmd_str = json.dumps(json_cmd)
 
-            # Send command
+            # Send command - all commands are asynchronous
             self._send_command(cmd_str)
-
-            # If in async mode, don't wait for response
-            if async_mode:
-                return None
-
-            # Read response
-            response = self._read_response()
-
-            if not response:
-                raise SerialControllerError(f"No response for JSON command: {command}")
-
-            # Parse JSON response
-            try:
-                json_response = json.loads(response)
-                return json_response
-            except json.JSONDecodeError as e:
-                logger.error(f"Invalid JSON response: {e}, response: {response}")
-                raise SerialControllerError(f"Invalid JSON response: {e}")
+            
+            # No waiting for response - responses will be handled by parse_responses
+            return None
+            
         except SerialControllerError:
             raise
         except Exception as e:
@@ -289,29 +271,23 @@ class SerialController:
             SerialControllerError: If communication failed
         """
         try:
-            self._send_json_command("getControlSettings", async_mode=True)
+            self._send_json_command("getControlSettings")
         except SerialControllerError:
             raise
 
-    def set_parameter(self, parameter: str, value: Any) -> bool:
-        """Set a control parameter.
+    def set_parameter(self, parameter: str, value: Any) -> None:
+        """Set a control parameter asynchronously.
 
         Args:
             parameter: Parameter name
             value: Parameter value
-
-        Returns:
-            True if successful
 
         Raises:
             SerialControllerError: If communication failed
         """
         try:
             data = {"parameter": parameter, "value": value}
-            response = self._send_json_command("setParameter", data)
-
-            # Check if command was successful
-            return "success" in response and response["success"]
+            self._send_json_command("setParameter", data)
         except SerialControllerError:
             raise
 
@@ -322,47 +298,35 @@ class SerialController:
             SerialControllerError: If communication failed
         """
         try:
-            self._send_json_command("getControlConstants", async_mode=True)
+            self._send_json_command("getControlConstants")
         except SerialControllerError:
             raise
 
-    def set_control_settings(self, settings: Dict[str, Any]) -> bool:
-        """Set control settings.
+    def set_control_settings(self, settings: Dict[str, Any]) -> None:
+        """Set control settings asynchronously.
 
         Args:
             settings: Control settings data
 
-        Returns:
-            True if successful
-
         Raises:
             SerialControllerError: If communication failed
         """
         try:
-            response = self._send_json_command("setControlSettings", settings)
-
-            # Check if command was successful
-            return "success" in response and response["success"]
+            self._send_json_command("setControlSettings", settings)
         except SerialControllerError:
             raise
 
-    def set_control_constants(self, constants: Dict[str, Any]) -> bool:
-        """Set control constants.
+    def set_control_constants(self, constants: Dict[str, Any]) -> None:
+        """Set control constants asynchronously.
 
         Args:
             constants: Control constants data
 
-        Returns:
-            True if successful
-
         Raises:
             SerialControllerError: If communication failed
         """
         try:
-            response = self._send_json_command("setControlConstants", constants)
-
-            # Check if command was successful
-            return "success" in response and response["success"]
+            self._send_json_command("setControlConstants", constants)
         except SerialControllerError:
             raise
 
@@ -373,26 +337,20 @@ class SerialController:
             SerialControllerError: If communication failed
         """
         try:
-            self._send_json_command("getDeviceList", async_mode=True)
+            self._send_json_command("getDeviceList")
         except SerialControllerError:
             raise
 
-    def set_device_list(self, devices: Dict[str, Any]) -> bool:
-        """Set device list.
+    def set_device_list(self, devices: Dict[str, Any]) -> None:
+        """Set device list asynchronously.
 
         Args:
             devices: Device list data
-
-        Returns:
-            True if successful
 
         Raises:
             SerialControllerError: If communication failed
         """
         try:
-            response = self._send_json_command("setDeviceList", devices)
-
-            # Check if command was successful
-            return "success" in response and response["success"]
+            self._send_json_command("setDeviceList", devices)
         except SerialControllerError:
             raise
