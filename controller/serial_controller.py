@@ -235,12 +235,22 @@ class SerialController:
             SerialControllerError: If communication failed
         """
         try:
-            self._send_command("v")
-            response = self._read_response()
+            self._send_command("n")
+            response = self._read_response()  # N:{"v":"0.2.4","n":"6d422d6","c":"6d422d6","s":0,"y":0,"b":"2","l":3,"e":"0.15"}
             if not response:
                 raise SerialControllerError("Failed to get version")
-            
-            return response
+
+            # Parse the JSON part of the response
+            if response.startswith('N:'):
+                json_str = response[2:]
+                try:
+                    version_info = json.loads(json_str)
+                    return version_info.get("e", version_info.get("v"))
+                except json.JSONDecodeError as e:
+                    logger.error(f"Invalid JSON in version response: {e}, response: {response}")
+                    raise SerialControllerError(f"Invalid JSON in version response: {e}")
+            else:
+                raise SerialControllerError(f"Unexpected version response format: {response}")
         except SerialControllerError:
             raise
     
