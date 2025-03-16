@@ -11,8 +11,8 @@ BrewPi-Serial-REST is a Python application that mediates communication between t
 - REST API communication with Fermentrack 2
 - Serial communication with BrewPi controllers
 - Configuration management
-- Message handling
-- Status updates
+- Multi-device support via daemon
+- Message handling and status updates
 - Graceful error handling
 
 ## Requirements
@@ -20,6 +20,7 @@ BrewPi-Serial-REST is a Python application that mediates communication between t
 - Python 3.7+
 - Fermentrack 2 server
 - BrewPi controller (Arduino, ESP8266, or ESP32 based), connected via Serial
+- Watchdog package (for the daemon)
 
 ## Installation
 
@@ -31,6 +32,10 @@ BrewPi-Serial-REST is a Python application that mediates communication between t
 
 2. Install dependencies:
    ```
+   # Create a virtual environment
+   python -m venv venv
+   source venv/bin/activate
+   
    # For running the application
    pip install -r requirements.txt
    
@@ -90,6 +95,8 @@ See `config/README.md` for details on all available configuration options.
 
 ## Usage
 
+### Running a Single Device
+
 Run the application, specifying the device location:
 
 ```
@@ -100,6 +107,39 @@ Optional arguments:
 - `--verbose` or `-v`: Enable verbose logging
 - `--help` or `-h`: Show help message
 
+### Running Multiple Devices with the Daemon
+
+The daemon monitors the `config` directory for device configuration files and automatically manages all configured devices:
+
+```
+# Start the daemon
+python brewpi_daemon.py
+
+# Start with verbose logging
+python brewpi_daemon.py --verbose
+
+# Generate a systemd service file template
+python brewpi_daemon.py --create-service
+```
+
+### Installing as a Systemd Service
+
+To run as a system service on Linux:
+
+```bash
+# Generate the service file
+python brewpi_daemon.py --create-service > /tmp/brewpi-daemon.service
+
+# Install the service (requires sudo)
+sudo mv /tmp/brewpi-daemon.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable brewpi-daemon.service
+sudo systemctl start brewpi-daemon.service
+
+# Check status
+sudo systemctl status brewpi-daemon.service
+```
+
 ## Architecture
 
 The application consists of the following main components:
@@ -108,7 +148,8 @@ The application consists of the following main components:
 2. **API Client (`api/client.py`)**: Handles communication with Fermentrack 2's REST API using the provided device ID and API key.
 3. **Serial Controller (`controller/serial_controller.py`)**: Manages serial communication with the BrewPi controller at a fixed 57600 baud rate.
 4. **BrewPi Controller (`controller/brewpi_controller.py`)**: Provides a high-level interface to the BrewPi controller.
-5. **Main Application (`brewpi_rest.py`)**: Integrates the API client and controller, handling the main event loop.
+5. **Main Application (`brewpi_rest.py`)**: Integrates the API client and controller, handling a single device.
+6. **Daemon (`brewpi_daemon.py`)**: Monitors the config directory and manages multiple device instances.
 
 ## Development
 
