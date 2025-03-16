@@ -111,16 +111,19 @@ class BrewPiRest:
             status = self.controller.get_status()
 
             # Send status to Fermentrack
-            response = self.api_client.send_status(
-                lcd_content=status.lcd_content,
-                temperature_data=status.temperature_data,
-                mode=status.mode,
-                beer_set=status.beer_set,
-                fridge_set=status.fridge_set,
-                heat_est=status.heat_est,
-                cool_est=status.cool_est,
-                controller_firmware_version=status.firmware_version
-            )
+            # Prepare status data with the four essential keys from controller
+            status_data = {
+                "lcd": status.lcd,
+                "temps": status.temps,
+                "temp_format": status.temp_format,
+                "mode": status.mode,
+                # Add device identification for Fermentrack
+                "apiKey": self.config.API_KEY,
+                "deviceID": self.config.DEVICE_ID
+            }
+            
+            # Send the status data
+            response = self.api_client.send_status_raw(status_data)
 
             # Check if there are mode changes or other updates
             self._process_status_response(response)

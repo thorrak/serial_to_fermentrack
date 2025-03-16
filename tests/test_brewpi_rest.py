@@ -53,25 +53,23 @@ def mock_controller():
         mock_instance.connect.return_value = True
         mock_instance.firmware_version = "0.5.0"
         
-        # Create mock status
+        # Create mock status with the updated model format
         mock_status = ControllerStatus(
             mode="b",
-            beer_set=20.0,
-            fridge_set=18.0,
-            heat_est=0.0,
-            cool_est=0.5,
-            temperature_data={
-                "beer": 20.5,
-                "fridge": 18.2,
-                "room": 22.1
+            temps={
+                "beerTemp": 20.5,
+                "beerSet": 20.0,
+                "fridgeTemp": 18.2,
+                "fridgeSet": 18.0,
+                "roomTemp": 22.1
             },
-            lcd_content={
+            lcd={
                 "1": "Line 1",
                 "2": "Line 2",
                 "3": "Line 3",
                 "4": "Line 4"
             },
-            firmware_version="0.5.0"
+            temp_format="C"
         )
         mock_instance.get_status.return_value = mock_status
         
@@ -165,7 +163,7 @@ def test_brewpi_rest_update_status(app, mock_controller, mock_api_client):
     app.check_configuration()
     
     # Set up mocks
-    mock_api_client.send_status.return_value = {
+    mock_api_client.send_status_raw.return_value = {
         "has_messages": True,
         "updated_mode": "f",
         "updated_beer_set": 21.5,
@@ -181,8 +179,17 @@ def test_brewpi_rest_update_status(app, mock_controller, mock_api_client):
     
     # Verify method calls
     mock_controller.get_status.assert_called_once()
-    mock_api_client.send_status.assert_called_once()
+    mock_api_client.send_status_raw.assert_called_once()
     mock_check_messages.assert_called_once()
+    
+    # Verify the correct data format was sent
+    call_args = mock_api_client.send_status_raw.call_args[0][0]
+    assert "lcd" in call_args
+    assert "temps" in call_args
+    assert "temp_format" in call_args
+    assert "mode" in call_args
+    assert "apiKey" in call_args
+    assert "deviceID" in call_args
     
     # Verify settings applied
     mock_controller.set_mode.assert_called_once_with("f")

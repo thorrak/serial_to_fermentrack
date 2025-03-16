@@ -101,15 +101,16 @@ class BrewPiController:
         self.serial.parse_responses(self)
 
         # Build status object using latest temperature data stored in self.temperature_data
+        # Use the simplified structure that matches the C++ implementation
+        temp_format = "C"  # Default to Celsius
+        if self.control_constants and hasattr(self.control_constants, "temp_format"):
+            temp_format = self.control_constants.temp_format
+            
         status = ControllerStatus(
-            lcd_content=self.lcd_content,
-            temperature_data=self.temperature_data,
-            mode=self.control_settings.mode if self.control_settings else "o",
-            beer_set=self.control_settings.beer_setting if self.control_settings else 0.0,
-            fridge_set=self.control_settings.fridge_setting if self.control_settings else 0.0,
-            heat_est=self.control_settings.heat_estimator if self.control_settings else 0.0,
-            cool_est=self.control_settings.cool_estimator if self.control_settings else 0.0,
-            firmware_version=self.firmware_version
+            lcd=self.lcd_content,
+            temps=self.temperature_data,
+            temp_format=temp_format,
+            mode=self.control_settings.mode if self.control_settings else "o"
         )
 
         return status

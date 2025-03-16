@@ -103,24 +103,20 @@ def test_brewpi_controller_get_status(mock_serial_controller):
         # Get status
         status = controller.get_status()
         
-        # Check status
+        # Check status matches C++ implementation structure
         assert status.mode == "b"
-        assert status.beer_set == 20.0
-        assert status.fridge_set == 18.0
-        assert status.heat_est == 0.0
-        assert status.cool_est == 0.5
-        assert status.temperature_data == {
+        assert status.temp_format == "C"
+        assert status.temps == {
             "beer": 20.5,
             "fridge": 18.2,
             "room": 22.1
         }
-        assert status.lcd_content == {
+        assert status.lcd == {
             "1": "Line 1",
             "2": "Line 2",
             "3": "Line 3",
             "4": "Line 4"
         }
-        assert status.firmware_version == "0.5.0"
         
         # Verify request_temperatures was called
         mock_serial_controller.request_temperatures.assert_called_once()

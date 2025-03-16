@@ -162,17 +162,20 @@ class TemperatureData(BaseModel):
 
 
 class ControllerStatus(BaseModel):
-    """Controller status for API."""
+    """Controller status for API.
     
-    mode: str
-    beer_set: float
-    fridge_set: float
-    heat_est: float
-    cool_est: float
-    temperature_data: Dict[str, Optional[float]]
-    lcd_content: Dict[str, str]
-    changes_pending: bool = False
-    firmware_version: Optional[str] = None
+    Matches the format used in the C++ implementation:
+    ```
+    doc["lcd"] = lcd;
+    doc["temps"] = temps;
+    doc["temp_format"] = String(tempControl.cc.tempFormat);
+    doc["mode"] = String(tempControl.cs.mode);
+    ```
+    """
+    lcd: Dict[str, str]  # LCD content
+    temps: Dict[str, Optional[float]]  # Temperature readings
+    temp_format: str  # Temperature format (C or F)
+    mode: str  # Controller mode
 
 
 class MessageStatus(BaseModel):

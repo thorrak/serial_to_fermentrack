@@ -180,6 +180,18 @@ The serial communication model is fully asynchronous:
 - Complete decoupling of command sending and response handling
 - Improved test coverage for the asynchronous communication model
 
+### Controller Status Model Update
+- Updated `ControllerStatus` model to match the C++ implementation with exactly four fields:
+  - `lcd`: Dictionary of LCD content
+  - `temps`: Dictionary of temperature readings
+  - `temp_format`: Temperature format (C or F)
+  - `mode`: Controller mode
+- Updated API client with `send_status_raw` method to support new status format
+- Kept backwards compatibility with the old status format using a deprecated `send_status` method
+- Updated all tests to work with the new status format
+- Updated `mock_controller` fixture in test_brewpi_rest.py to use the new model structure
+- Fixed field mappings between response and model attributes
+
 ### Requirements Organization
 - Split requirements into two files:
   - `requirements.txt`: Runtime dependencies only
