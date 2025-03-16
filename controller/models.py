@@ -171,8 +171,11 @@ class ControllerStatus(BaseModel):
     doc["temp_format"] = String(tempControl.cc.tempFormat);
     doc["mode"] = String(tempControl.cs.mode);
     ```
+    
+    Note: The lcd field is a list of strings, as it's received directly from the controller.
+    Each string represents a line on the LCD display.
     """
-    lcd: Dict[str, str]  # LCD content
+    lcd: List[str]  # LCD content as a list of strings (one per line)
     temps: Dict[str, Optional[float]]  # Temperature readings
     temp_format: str  # Temperature format (C or F)
     mode: str  # Controller mode

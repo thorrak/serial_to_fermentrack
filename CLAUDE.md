@@ -60,7 +60,7 @@ The application uses JSON configuration files in the `config` directory. Both fi
   "host": "localhost",             # Required if not using Fermentrack.net
   "port": "8000",                  # Required if not using Fermentrack.net
   "use_https": false,              # Optional, defaults to false
-  "api_key": "your-api-key",       # Required
+  "fermentrack_api_key": "your-api-key",       # Required
   "api_timeout": 10,               # Optional, defaults to 10
   "status_update_interval": 30,    # Required
   "message_check_interval": 5,     # Required
@@ -87,7 +87,7 @@ To use the cloud-hosted Fermentrack.net service, set `use_fermentrack_net` to `t
 ```json
 {
   "use_fermentrack_net": true,
-  "api_key": "your-api-key",       # Required
+  "fermentrack_api_key": "your-api-key",       # Required
   "status_update_interval": 30,    # Required
   "message_check_interval": 5,     # Required  
   "full_config_update_interval": 300, # Required

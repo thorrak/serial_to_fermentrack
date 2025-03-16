@@ -7,7 +7,7 @@ This directory stores configuration files used by BrewPi-Rest. There are two typ
 Contains settings applicable to all devices. The application will not start if this file is missing or incomplete.
 
 ### Required Fields:
-- `api_key`: API key for authentication with Fermentrack
+- `fermentrack_api_key`: API key for authentication with Fermentrack
 - `status_update_interval`: How often to update status to Fermentrack in seconds
 - `message_check_interval`: How often to check for messages from Fermentrack in seconds
 - `full_config_update_interval`: How often to send full configuration to Fermentrack in seconds

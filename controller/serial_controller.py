@@ -152,6 +152,11 @@ class SerialController:
             raise SerialControllerError("Not connected to controller")
 
         try:
+            # Check for available data immediately before starting the wait loop
+            if self.serial_conn.in_waiting == 0:
+                # Return immediately if no data is available
+                return None
+
             response = ""
 
             # Wait for complete response
@@ -167,8 +172,15 @@ class SerialController:
                 if response and response.endswith('\n'):
                     break
 
-                # Wait a bit before checking again
-                time.sleep(0.1)
+                # If we have some data but not a complete response, wait a short time for more
+                if response:
+                    time.sleep(0.1)
+                else:
+                    # If no data after initial check, check one more time with shorter delay
+                    time.sleep(0.01)
+                    if self.serial_conn.in_waiting == 0:
+                        # Exit early if still no data
+                        return None
 
             if not response:
                 return None
@@ -202,10 +214,10 @@ class SerialController:
 
             # Send command - all commands are asynchronous
             self._send_command(cmd_str)
-            
+
             # No waiting for response - responses will be handled by parse_responses
             return None
-            
+
         except SerialControllerError:
             raise
         except Exception as e:
@@ -214,7 +226,7 @@ class SerialController:
 
     def request_version(self):
         """Request controller firmware version.
-        
+
         Raises:
             SerialControllerError: If communication failed
         """
@@ -233,25 +245,43 @@ class SerialController:
             self._send_command("t")
         except SerialControllerError:
             raise
-            
+
     def parse_responses(self, brewpi):
-        """Parse incoming responses from the BrewPi controller.
+        """Parse all incoming responses from the BrewPi controller.
+
+        Continues reading responses until no more are available.
+        Handles errors for individual responses without stopping the entire process.
 
         Args:
             brewpi: BrewPiController instance
         """
-        try:
-            # Read response
-            response = self._read_response()
-            if not response:
-                return
+        # Continue reading responses until no more are available
+        while True:
+            try:
+                # Read response
+                response = self._read_response()
+                if not response:
+                    # No more responses available
+                    break
 
-            # Process response
-            brewpi.parse_response(response)
-        except SerialControllerError as e:
-            logger.error(f"Error parsing response: {e}")
-        except Exception as e:
-            logger.error(f"Unexpected error: {e}")
+                # Process response
+                for line in response.splitlines():
+                    try:
+                        brewpi.parse_response(line)
+                    except Exception as e:
+                        # Log error for this specific response but continue processing
+                        logger.error(f"Error parsing response '{response}': {e}")
+                        # Continue to next response without breaking the loop
+                        continue
+
+            except SerialControllerError as e:
+                logger.error(f"Error reading response: {e}")
+                # Break the loop on serial communication errors
+                break
+            except Exception as e:
+                logger.error(f"Unexpected error in parse_responses: {e}")
+                # Break the loop on unexpected errors
+                break
 
     def request_lcd(self):
         """Request LCD content.

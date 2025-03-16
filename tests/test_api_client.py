@@ -19,7 +19,7 @@ def test_send_status_raw():
         client = FermentrackClient(
             base_url="http://localhost:8000",
             device_id="test123",
-            api_key="abc456"
+            fermentrack_api_key="abc456"
         )
 
         # Prepare status data in the C++ format
@@ -55,7 +55,7 @@ def test_send_status_raw_missing_auth():
     client = FermentrackClient(
         base_url="http://localhost:8000",
         device_id="test123",
-        api_key="abc456"
+        fermentrack_api_key="abc456"
     )
 
     # Missing apiKey and deviceID
@@ -83,16 +83,39 @@ def test_send_status_not_registered():
     client = FermentrackClient(
         base_url="http://localhost:8000",
         device_id="",
-        api_key=""
+        fermentrack_api_key=""
     )
 
-    # Should raise APIError
-    with pytest.raises(APIError, match="Missing device ID or API key in configuration"):
-        client.send_status(
-            lcd_content={},
-            temperature_data={},
-            mode="o"
+    # Test with no deviceID and apiKey params at all
+    with pytest.raises(APIError, match="Missing apiKey or deviceID in status data"):
+        status_data = {
+            "lcd": {},
+            "temps": {},
+            "temp_format": "C",
+            "mode": "o"
+        }
+        client.send_status_raw(status_data)
+
+    # Mock the response for empty auth credentials
+    with requests_mock.Mocker() as m:
+        # Mock a 400 error for invalid credentials
+        m.put(
+            "http://localhost:8000/api/brewpi/device/status/",
+            status_code=400,
+            json={"success": False, "message": "Invalid Device ID or API Key format", "msg_code": 6}
         )
+
+        # Test with empty deviceID and apiKey values
+        with pytest.raises(APIError, match="API request failed"):
+            status_data = {
+                "lcd": {},
+                "temps": {},
+                "temp_format": "C",
+                "mode": "o",
+                "deviceID": "",
+                "apiKey": ""
+            }
+            client.send_status_raw(status_data)
 
 
 def test_get_messages():
@@ -107,7 +130,7 @@ def test_get_messages():
         client = FermentrackClient(
             base_url="http://localhost:8000",
             device_id="test123",
-            api_key="abc456"
+            fermentrack_api_key="abc456"
         )
 
         result = client.get_messages()
@@ -134,7 +157,7 @@ def test_mark_message_processed():
         client = FermentrackClient(
             base_url="http://localhost:8000",
             device_id="test123",
-            api_key="abc456"
+            fermentrack_api_key="abc456"
         )
 
         result = client.mark_message_processed("updated_cs")
@@ -162,7 +185,7 @@ def test_send_full_config():
         client = FermentrackClient(
             base_url="http://localhost:8000",
             device_id="test123",
-            api_key="abc456"
+            fermentrack_api_key="abc456"
         )
 
         config_data = {
@@ -205,7 +228,7 @@ def test_get_full_config():
         client = FermentrackClient(
             base_url="http://localhost:8000",
             device_id="test123",
-            api_key="abc456"
+            fermentrack_api_key="abc456"
         )
 
         result = client.get_full_config()

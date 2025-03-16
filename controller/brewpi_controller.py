@@ -40,7 +40,7 @@ class BrewPiController:
         self.control_constants = None
         self.minimum_times = None
         self.devices = None
-        self.lcd_content = {"1": "", "2": "", "3": "", "4": ""}
+        self.lcd_content = ["", "", "", ""]  # Initialize with 4 empty lines
         self.temperature_data = {}
 
         if auto_connect:
@@ -98,6 +98,7 @@ class BrewPiController:
         # Request fresh LCD & temperature data
         self.serial.request_temperatures()
         self.serial.request_lcd()
+        time.sleep(0.1)  # Allow time for data to be received
         self.serial.parse_responses(self)
 
         # Build status object using latest temperature data stored in self.temperature_data
@@ -105,7 +106,7 @@ class BrewPiController:
         temp_format = "C"  # Default to Celsius
         if self.control_constants and hasattr(self.control_constants, "temp_format"):
             temp_format = self.control_constants.temp_format
-            
+
         status = ControllerStatus(
             lcd=self.lcd_content,
             temps=self.temperature_data,
@@ -317,135 +318,158 @@ class BrewPiController:
         Returns:
             True if response was parsed successfully
         """
-        if len(response) < 2:
-            # If the response is too short, ignore it and move on
+        if not response or len(response) < 2:
+            # If the response is empty or too short, ignore it and move on
+            logger.debug(f"Received too short response, ignoring: '{response}'")
             return False
 
-        # Handle version response
-        if response.startswith('N:'):
-            json_str = response[2:]
-            try:
-                version_info = json.loads(json_str)
-                self.firmware_version = version_info.get("e", version_info.get("v"))
-                logger.debug(f"Received firmware version: {self.firmware_version}")
-                return True
-            except json.JSONDecodeError as e:
-                logger.error(f"Invalid JSON in version response: {e}, response: {response}")
-                raise SerialControllerError(f"Invalid JSON in version response: {e}")
+        try:
+            # Handle version response
+            if response.startswith('N:'):
+                json_str = response[2:]
+                try:
+                    version_info = json.loads(json_str)
+                    self.firmware_version = version_info.get("e", version_info.get("v"))
+                    logger.debug(f"Received firmware version: {self.firmware_version}")
+                    return True
+                except json.JSONDecodeError as e:
+                    logger.error(f"Invalid JSON in version response: {e}, response: {response}")
+                    return False
 
-        # Handle temperature response
-        elif response.startswith('T:'):
-            json_str = response[2:]
-            try:
-                temps = json.loads(json_str)
-                self.temperature_data = temps
-                logger.debug(f"Received temperature data: {self.temperature_data}")
-                return True
-            except json.JSONDecodeError as e:
-                logger.error(f"Invalid JSON in temperature response: {e}, response: {response}")
-                raise SerialControllerError(f"Invalid JSON in temperature response: {e}")
+            # Handle temperature response
+            elif response.startswith('T:'):
+                json_str = response[2:]
+                try:
+                    temps = json.loads(json_str)
+                    if temps['RoomTemp'] == '':  # Force None if empty
+                        temps['RoomTemp'] = None
+                    self.temperature_data = temps
+                    logger.debug(f"Received temperature data: {self.temperature_data}")
+                    return True
+                except json.JSONDecodeError as e:
+                    logger.error(f"Invalid JSON in temperature response: {e}, response: {response}")
+                    return False
 
-        # Handle LCD response (starts with L: and contains a JSON array)
-        elif response.startswith('L:'):
-            json_str = response[2:]
-            try:
-                lcd_lines = json.loads(json_str)
-                lcd_content = {}
-                for i, line in enumerate(lcd_lines[:4], 1):
-                    lcd_content[str(i)] = line
-                self.lcd_content = lcd_content
-                logger.debug(f"Received LCD content: {self.lcd_content}")
-                return True
-            except json.JSONDecodeError as e:
-                logger.error(f"Invalid JSON in LCD response: {e}, response: {response}")
-                return False
+            # Handle LCD response (starts with L: and contains a JSON array)
+            elif response.startswith('L:'):
+                json_str = response[2:]
+                try:
+                    lcd_lines = json.loads(json_str)
+                    self.lcd_content = lcd_lines[:4]  # Limit to 4 lines max
+                    logger.debug(f"Received LCD content: {self.lcd_content}")
+                    return True
+                except json.JSONDecodeError as e:
+                    logger.error(f"Invalid JSON in LCD response: {e}, response: {response}")
+                    return False
 
-        # Handle settings response (starts with S:)
-        elif response.startswith('S:'):
-            json_str = response[2:]
-            try:
-                settings_data = json.loads(json_str)
-                self.control_settings = ControlSettings(**settings_data)
-                logger.debug(f"Received control settings: {settings_data}")
-                return True
-            except json.JSONDecodeError as e:
-                logger.error(f"Invalid JSON in settings response: {e}, response: {response}")
-                return False
-                
-        # Handle control constants response (starts with C:)
-        elif response.startswith('C:'):
-            json_str = response[2:]
-            try:
-                constants_data = json.loads(json_str)
-                self.control_constants = ControlConstants(**constants_data)
-                logger.debug(f"Received control constants: {constants_data}")
-                return True
-            except json.JSONDecodeError as e:
-                logger.error(f"Invalid JSON in constants response: {e}, response: {response}")
-                return False
-                
-        # Handle device list response (starts with h:)
-        elif response.startswith('h:'):
-            json_str = response[2:]
-            try:
-                devices_list = json.loads(json_str)
-                # Parse with DeviceListItem model first
-                device_items = [DeviceListItem(**d) for d in devices_list]
-                
-                # Convert to Device objects
-                self.devices = []
-                for item in device_items:
-                    device = Device(
-                        id=item.i,
-                        chamber=item.c,
-                        beer=item.b,
-                        function=DeviceFunction(str(item.f)) if item.f < 12 else DeviceFunction.NONE,
-                        hardware_type="UNKNOWN",  # Default value
-                        type=SensorType.TEMP_SENSOR,  # Default value
-                        pin=item.p,
-                        pin_type=PinType.DIGITAL_INPUT  # Default value
-                    )
-                    self.devices.append(device)
-                
-                logger.debug(f"Received device list with {len(self.devices)} devices")
-                return True
-            except json.JSONDecodeError as e:
-                logger.error(f"Invalid JSON in device list response: {e}, response: {response}")
-                return False
-                
-        # Handle other JSON responses
-        else:
-            try:
-                json_data = json.loads(response)
-                
-                # Check for success responses
-                if "success" in json_data:
-                    # This is a success response from a command
-                    success = json_data.get("success", False)
-                    if success:
-                        logger.debug(f"Received success response: {json_data}")
+            # Handle settings response (starts with S:)
+            elif response.startswith('S:'):
+                json_str = response[2:]
+                try:
+                    settings_data = json.loads(json_str)
+                    self.control_settings = ControlSettings(**settings_data)
+                    logger.debug(f"Received control settings: {settings_data}")
+                    return True
+                except json.JSONDecodeError as e:
+                    logger.error(f"Invalid JSON in settings response: {e}, response: {response}")
+                    return False
+                except Exception as e:
+                    logger.error(f"Error processing settings data: {e}, response: {response}")
+                    return False
+
+            # Handle control constants response (starts with C:)
+            elif response.startswith('C:'):
+                json_str = response[2:]
+                try:
+                    constants_data = json.loads(json_str)
+                    self.control_constants = ControlConstants(**constants_data)
+                    logger.debug(f"Received control constants: {constants_data}")
+                    return True
+                except json.JSONDecodeError as e:
+                    logger.error(f"Invalid JSON in constants response: {e}, response: {response}")
+                    return False
+                except Exception as e:
+                    logger.error(f"Error processing constants data: {e}, response: {response}")
+                    return False
+
+            # Handle device list response (starts with h:)
+            elif response.startswith('h:'):
+                json_str = response[2:]
+                try:
+                    devices_list = json.loads(json_str)
+                    # Parse with DeviceListItem model first
+                    device_items = [DeviceListItem(**d) for d in devices_list]
+
+                    # Convert to Device objects
+                    self.devices = []
+                    for item in device_items:
+                        device = Device(
+                            id=item.i,
+                            chamber=item.c,
+                            beer=item.b,
+                            function=DeviceFunction(str(item.f)) if item.f < 12 else DeviceFunction.NONE,
+                            hardware_type="UNKNOWN",  # Default value
+                            type=SensorType.TEMP_SENSOR,  # Default value
+                            pin=item.p,
+                            pin_type=PinType.DIGITAL_INPUT  # Default value
+                        )
+                        self.devices.append(device)
+
+                    logger.debug(f"Received device list with {len(self.devices)} devices")
+                    return True
+                except json.JSONDecodeError as e:
+                    logger.error(f"Invalid JSON in device list response: {e}, response: {response}")
+                    return False
+                except Exception as e:
+                    logger.error(f"Error processing device list: {e}, response: {response}")
+                    return False
+
+            # Handle other JSON responses
+            else:
+                try:
+                    json_data = json.loads(response)
+
+                    # Check for success responses
+                    if "success" in json_data:
+                        # This is a success response from a command
+                        success = json_data.get("success", False)
+                        if success:
+                            logger.debug(f"Received success response: {json_data}")
+                        else:
+                            logger.warning(f"Received failure response: {json_data}")
+                        return True
                     else:
-                        logger.warning(f"Received failure response: {json_data}")
-                    return True
-                else:
-                    # Unknown JSON response
-                    logger.debug(f"Received unknown JSON response: {response}")
-                    return True
-            except json.JSONDecodeError as e:
-                logger.error(f"Invalid JSON in response: {e}, response: {response}")
-                return False
-            except Exception as e:
-                logger.error(f"Error parsing response: {e}, response: {response}")
+                        # Unknown JSON response
+                        logger.debug(f"Received unknown JSON response: {response}")
+                        return True
+                except json.JSONDecodeError as e:
+                    # If it's not a known prefixed response and not valid JSON, log and continue
+                    logger.error(f"Invalid JSON in response: {e}, response: {response}")
+
+                    # Check if it's a known prefix without proper JSON
+                    first_two_chars = response[:2] if len(response) >= 2 else ""
+                    if first_two_chars in ["N:", "T:", "L:", "S:", "C:", "h:"]:
+                        logger.error(f"Known prefix '{first_two_chars}' but invalid JSON content")
+
+                    return False
+                except Exception as e:
+                    logger.error(f"Error parsing response: {e}, response: {response}")
+                    return False
+
+            # If we get here and the response starts with a known prefix but didn't match earlier conditions
+            first_char = response[0] if response else ""
+            if first_char in ["N", "T", "L", "S", "C", "h"]:
+                logger.warning(f"Response starts with known letter '{first_char}' but in unexpected format: {response}")
                 return False
 
-        # If we get here and the response starts with X:, it's an unrecognized format
-        if response.startswith('X:'):
-            logger.debug(f"Unhandled response format starting with X: {response}")
+            # For other unknown formats, log and return False
+            logger.debug(f"Unhandled response format: {response}")
             return False
 
-        # For other unknown formats, log and return False
-        logger.debug(f"Unhandled response format: {response}")
-        return False
+        except Exception as e:
+            # Catch-all to prevent any exception from escaping this method
+            logger.error(f"Unexpected error parsing response: {e}, response: {response}")
+            return False
 
     def process_messages(self, messages: MessageStatus) -> bool:
         """Process messages from Fermentrack.

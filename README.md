@@ -56,7 +56,7 @@ Create and edit `config/app_config.json` with the following settings:
   "host": "localhost",       # Required if not using Fermentrack.net
   "port": "8000",            # Required if not using Fermentrack.net
   "use_https": false,        # Optional, defaults to false
-  "api_key": "your-api-key", # Required
+  "fermentrack_api_key": "your-api-key", # Required
   "api_timeout": 10,         # Optional, defaults to 10
   "status_update_interval": 30,   # Required
   "message_check_interval": 5,    # Required
@@ -70,7 +70,7 @@ If you want to use the cloud-hosted Fermentrack.net service:
 ```json
 {
   "use_fermentrack_net": true,
-  "api_key": "your-api-key", # Required
+  "fermentrack_api_key": "your-api-key", # Required
   "status_update_interval": 30,   # Required
   "message_check_interval": 5,    # Required  
   "full_config_update_interval": 300,  # Required

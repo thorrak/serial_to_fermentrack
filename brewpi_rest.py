@@ -52,7 +52,7 @@ class BrewPiRest:
         self.api_client = FermentrackClient(
             base_url=self.config.DEFAULT_API_URL,
             device_id=self.config.DEVICE_ID,
-            api_key=self.config.API_KEY,
+            fermentrack_api_key=self.config.FERMENTRACK_API_KEY,
             timeout=self.config.API_TIMEOUT
         )
 
@@ -89,7 +89,7 @@ class BrewPiRest:
                 logger.error("Missing device ID in configuration")
                 return False
 
-            if not self.api_client.api_key:
+            if not self.api_client.fermentrack_api_key:
                 logger.error("Missing API key in configuration")
                 return False
 
@@ -121,7 +121,7 @@ class BrewPiRest:
                 "temp_format": status.temp_format,
                 "mode": status.mode,
                 # Add device identification for Fermentrack
-                "apiKey": self.config.API_KEY,
+                "apiKey": self.config.FERMENTRACK_API_KEY,
                 "deviceID": self.config.DEVICE_ID
             }
 

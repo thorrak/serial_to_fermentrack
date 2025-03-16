@@ -191,9 +191,22 @@ def test_parse_responses(mock_serial):
     controller = SerialController('/dev/ttyUSB0')
     controller.connect()
     
-    # Set up mock to return a response
+    # Set up mock to return a response only once
+    # First set in_waiting to have data
     mock_serial.in_waiting = 10
-    mock_serial.read.return_value = b'test response\n'
+    
+    # Use side_effect to control the sequence of returns
+    read_called = False
+    def read_side_effect(size):
+        nonlocal read_called
+        if not read_called:
+            read_called = True
+            return b'test response\n'
+        # Return empty after first read
+        mock_serial.in_waiting = 0
+        return b''
+    
+    mock_serial.read.side_effect = read_side_effect
     
     # Call parse_responses
     controller.parse_responses(mock_brewpi)

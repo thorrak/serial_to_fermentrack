@@ -18,7 +18,7 @@ class FermentrackClient:
         self,
         base_url: str,
         device_id: str,
-        api_key: str,
+        fermentrack_api_key: str,
         timeout: int = 10
     ):
         """Initialize the API client.
@@ -26,12 +26,12 @@ class FermentrackClient:
         Args:
             base_url: Base URL for the Fermentrack API
             device_id: Device ID for authentication
-            api_key: API key for authentication
+            fermentrack_api_key: API key for authentication
             timeout: Request timeout in seconds
         """
         self.base_url = base_url
         self.device_id = device_id
-        self.api_key = api_key
+        self.fermentrack_api_key = fermentrack_api_key
         self.timeout = timeout
 
         # Endpoints
@@ -41,12 +41,12 @@ class FermentrackClient:
 
     def _get_auth_params(self) -> Dict[str, str]:
         """Get authentication parameters."""
-        if not self.device_id or not self.api_key:
+        if not self.device_id or not self.fermentrack_api_key:
             return {}
 
         return {
             "deviceID": self.device_id,
-            "apiKey": self.api_key
+            "apiKey": self.fermentrack_api_key
         }
 
     def _get_url(self, endpoint: str) -> str:

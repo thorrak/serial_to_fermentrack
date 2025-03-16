@@ -88,16 +88,19 @@ def test_brewpi_controller_get_status(mock_serial_controller):
         controller.control_settings.fridge_setting = 18.0
         controller.control_settings.heat_estimator = 0.0
         controller.control_settings.cool_estimator = 0.5
-        controller.lcd_content = {
-            "1": "Line 1",
-            "2": "Line 2",
-            "3": "Line 3",
-            "4": "Line 4"
-        }
+        # Now using a list for lcd_content instead of a dictionary
+        controller.lcd_content = [
+            "Line 1",
+            "Line 2",
+            "Line 3",
+            "Line 4"
+        ]
         controller.temperature_data = {
-            "beer": 20.5,
-            "fridge": 18.2,
-            "room": 22.1
+            "beerTemp": 20.5,
+            "beerSet": 20.0,
+            "fridgeTemp": 18.2,
+            "fridgeSet": 18.0,
+            "RoomTemp": 22.1
         }
         
         # Get status
@@ -107,16 +110,18 @@ def test_brewpi_controller_get_status(mock_serial_controller):
         assert status.mode == "b"
         assert status.temp_format == "C"
         assert status.temps == {
-            "beer": 20.5,
-            "fridge": 18.2,
-            "room": 22.1
+            "beerTemp": 20.5,
+            "beerSet": 20.0,
+            "fridgeTemp": 18.2,
+            "fridgeSet": 18.0,
+            "RoomTemp": 22.1
         }
-        assert status.lcd == {
-            "1": "Line 1",
-            "2": "Line 2",
-            "3": "Line 3",
-            "4": "Line 4"
-        }
+        assert status.lcd == [
+            "Line 1",
+            "Line 2",
+            "Line 3",
+            "Line 4"
+        ]
         
         # Verify request_temperatures was called
         mock_serial_controller.request_temperatures.assert_called_once()
@@ -227,22 +232,28 @@ def test_brewpi_controller_parse_response(mock_serial_controller):
     assert result is True
     assert controller.firmware_version == "0.15"
     
-    # Test temperature response
-    temp_response = 'T:{"beer":20.5,"fridge":18.2,"room":22.1}'
+    # Test temperature response - using RoomTemp (with exact casing)
+    temp_response = 'T:{"beerTemp":20.5,"beerSet":20.0,"fridgeTemp":18.2,"fridgeSet":18.0,"RoomTemp":22.1}'
     result = controller.parse_response(temp_response)
     assert result is True
-    assert controller.temperature_data == {"beer": 20.5, "fridge": 18.2, "room": 22.1}
+    assert controller.temperature_data == {
+        "beerTemp": 20.5,
+        "beerSet": 20.0,
+        "fridgeTemp": 18.2,
+        "fridgeSet": 18.0,
+        "RoomTemp": 22.1
+    }
     
-    # Test LCD response
+    # Test LCD response - now expecting a list instead of a dictionary
     lcd_response = 'L:["Mode   Off          ","Beer   --.-  20.0 °C","Fridge --.-  20.0 °C","Temp. control OFF   "]'
     result = controller.parse_response(lcd_response)
     assert result is True
-    assert controller.lcd_content == {
-        "1": "Mode   Off          ",
-        "2": "Beer   --.-  20.0 °C",
-        "3": "Fridge --.-  20.0 °C",
-        "4": "Temp. control OFF   "
-    }
+    assert controller.lcd_content == [
+        "Mode   Off          ",
+        "Beer   --.-  20.0 °C",
+        "Fridge --.-  20.0 °C",
+        "Temp. control OFF   "
+    ]
     
     # Test settings response
     settings_response = 'S:{"mode":"o","beerSet":20,"fridgeSet":20,"heatEst":0.199,"coolEst":5}'
