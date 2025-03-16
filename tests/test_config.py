@@ -145,3 +145,67 @@ def test_device_field_ignored(mock_comports):
                     # Should have warned about device field being ignored
                     mock_warn.assert_called_once()
                     assert "ignored" in mock_warn.call_args[0][0]
+
+
+def test_location_based_log_file():
+    """Test that log file is based on device location."""
+    # Create mock configs directly
+    app_config_data = {
+        "host": "localhost",
+        "port": "8000",
+        "fermentrack_api_key": "test-api-key"
+    }
+
+    # Test several different locations
+    test_locations = ["1-1", "2-3", "0-0"]
+    
+    for test_location in test_locations:
+        device_config = {
+            "location": test_location,
+            "fermentrack_id": f"device-{test_location}"
+        }
+        
+        def mock_file_opener(filename, *args, **kwargs):
+            if "app_config.json" in str(filename):
+                return mock_open(read_data=json.dumps(app_config_data))()
+            elif f"{test_location}.json" in str(filename):
+                return mock_open(read_data=json.dumps(device_config))()
+            return mock_open()()
+        
+        with patch("builtins.open", mock_file_opener):
+            with patch("pathlib.Path.exists", return_value=True):
+                config = Config(test_location)
+                
+                # Log file should use the location in its name
+                assert config.LOG_FILE.endswith(f"{test_location}.log")
+                
+                # Verify full path contains both log directory and location-based filename
+                expected_path = str(Path(config.LOG_DIR) / f"{test_location}.log")
+                assert config.LOG_FILE == expected_path
+
+
+def test_default_log_file_with_no_location():
+    """Test that default log file is used when no location is provided."""
+    # Create mock configs directly
+    app_config_data = {
+        "host": "localhost",
+        "port": "8000",
+        "fermentrack_api_key": "test-api-key"
+    }
+        
+    def mock_file_opener(filename, *args, **kwargs):
+        if "app_config.json" in str(filename):
+            return mock_open(read_data=json.dumps(app_config_data))()
+        return mock_open()()
+    
+    with patch("builtins.open", mock_file_opener):
+        with patch("pathlib.Path.exists", return_value=True):
+            # Initialize config with no location
+            config = Config(location=None)
+            
+            # Should use the default log file
+            assert "brewpi_rest.log" in config.LOG_FILE
+            
+            # Verify full path contains log directory and default filename
+            expected_path = str(Path(config.LOG_DIR) / "brewpi_rest.log")
+            assert config.LOG_FILE == expected_path

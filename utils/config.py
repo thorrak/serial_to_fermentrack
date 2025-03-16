@@ -224,7 +224,11 @@ class Config:
 
     @property
     def LOG_FILE(self) -> str:
-        """Get log file path."""
+        """Get log file path based on device location."""
+        # If we have a location, use it for the log file name
+        if self.location:
+            return str(LOG_DIR / f"{self.location}.log")
+        # Fall back to default log file if no location
         return str(LOG_DIR / "brewpi_rest.log")
 
     @property
