@@ -1,6 +1,6 @@
 # Config Directory
 
-This directory stores configuration files used by BrewPi-Rest. There are two types of configuration files:
+This directory stores configuration files used by BrewPi-Serial-REST. There are two types of configuration files:
 
 ## Application Configuration (app_config.json)
 
@@ -34,7 +34,7 @@ Contains device-specific configuration, with filename matching the device locati
 
 Note: If a `device` field is present in the configuration file, it will be ignored. The serial port is always determined by enumerating all connected USB devices and finding one with a location ID that exactly matches the location value in the config file.
 
-These configuration files should generally be managed by the application that sets up the devices. When running BrewPi-Rest, specify the device location using the `--location` parameter:
+These configuration files should generally be managed by the application that sets up the devices. When running BrewPi-Serial-REST, specify the device location using the `--location` parameter:
 
 ```bash
 python -m bpr --location 1-1

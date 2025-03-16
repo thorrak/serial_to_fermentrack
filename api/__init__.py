@@ -1,4 +1,4 @@
-"""API module for BrewPi-Rest."""
+"""API module for BrewPi-Serial-REST."""
 
 from .client import FermentrackClient, APIError
 

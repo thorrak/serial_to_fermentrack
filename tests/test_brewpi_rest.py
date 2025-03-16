@@ -1,4 +1,4 @@
-"""Tests for BrewPi-Rest main application."""
+"""Tests for BrewPi-Serial-REST main application."""
 
 import pytest
 import time
@@ -122,7 +122,7 @@ def app(mock_controller, mock_api_client, mock_config):
 
 
 def test_brewpi_rest_setup(app, mock_controller, mock_api_client, mock_config):
-    """Test BrewPi-Rest setup."""
+    """Test BrewPi-Serial-REST setup."""
     result = app.setup()
 
     # Check result

@@ -1,4 +1,4 @@
-"""Utility functions for BrewPi-Rest."""
+"""Utility functions for BrewPi-Serial-REST."""
 
 from .logging import setup_logging
 

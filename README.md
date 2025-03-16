@@ -1,10 +1,10 @@
-# BrewPi-Rest
+# BrewPi-Serial-REST
 
 A modern REST API-based implementation of BrewPi-Script for Fermentrack 2.
 
 ## Overview
 
-BrewPi-Rest is a Python application that mediates communication between the BrewPi temperature controller and Fermentrack 2's REST API. It replaces the original BrewPi-Script with a more modern and maintainable implementation that leverages Fermentrack 2's REST API.
+BrewPi-Serial-REST is a Python application that mediates communication between the BrewPi temperature controller and Fermentrack 2's REST API. It replaces the original BrewPi-Script with a more modern and maintainable implementation that leverages Fermentrack 2's REST API.
 
 ## Features
 
@@ -25,8 +25,8 @@ BrewPi-Rest is a Python application that mediates communication between the Brew
 
 1. Clone this repository:
    ```
-   git clone https://github.com/brewpi/brewpi-rest.git
-   cd brewpi-rest
+   git clone https://github.com/brewpi/brewpi-serial-rest.git
+   cd brewpi-serial-rest
    ```
 
 2. Install dependencies:
@@ -131,7 +131,7 @@ pytest
 
 ## License
 
-MIT License
+Apache License 2.0
 
 ## Credits
 

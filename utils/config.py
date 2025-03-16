@@ -1,4 +1,4 @@
-"""Configuration settings for BrewPi-Rest."""
+"""Configuration settings for BrewPi-Serial-REST."""
 
 import json
 import os
@@ -17,7 +17,7 @@ LOG_DIR = BASE_DIR / "log"
 logger = logging.getLogger(__name__)
 
 class Config:
-    """Configuration manager for BrewPi-Rest."""
+    """Configuration manager for BrewPi-Serial-REST."""
 
     def __init__(self, location: Optional[str] = None):
         """Initialize configuration.

@@ -1,1 +1,1 @@
-"""Tests for BrewPi-Rest."""
+"""Tests for BrewPi-Serial-REST."""

@@ -1,4 +1,4 @@
-"""Setup script for BrewPi-Rest."""
+"""Setup script for BrewPi-Serial-REST."""
 
 from setuptools import setup, find_packages
 import re
@@ -13,7 +13,7 @@ with open("requirements.txt", "r") as f:
     requirements = f.read().splitlines()
 
 setup(
-    name="brewpi-rest",
+    name="brewpi-serial-rest",
     version=version,
     description="REST API client for BrewPi devices",
     author="BrewPi Team",
@@ -23,13 +23,13 @@ setup(
     install_requires=requirements,
     entry_points={
         "console_scripts": [
-            "brewpi-rest=bpr.brewpi_rest:main",
+            "brewpi-serial-rest=bpr.brewpi_rest:main",
         ],
     },
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
-        "License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
