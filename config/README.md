@@ -8,8 +8,6 @@ Contains settings applicable to all devices. The application will not start if t
 
 ### Required Fields:
 - `fermentrack_api_key`: API key for authentication with Fermentrack
-- `status_update_interval`: How often to update status to Fermentrack in seconds
-- `message_check_interval`: How often to check for messages from Fermentrack in seconds
 - `full_config_update_interval`: How often to send full configuration to Fermentrack in seconds
 
 ### Required If Not Using Fermentrack.net:

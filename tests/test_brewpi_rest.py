@@ -28,8 +28,6 @@ def mock_config():
     mock_config.FERMENTRACK_API_KEY = "abc456"
     mock_config.SERIAL_PORT = "/dev/ttyUSB0"  # Mock the result of port detection
     mock_config.BAUD_RATE = 57600
-    mock_config.STATUS_UPDATE_INTERVAL = 30
-    mock_config.MESSAGE_CHECK_INTERVAL = 5
     mock_config.FULL_CONFIG_UPDATE_INTERVAL = 300
     mock_config.DATA_DIR = "/tmp/brewpi-rest/data"
     mock_config.LOG_DIR = "/tmp/brewpi-rest/logs"

@@ -15,8 +15,6 @@ def mock_app_config():
         "host": "localhost",
         "port": "8000",
         "fermentrack_api_key": "test-api-key",
-        "status_update_interval": 30,
-        "message_check_interval": 5,
         "full_config_update_interval": 300
     }
 
@@ -84,8 +82,6 @@ def test_config_properties(mock_config_files):
     assert config.DEVICE_ID == "test-device-id"
     assert config.FERMENTRACK_API_KEY == "test-api-key"
     assert config.BAUD_RATE == 57600
-    assert config.STATUS_UPDATE_INTERVAL == 30
-    assert config.MESSAGE_CHECK_INTERVAL == 5
     assert config.FULL_CONFIG_UPDATE_INTERVAL == 300
 
 
@@ -123,8 +119,6 @@ def test_device_field_ignored(mock_comports):
         "host": "localhost",
         "port": "8000",
         "fermentrack_api_key": "test-api-key",
-        "status_update_interval": 30,
-        "message_check_interval": 5,
         "full_config_update_interval": 300
     }
 

@@ -51,13 +51,11 @@ class Config:
                 self.app_config = json.load(f)
 
             # Verify required fields are present
-            required_fields = ["host", "port", "fermentrack_api_key", "status_update_interval",
-                              "message_check_interval", "full_config_update_interval"]
+            required_fields = ["host", "port", "fermentrack_api_key", "full_config_update_interval"]
 
             # If using Fermentrack.net, some fields are not required
             if self.app_config.get("use_fermentrack_net", False):
-                required_fields = ["fermentrack_api_key", "status_update_interval",
-                                  "message_check_interval", "full_config_update_interval"]
+                required_fields = ["fermentrack_api_key", "full_config_update_interval"]
 
             missing_fields = [field for field in required_fields if field not in self.app_config]
             if missing_fields:
@@ -213,18 +211,6 @@ class Config:
     def BAUD_RATE(self) -> int:
         """Get baud rate for serial communication."""
         return 57600  # Fixed at 57600
-
-    @property
-    def STATUS_UPDATE_INTERVAL(self) -> int:
-        """Get status update interval from config."""
-        # This is a required field, validated during loading
-        return int(self.app_config["status_update_interval"])
-
-    @property
-    def MESSAGE_CHECK_INTERVAL(self) -> int:
-        """Get message check interval from config."""
-        # This is a required field, validated during loading
-        return int(self.app_config["message_check_interval"])
 
     @property
     def FULL_CONFIG_UPDATE_INTERVAL(self) -> int:

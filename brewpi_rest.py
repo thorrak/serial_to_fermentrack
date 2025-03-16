@@ -19,6 +19,8 @@ from api import FermentrackClient, APIError
 # Setup logging
 logger = None  # Will be initialized in main() after config is loaded
 
+# Configuration Constants
+STATUS_UPDATE_INTERVAL = 30  # seconds, includes updating status & LCD
 
 class BrewPiRest:
     """BrewPi REST application.
@@ -260,10 +262,10 @@ class BrewPiRest:
                 # Check if it's time to update status
                 current_time = time.time()
 
-                if current_time - self.last_status_update >= self.config.STATUS_UPDATE_INTERVAL:
+                if current_time - self.last_status_update >= STATUS_UPDATE_INTERVAL:
                     self.update_status()
 
-                # Check if it's time to check for messages
+                # If we decide to check messages independently, uncomment the following lines (and set MESSAGE_CHECK_INTERVAL at the top of this file)
                 # if current_time - self.last_message_check >= self.config.MESSAGE_CHECK_INTERVAL:
                 #     self.check_messages()
 
