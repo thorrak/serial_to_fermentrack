@@ -14,8 +14,7 @@ def mock_app_config():
     return {
         "host": "localhost",
         "port": "8000",
-        "fermentrack_api_key": "test-api-key",
-        "full_config_update_interval": 300
+        "fermentrack_api_key": "test-api-key"
     }
 
 
@@ -81,8 +80,6 @@ def test_config_properties(mock_config_files):
     assert config.API_TIMEOUT == 10  # Default value
     assert config.DEVICE_ID == "test-device-id"
     assert config.FERMENTRACK_API_KEY == "test-api-key"
-    assert config.BAUD_RATE == 57600
-    assert config.FULL_CONFIG_UPDATE_INTERVAL == 300
 
 
 def test_serial_port_match(mock_config_files, mock_comports):
@@ -118,8 +115,7 @@ def test_device_field_ignored(mock_comports):
     app_config_data = {
         "host": "localhost",
         "port": "8000",
-        "fermentrack_api_key": "test-api-key",
-        "full_config_update_interval": 300
+        "fermentrack_api_key": "test-api-key"
     }
 
     # Add a device field to the mock device config

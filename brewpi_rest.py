@@ -21,6 +21,7 @@ logger = None  # Will be initialized in main() after config is loaded
 
 # Configuration Constants
 STATUS_UPDATE_INTERVAL = 30  # seconds, includes updating status & LCD
+FULL_CONFIG_UPDATE_INTERVAL = 300  # seconds
 
 class BrewPiRest:
     """BrewPi REST application.
@@ -63,7 +64,7 @@ class BrewPiRest:
             logger.info("Initializing BrewPi controller")
             self.controller = BrewPiController(
                 port=self.config.SERIAL_PORT,
-                baud_rate=self.config.BAUD_RATE,
+                baud_rate=57600,
                 auto_connect=False
             )
 
@@ -266,11 +267,11 @@ class BrewPiRest:
                     self.update_status()
 
                 # If we decide to check messages independently, uncomment the following lines (and set MESSAGE_CHECK_INTERVAL at the top of this file)
-                # if current_time - self.last_message_check >= self.config.MESSAGE_CHECK_INTERVAL:
+                # if current_time - self.last_message_check >= MESSAGE_CHECK_INTERVAL:
                 #     self.check_messages()
 
                 # Check if it's time to update full configuration
-                # if current_time - self.last_full_config_update >= self.config.FULL_CONFIG_UPDATE_INTERVAL:
+                # if current_time - self.last_full_config_update >= FULL_CONFIG_UPDATE_INTERVAL:
                 #     self.update_full_config()
 
                 # Sleep to avoid CPU hogging

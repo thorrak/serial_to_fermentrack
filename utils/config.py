@@ -50,12 +50,11 @@ class Config:
             with open(app_config_path, 'r') as f:
                 self.app_config = json.load(f)
 
-            # Verify required fields are present
-            required_fields = ["host", "port", "fermentrack_api_key", "full_config_update_interval"]
-
-            # If using Fermentrack.net, some fields are not required
+            # Verify required fields are present. If using Fermentrack.net, some fields are not required
             if self.app_config.get("use_fermentrack_net", False):
-                required_fields = ["fermentrack_api_key", "full_config_update_interval"]
+                required_fields = ["fermentrack_api_key"]
+            else:
+                required_fields = ["host", "port", "fermentrack_api_key"]
 
             missing_fields = [field for field in required_fields if field not in self.app_config]
             if missing_fields:
@@ -206,17 +205,6 @@ class Config:
         available_ports = [f"{p.device} ({p.description}, {p.hwid})" for p in all_ports]
         logger.error(f"No device found with exact location match '{location}'. Available ports: {available_ports}")
         raise ValueError(f"No device found with exact location match '{location}'.")
-
-    @property
-    def BAUD_RATE(self) -> int:
-        """Get baud rate for serial communication."""
-        return 57600  # Fixed at 57600
-
-    @property
-    def FULL_CONFIG_UPDATE_INTERVAL(self) -> int:
-        """Get full config update interval from config."""
-        # This is a required field, validated during loading
-        return int(self.app_config["full_config_update_interval"])
 
     @property
     def DATA_DIR(self) -> str:
