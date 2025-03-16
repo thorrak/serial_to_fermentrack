@@ -110,6 +110,9 @@ class BrewPiRest:
             # Get current status from controller
             status = self.controller.get_status()
 
+            if len(status.temps) <= 0:
+                return False
+
             # Send status to Fermentrack
             # Prepare status data with the four essential keys from controller
             status_data = {
@@ -121,7 +124,7 @@ class BrewPiRest:
                 "apiKey": self.config.API_KEY,
                 "deviceID": self.config.DEVICE_ID
             }
-            
+
             # Send the status data
             response = self.api_client.send_status_raw(status_data)
 
