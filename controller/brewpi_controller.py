@@ -187,7 +187,7 @@ class BrewPiController:
 
             # Update local state immediately (will be confirmed by response)
             if self.control_settings:
-                self.control_settings.beer_setting = temp
+                self.control_settings.beer_set = temp
 
             return True
         except SerialControllerError as e:
@@ -213,7 +213,7 @@ class BrewPiController:
 
             # Update local state immediately (will be confirmed by response)
             if self.control_settings:
-                self.control_settings.fridge_setting = temp
+                self.control_settings.fridge_set = temp
 
             return True
         except SerialControllerError as e:

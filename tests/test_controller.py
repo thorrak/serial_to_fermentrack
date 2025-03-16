@@ -84,8 +84,8 @@ def test_brewpi_controller_get_status(mock_serial_controller):
         controller.firmware_version = "0.5.0"
         controller.control_settings = MagicMock()
         controller.control_settings.mode = "b"
-        controller.control_settings.beer_setting = 20.0
-        controller.control_settings.fridge_setting = 18.0
+        controller.control_settings.beer_set = 20.0
+        controller.control_settings.fridge_set = 18.0
         controller.control_settings.heat_estimator = 0.0
         controller.control_settings.cool_estimator = 0.5
         # Now using a list for lcd_content instead of a dictionary
