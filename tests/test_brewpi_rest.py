@@ -153,17 +153,16 @@ def test_brewpi_rest_check_configuration(app, mock_controller, mock_api_client, 
     # No need to verify API client methods as check_configuration just validates existing configuration
 
 
-def test_brewpi_rest_update_status(app, mock_controller, mock_api_client):
-    """Test update_status method."""
+def test_brewpi_rest_update_status_mode_and_setpoint(app, mock_controller, mock_api_client):
+    """Test update_status method with both mode and setpoint update."""
     app.setup()
     app.check_configuration()
 
-    # Set up mocks
+    # Set up mocks with both mode and setpoint
     mock_api_client.send_status_raw.return_value = {
         "has_messages": True,
         "updated_mode": "f",
-        "updated_beer_set": 21.5,
-        "updated_fridge_set": 19.5
+        "updated_setpoint": 18.5
     }
 
     # Update status
@@ -177,6 +176,9 @@ def test_brewpi_rest_update_status(app, mock_controller, mock_api_client):
     mock_controller.get_status.assert_called_once()
     mock_api_client.send_status_raw.assert_called_once()
     mock_check_messages.assert_called_once()
+    
+    # Verify set_mode_and_temp was called with the correct parameters
+    mock_controller.set_mode_and_temp.assert_called_once_with("f", 18.5)
 
     # Verify the correct data format was sent
     call_args = mock_api_client.send_status_raw.call_args[0][0]
@@ -187,10 +189,57 @@ def test_brewpi_rest_update_status(app, mock_controller, mock_api_client):
     assert "apiKey" in call_args
     assert "deviceID" in call_args
 
-    # Verify settings applied
-    mock_controller.set_mode.assert_called_once_with("f")
-    mock_controller.set_beer_temp.assert_called_once_with(21.5)
-    mock_controller.set_fridge_temp.assert_called_once_with(19.5)
+
+def test_brewpi_rest_update_status_mode_only(app, mock_controller, mock_api_client):
+    """Test update_status method with mode update only."""
+    app.setup()
+    app.check_configuration()
+
+    # Reset mock for a clean test
+    mock_controller.reset_mock()
+    mock_api_client.reset_mock()
+    
+    # Set up mocks with mode only
+    mock_api_client.send_status_raw.return_value = {
+        "has_messages": False,
+        "updated_mode": "o",    # Off mode
+        "updated_setpoint": None
+    }
+
+    # Update status
+    result = app.update_status()
+
+    # Check result
+    assert result is True
+
+    # Verify set_mode_and_temp was called with the correct parameters
+    mock_controller.set_mode_and_temp.assert_called_once_with("o", None)
+
+
+def test_brewpi_rest_update_status_setpoint_only(app, mock_controller, mock_api_client):
+    """Test update_status method with setpoint update only."""
+    app.setup()
+    app.check_configuration()
+
+    # Reset mock for a clean test
+    mock_controller.reset_mock()
+    mock_api_client.reset_mock()
+    
+    # Set up mocks with setpoint only
+    mock_api_client.send_status_raw.return_value = {
+        "has_messages": False,
+        "updated_mode": None,
+        "updated_setpoint": 20.5
+    }
+
+    # Update status
+    result = app.update_status()
+
+    # Check result
+    assert result is True
+
+    # Verify set_mode_and_temp was called with the correct parameters (mode=None)
+    mock_controller.set_mode_and_temp.assert_called_once_with(None, 20.5)
 
 
 def test_brewpi_rest_check_messages(app, mock_controller, mock_api_client):

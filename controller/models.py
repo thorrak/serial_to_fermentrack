@@ -183,8 +183,9 @@ class ControllerStatus(BaseModel):
 
 class MessageStatus(BaseModel):
     """Message flags for communication with Fermentrack."""
-    
+
     # Device control messages
+    restart_device: bool = False
     reset_eeprom: bool = False
     reset_connection: bool = False
     restart_device: bool = False
@@ -195,18 +196,19 @@ class MessageStatus(BaseModel):
     updated_cs: bool = False
     updated_mt: bool = False
     updated_devices: Any = False
+
     refresh_config: bool = False
-    
+
     # Default setting messages
     default_cc: bool = False
     default_cs: bool = False
     default_devices: bool = False
     
+    # The following messages are hallucinations and should be deleted
+    # TODO - Delete these
     # Mode and setpoint updates
     update_mode: Optional[str] = None
-    update_beer_set: Optional[float] = None
-    update_fridge_set: Optional[float] = None
-    
+
     # Config updates
     update_control_settings: Optional[Dict[str, Any]] = None
     update_control_constants: Optional[Dict[str, Any]] = None

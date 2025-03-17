@@ -301,3 +301,114 @@ def test_send_json_command_with_data(mock_serial):
 
     # Verify that read was not called (asynchronous)
     mock_serial.read.assert_not_called()
+
+
+def test_set_mode_and_temp_beer_mode(mock_serial):
+    """Test setting beer mode and temperature."""
+    controller = SerialController('/dev/ttyUSB0')
+    controller.connect()
+
+    controller.set_mode_and_temp('b', 20.5)
+
+    # Check that the command was sent with the correct format
+    mock_serial.write.assert_called_once()
+    call_args = mock_serial.write.call_args[0][0].decode('utf-8')
+    assert 'j{mode:"b", beerSet:20.5}' in call_args
+
+
+def test_set_mode_and_temp_fridge_mode(mock_serial):
+    """Test setting fridge mode and temperature."""
+    controller = SerialController('/dev/ttyUSB0')
+    controller.connect()
+
+    controller.set_mode_and_temp('f', 18.5)
+
+    # Check that the command was sent with the correct format
+    mock_serial.write.assert_called_once()
+    call_args = mock_serial.write.call_args[0][0].decode('utf-8')
+    assert 'j{mode:"f", fridgeSet:18.5}' in call_args
+
+
+def test_set_mode_and_temp_profile_mode(mock_serial):
+    """Test setting profile mode and temperature."""
+    controller = SerialController('/dev/ttyUSB0')
+    controller.connect()
+
+    controller.set_mode_and_temp('p', 21.0)
+
+    # Check that the command was sent with the correct format
+    mock_serial.write.assert_called_once()
+    call_args = mock_serial.write.call_args[0][0].decode('utf-8')
+    assert 'j{mode:"p", beerSet:21.0}' in call_args
+
+
+def test_set_mode_and_temp_off_mode(mock_serial):
+    """Test setting off mode."""
+    controller = SerialController('/dev/ttyUSB0')
+    controller.connect()
+
+    controller.set_mode_and_temp('o', None)
+
+    # Check that the command was sent with the correct format
+    mock_serial.write.assert_called_once()
+    call_args = mock_serial.write.call_args[0][0].decode('utf-8')
+    assert 'j{mode:"o"}' in call_args
+
+
+def test_set_mode_and_temp_invalid_mode(mock_serial):
+    """Test setting an invalid mode."""
+    controller = SerialController('/dev/ttyUSB0')
+    controller.connect()
+
+    with pytest.raises(ValueError):
+        controller.set_mode_and_temp('x', 20.0)
+
+
+def test_set_mode_and_temp_not_connected():
+    """Test setting mode when not connected."""
+    controller = SerialController('/dev/ttyUSB0')
+
+    with pytest.raises(SerialControllerError):
+        controller.set_mode_and_temp('b', 20.0)
+
+
+def test_set_beer_temp(mock_serial):
+    """Test setting beer temperature without changing mode."""
+    controller = SerialController('/dev/ttyUSB0')
+    controller.connect()
+
+    controller.set_beer_temp(20.5)
+
+    # Check that the command was sent with the correct format
+    mock_serial.write.assert_called_once()
+    call_args = mock_serial.write.call_args[0][0].decode('utf-8')
+    assert 'j{beerSet:20.5}' in call_args
+
+
+def test_set_beer_temp_not_connected():
+    """Test setting beer temperature when not connected."""
+    controller = SerialController('/dev/ttyUSB0')
+
+    with pytest.raises(SerialControllerError):
+        controller.set_beer_temp(20.0)
+
+
+def test_set_fridge_temp(mock_serial):
+    """Test setting fridge temperature without changing mode."""
+    controller = SerialController('/dev/ttyUSB0')
+    controller.connect()
+
+    controller.set_fridge_temp(18.5)
+
+    # Check that the command was sent with the correct format
+    mock_serial.write.assert_called_once()
+    call_args = mock_serial.write.call_args[0][0].decode('utf-8')
+    assert 'j{fridgeSet:18.5}' in call_args
+
+
+def test_set_fridge_temp_not_connected():
+    """Test setting fridge temperature when not connected."""
+    controller = SerialController('/dev/ttyUSB0')
+
+    with pytest.raises(SerialControllerError):
+        controller.set_fridge_temp(18.0)

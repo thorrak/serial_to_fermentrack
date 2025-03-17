@@ -152,21 +152,20 @@ class BrewPiRest:
             response: Status response data
         """
         # Check for mode update
-        if "updated_mode" in response and response["updated_mode"]:
+        if ("updated_mode" in response and response["updated_mode"]):
             new_mode = response["updated_mode"]
+        else:
+            new_mode = None
+
+        if ("updated_setpoint" in response and response["updated_setpoint"]):
+            new_setpoint = response["updated_setpoint"]
+        else:
+            new_setpoint = None
+
+        if new_mode or new_setpoint:
             logger.info(f"Mode update from Fermentrack: {new_mode}")
-            self.controller.set_mode(new_mode)
+            self.controller.set_mode_and_temp(new_mode, new_setpoint)
 
-        # Check for temperature updates
-        if "updated_beer_set" in response and response["updated_beer_set"] is not None:
-            new_beer_set = float(response["updated_beer_set"])
-            logger.info(f"Beer setpoint update from Fermentrack: {new_beer_set}")
-            self.controller.set_beer_temp(new_beer_set)
-
-        if "updated_fridge_set" in response and response["updated_fridge_set"] is not None:
-            new_fridge_set = float(response["updated_fridge_set"])
-            logger.info(f"Fridge setpoint update from Fermentrack: {new_fridge_set}")
-            self.controller.set_fridge_temp(new_fridge_set)
 
     def check_messages(self) -> bool:
         """Check for messages from Fermentrack.

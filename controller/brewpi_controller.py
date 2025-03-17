@@ -137,88 +137,65 @@ class BrewPiController:
 
         return config.dict()
 
-    def set_mode(self, mode: str) -> bool:
-        """Set controller mode.
+
+    def set_mode_and_temp(self, mode: str or None, temp: float or None) -> bool:
+        """Set controller mode and temperature.
 
         Args:
             mode: Controller mode (b=beer, f=fridge, p=profile, o=off)
+            temp: Temperature setpoint (None if mode is off)
 
         Returns:
-            True if mode was set successfully
+            True if mode and temperature was set successfully
         """
+
         if not self.connected:
             raise SerialControllerError("Not connected to controller")
 
-        try:
-            # Validate mode
-            if mode not in ["b", "f", "p", "o"]:
-                logger.error(f"Invalid mode: {mode}")
-                return False
+        # If we have nothing to update, this shouldn't be called
+        if temp is None and mode is None:
+            raise ValueError("At least one of mode or temperature must be specified")
 
-            # Send command to controller asynchronously
-            self.serial.set_parameter("mode", mode)
-            self.serial.parse_responses(self)
+        # If we're doing anything other than setting the mode to off, we need a temperature
+        if temp is None and mode != "o":
+            raise ValueError("Temperature must be specified if mode is not off")
 
-            # Update local state immediately (will be confirmed by response)
-            if self.control_settings:
-                self.control_settings.mode = mode
-
-            return True
-        except SerialControllerError as e:
-            logger.error(f"Failed to set mode: {e}")
-            return False
-
-    def set_beer_temp(self, temp: float) -> bool:
-        """Set beer temperature.
-
-        Args:
-            temp: Beer temperature setpoint
-
-        Returns:
-            True if temperature was set successfully
-        """
-        if not self.connected:
-            raise SerialControllerError("Not connected to controller")
+        # If the mode is set, it must be one of "b", "f", "p", or "o"
+        if mode and mode not in ["b", "f", "p", "o"]:
+            raise SerialControllerError("Invalid mode")
 
         try:
             # Send command to controller asynchronously
-            self.serial.set_parameter("beerSet", temp)
+            if mode:
+                self.serial.set_mode_and_temp(mode, temp)
+                # Update local state immediately (will be confirmed by response)
+                if self.control_settings:
+                    # TODO - Make sure this works with Pydantic the way I think it does
+                    self.control_settings.mode = mode
+                    if mode == "b" or mode == "p":
+                        self.control_settings.beer_set = temp
+                    elif mode == "f":
+                        self.control_settings.fridge_set = temp
+                    elif mode == "o":
+                        # TODO - determine if this should be None or 0
+                        self.control_settings.beer_set = None
+                        self.control_settings.fridge_set = None
+            else:
+                if self.control_settings.mode == "b" or self.control_settings.mode == "p":
+                    # In practice, this will only get hit when the mode is "p"
+                    self.serial.set_beer_temp(temp)
+                    self.control_settings.beer_set = temp
+                elif self.control_settings.mode == "f":
+                    # In practice, this branch will never get hit, but things may change at some point
+                    self.serial.set_fridge_temp(temp)
+                    self.control_settings.fridge_set = temp
             self.serial.parse_responses(self)
-
-            # Update local state immediately (will be confirmed by response)
-            if self.control_settings:
-                self.control_settings.beer_set = temp
 
             return True
         except SerialControllerError as e:
-            logger.error(f"Failed to set beer temperature: {e}")
+            logger.error(f"Failed to set mode/temperature: {e}")
             return False
 
-    def set_fridge_temp(self, temp: float) -> bool:
-        """Set fridge temperature.
-
-        Args:
-            temp: Fridge temperature setpoint
-
-        Returns:
-            True if temperature was set successfully
-        """
-        if not self.connected:
-            raise SerialControllerError("Not connected to controller")
-
-        try:
-            # Send command to controller asynchronously
-            self.serial.set_parameter("fridgeSet", temp)
-            self.serial.parse_responses(self)
-
-            # Update local state immediately (will be confirmed by response)
-            if self.control_settings:
-                self.control_settings.fridge_set = temp
-
-            return True
-        except SerialControllerError as e:
-            logger.error(f"Failed to set fridge temperature: {e}")
-            return False
 
     def apply_settings(self, settings_data: Dict[str, Any]) -> bool:
         """Apply control settings to the controller.
@@ -486,24 +463,6 @@ class BrewPiController:
         try:
             # Process each message type
             processed = False
-
-            # Process mode change
-            if messages.update_mode:
-                logger.debug(f"Processing mode change to: {messages.update_mode}")
-                self.set_mode(messages.update_mode)
-                processed = True
-
-            # Process beer temperature change
-            if messages.update_beer_set is not None:
-                logger.debug(f"Processing beer temp change to: {messages.update_beer_set}")
-                self.set_beer_temp(messages.update_beer_set)
-                processed = True
-
-            # Process fridge temperature change
-            if messages.update_fridge_set is not None:
-                logger.debug(f"Processing fridge temp change to: {messages.update_fridge_set}")
-                self.set_fridge_temp(messages.update_fridge_set)
-                processed = True
 
             # Process control settings update
             if messages.update_control_settings:

@@ -154,57 +154,6 @@ def test_brewpi_controller_get_full_config(mock_serial_controller):
         assert config == {"mock": "config"}
     
 
-def test_brewpi_controller_set_mode(mock_serial_controller):
-    """Test set_mode method."""
-    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
-    controller.connected = True
-    controller.control_settings = MagicMock()
-    
-    # Set mode
-    result = controller.set_mode("f")
-    
-    # Check result
-    assert result is True
-    
-    # Check method calls - asynchronous with parse_responses
-    mock_serial_controller.set_parameter.assert_called_once_with("mode", "f")
-    mock_serial_controller.parse_responses.assert_called_once_with(controller)
-
-
-def test_brewpi_controller_set_beer_temp(mock_serial_controller):
-    """Test set_beer_temp method."""
-    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
-    controller.connected = True
-    controller.control_settings = MagicMock()
-    
-    # Set beer temp
-    result = controller.set_beer_temp(21.5)
-    
-    # Check result
-    assert result is True
-    
-    # Check method calls - asynchronous with parse_responses
-    mock_serial_controller.set_parameter.assert_called_once_with("beerSet", 21.5)
-    mock_serial_controller.parse_responses.assert_called_once_with(controller)
-
-
-def test_brewpi_controller_set_fridge_temp(mock_serial_controller):
-    """Test set_fridge_temp method."""
-    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
-    controller.connected = True
-    controller.control_settings = MagicMock()
-    
-    # Set fridge temp
-    result = controller.set_fridge_temp(19.5)
-    
-    # Check result
-    assert result is True
-    
-    # Check method calls - asynchronous with parse_responses
-    mock_serial_controller.set_parameter.assert_called_once_with("fridgeSet", 19.5)
-    mock_serial_controller.parse_responses.assert_called_once_with(controller)
-
-
 def test_brewpi_controller_apply_settings(mock_serial_controller):
     """Test apply_settings method."""
     controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
@@ -220,6 +169,124 @@ def test_brewpi_controller_apply_settings(mock_serial_controller):
     # Check method calls - asynchronous with parse_responses
     mock_serial_controller.set_control_settings.assert_called_once_with(settings)
     mock_serial_controller.parse_responses.assert_called_once_with(controller)
+
+
+def test_brewpi_controller_set_mode_and_temp_beer_mode(mock_serial_controller):
+    """Test set_mode_and_temp with beer mode."""
+    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+    controller.connected = True
+    controller.control_settings = MagicMock()
+    
+    # Set beer mode and temperature
+    result = controller.set_mode_and_temp('b', 20.5)
+    
+    # Check result
+    assert result is True
+    
+    # Check method calls
+    mock_serial_controller.set_mode_and_temp.assert_called_once_with('b', 20.5)
+    mock_serial_controller.parse_responses.assert_called_once_with(controller)
+    
+    # Check local state update
+    assert controller.control_settings.mode == 'b'
+    assert controller.control_settings.beer_set == 20.5
+
+
+def test_brewpi_controller_set_mode_and_temp_fridge_mode(mock_serial_controller):
+    """Test set_mode_and_temp with fridge mode."""
+    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+    controller.connected = True
+    controller.control_settings = MagicMock()
+    
+    # Set fridge mode and temperature
+    result = controller.set_mode_and_temp('f', 18.5)
+    
+    # Check result
+    assert result is True
+    
+    # Check method calls
+    mock_serial_controller.set_mode_and_temp.assert_called_once_with('f', 18.5)
+    mock_serial_controller.parse_responses.assert_called_once_with(controller)
+    
+    # Check local state update
+    assert controller.control_settings.mode == 'f'
+    assert controller.control_settings.fridge_set == 18.5
+
+
+def test_brewpi_controller_set_mode_and_temp_off_mode(mock_serial_controller):
+    """Test set_mode_and_temp with off mode."""
+    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+    controller.connected = True
+    controller.control_settings = MagicMock()
+    
+    # Set off mode
+    result = controller.set_mode_and_temp('o', None)
+    
+    # Check result
+    assert result is True
+    
+    # Check method calls
+    mock_serial_controller.set_mode_and_temp.assert_called_once_with('o', None)
+    mock_serial_controller.parse_responses.assert_called_once_with(controller)
+    
+    # Check local state update
+    assert controller.control_settings.mode == 'o'
+    assert controller.control_settings.beer_set is None
+    assert controller.control_settings.fridge_set is None
+
+
+def test_brewpi_controller_set_mode_and_temp_update_beer_only(mock_serial_controller):
+    """Test set_mode_and_temp with only temperature update in beer mode."""
+    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+    controller.connected = True
+    # Create a MagicMock with specific attributes instead of a pure MagicMock
+    controller.control_settings = MagicMock()
+    controller.control_settings.mode = "b"
+    # Explicitly store the original mock to check later
+    original_mock = controller.control_settings
+    
+    # Update only temperature, not mode
+    result = controller.set_mode_and_temp(None, 21.0)
+    
+    # Check result
+    assert result is True
+    
+    # Check method calls - should use set_beer_temp in beer mode
+    mock_serial_controller.set_beer_temp.assert_called_once_with(21.0)
+    mock_serial_controller.parse_responses.assert_called_once_with(controller)
+    
+    # Check that mode is still "b" (beer mode)
+    assert controller.control_settings.mode == "b"
+    # Verify that the same mock is still being used (not replaced)
+    assert controller.control_settings is original_mock
+
+
+def test_brewpi_controller_set_mode_and_temp_not_connected(mock_serial_controller):
+    """Test set_mode_and_temp when not connected."""
+    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+    controller.connected = False
+    
+    # Attempt to set mode and temperature when not connected
+    with pytest.raises(SerialControllerError):
+        controller.set_mode_and_temp('b', 20.0)
+
+
+def test_brewpi_controller_set_mode_and_temp_invalid_input(mock_serial_controller):
+    """Test set_mode_and_temp with invalid input."""
+    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+    controller.connected = True
+    
+    # Attempt to set with both mode and temp as None
+    with pytest.raises(ValueError):
+        controller.set_mode_and_temp(None, None)
+    
+    # Attempt to set non-off mode without a temperature
+    with pytest.raises(ValueError):
+        controller.set_mode_and_temp('b', None)
+    
+    # Attempt to set invalid mode
+    with pytest.raises(SerialControllerError):
+        controller.set_mode_and_temp('x', 20.0)
 
 
 def test_brewpi_controller_parse_response(mock_serial_controller):
@@ -301,9 +368,6 @@ def test_brewpi_controller_process_messages(mock_serial_controller):
     controller.connected = True
     
     # Set up mocks for set methods
-    controller.set_mode = MagicMock(return_value=True)
-    controller.set_beer_temp = MagicMock(return_value=True)
-    controller.set_fridge_temp = MagicMock(return_value=True)
     controller.apply_settings = MagicMock(return_value=True)
     controller.apply_constants = MagicMock(return_value=True)
     controller.apply_device_config = MagicMock(return_value=True)
@@ -311,8 +375,6 @@ def test_brewpi_controller_process_messages(mock_serial_controller):
     # Create messages
     messages = MessageStatus(
         update_mode="f",
-        update_beer_set=21.5,
-        update_fridge_set=19.5,
         update_control_settings={"mode": "f"},
         update_control_constants={"Kp": 25.0},
         update_devices=[{"id": 1}]
@@ -325,9 +387,6 @@ def test_brewpi_controller_process_messages(mock_serial_controller):
     assert result is True
     
     # Check method calls
-    controller.set_mode.assert_called_once_with("f")
-    controller.set_beer_temp.assert_called_once_with(21.5)
-    controller.set_fridge_temp.assert_called_once_with(19.5)
     controller.apply_settings.assert_called_once_with({"mode": "f"})
     controller.apply_constants.assert_called_once_with({"Kp": 25.0})
     controller.apply_device_config.assert_called_once_with({"devices": [{"id": 1}]})

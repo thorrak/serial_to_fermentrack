@@ -190,6 +190,7 @@ class SerialController:
             logger.error(f"Serial communication error: {e}")
             raise SerialControllerError(f"Serial communication error: {e}")
 
+    # TODO - Eliminate uses of _send_json_command, as they don't really work with the controller
     def _send_json_command(self, command: str, data: Dict[str, Any] = None) -> None:
         """Send JSON command to controller asynchronously.
 
@@ -256,6 +257,7 @@ class SerialController:
             brewpi: BrewPiController instance
         """
         # Continue reading responses until no more are available
+        # TODO - Sleep and repeat if we don't end on a newline
         while True:
             try:
                 # Read response
@@ -305,6 +307,7 @@ class SerialController:
         except SerialControllerError:
             raise
 
+    # TODO - Eliminate set_parameter
     def set_parameter(self, parameter: str, value: Any) -> None:
         """Set a control parameter asynchronously.
 
@@ -318,6 +321,58 @@ class SerialController:
         try:
             data = {"parameter": parameter, "value": value}
             self._send_json_command("setParameter", data)
+        except SerialControllerError:
+            raise
+
+    def set_mode_and_temp(self, mode: str or None, temp: float or None) -> None:
+        """Set controller mode and temperature.
+
+        Args:
+            mode: Controller mode (b=beer, f=fridge, p=profile, o=off)
+            temp: Temperature setpoint (None if mode is off)
+
+        Returns:
+            True if mode and temperature was set successfully
+        """
+        try:
+            if mode == "b":
+                msg = f'j{{mode:"b", beerSet:{temp}}}'
+            elif mode == "f":
+                msg = f'j{{mode:"f", fridgeSet:{temp}}}'
+            elif mode == "p":
+                msg = f'j{{mode:"p", beerSet:{temp}}}'
+            elif mode == "o":
+                msg = 'j{mode:"o"}'
+            else:
+                raise ValueError("Invalid mode")
+
+            self._send_command(msg)
+        except SerialControllerError:
+            raise
+
+    def set_beer_temp(self, temp: float) -> None:
+        """Set beer temperature set point without changing mode. Used when running an active profile.
+
+        Args:
+            temp: Temperature setpoint
+
+        """
+        try:
+            msg = f'j{{beerSet:{temp}}}'
+            self._send_command(msg)
+        except SerialControllerError:
+            raise
+
+    def set_fridge_temp(self, temp: float) -> None:
+        """Set fridge temperature set point without changing mode. This currently never gets used in practice.
+
+        Args:
+            temp: Temperature setpoint
+
+        """
+        try:
+            msg = f'j{{fridgeSet:{temp}}}'
+            self._send_command(msg)
         except SerialControllerError:
             raise
 
