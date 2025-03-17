@@ -374,7 +374,6 @@ def test_brewpi_controller_process_messages(mock_serial_controller):
     
     # Create messages
     messages = MessageStatus(
-        update_mode="f",
         update_control_settings={"mode": "f"},
         update_control_constants={"Kp": 25.0},
         update_devices=[{"id": 1}]

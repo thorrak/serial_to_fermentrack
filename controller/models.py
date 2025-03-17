@@ -188,9 +188,7 @@ class MessageStatus(BaseModel):
     restart_device: bool = False
     reset_eeprom: bool = False
     reset_connection: bool = False
-    restart_device: bool = False
-    refresh_lcd: bool = False
-    
+
     # Device update messages
     updated_cc: bool = False
     updated_cs: bool = False
@@ -202,13 +200,9 @@ class MessageStatus(BaseModel):
     # Default setting messages
     default_cc: bool = False
     default_cs: bool = False
-    default_devices: bool = False
-    
+
     # The following messages are hallucinations and should be deleted
     # TODO - Delete these
-    # Mode and setpoint updates
-    update_mode: Optional[str] = None
-
     # Config updates
     update_control_settings: Optional[Dict[str, Any]] = None
     update_control_constants: Optional[Dict[str, Any]] = None
