@@ -412,3 +412,45 @@ def test_set_fridge_temp_not_connected():
 
     with pytest.raises(SerialControllerError):
         controller.set_fridge_temp(18.0)
+
+
+def test_restart_device(mock_serial):
+    """Test restarting the device."""
+    controller = SerialController('/dev/ttyUSB0')
+    controller.connect()
+
+    controller.restart_device()
+
+    # Check that the command was sent with the correct format
+    mock_serial.write.assert_called_once_with(b'R\n')
+    mock_serial.flush.assert_called_once()
+
+
+def test_restart_device_not_connected():
+    """Test restarting the device when not connected."""
+    controller = SerialController('/dev/ttyUSB0')
+
+    with pytest.raises(SerialControllerError):
+        controller.restart_device()
+
+
+def test_reset_eeprom(mock_serial):
+    """Test resetting the EEPROM."""
+    controller = SerialController('/dev/ttyUSB0')
+    controller.connect()
+
+    controller.reset_eeprom()
+
+    # Check that the command was sent with the correct format
+    mock_serial.write.assert_called_once()
+    call_args = mock_serial.write.call_args[0][0].decode('utf-8')
+    assert 'E{"confirmReset": true}' in call_args
+    mock_serial.flush.assert_called_once()
+
+
+def test_reset_eeprom_not_connected():
+    """Test resetting the EEPROM when not connected."""
+    controller = SerialController('/dev/ttyUSB0')
+
+    with pytest.raises(SerialControllerError):
+        controller.reset_eeprom()

@@ -267,6 +267,62 @@ def test_brewpi_rest_check_messages(app, mock_controller, mock_api_client):
     mock_api_client.mark_message_processed.assert_called_once_with("updated_cs")
 
 
+def test_brewpi_rest_check_messages_reset_eeprom(app, mock_controller, mock_api_client):
+    """Test check_messages method with reset_eeprom message."""
+    app.setup()
+    app.check_configuration()
+
+    # Reset mocks for a clean test
+    mock_controller.reset_mock()
+    mock_api_client.reset_mock()
+
+    # Set up mocks with reset_eeprom message
+    messages = {
+        "reset_eeprom": True
+    }
+    mock_api_client.get_messages.return_value = messages
+    mock_controller.process_messages.return_value = True
+
+    # Check messages
+    result = app.check_messages()
+
+    # Check result
+    assert result is True
+
+    # Verify method calls
+    mock_api_client.get_messages.assert_called_once()
+    mock_controller.process_messages.assert_called_once()
+    mock_api_client.mark_message_processed.assert_called_once_with("reset_eeprom")
+
+
+def test_brewpi_rest_check_messages_restart_device(app, mock_controller, mock_api_client):
+    """Test check_messages method with restart_device message."""
+    app.setup()
+    app.check_configuration()
+
+    # Reset mocks for a clean test
+    mock_controller.reset_mock()
+    mock_api_client.reset_mock()
+
+    # Set up mocks with restart_device message
+    messages = {
+        "restart_device": True
+    }
+    mock_api_client.get_messages.return_value = messages
+    mock_controller.process_messages.return_value = True
+
+    # Check messages
+    result = app.check_messages()
+
+    # Check result
+    assert result is True
+
+    # Verify method calls
+    mock_api_client.get_messages.assert_called_once()
+    mock_controller.process_messages.assert_called_once()
+    mock_api_client.mark_message_processed.assert_called_once_with("restart_device")
+
+
 def test_brewpi_rest_update_full_config(app, mock_controller, mock_api_client):
     """Test update_full_config method."""
     app.setup()

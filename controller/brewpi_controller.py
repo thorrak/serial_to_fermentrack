@@ -81,6 +81,7 @@ class BrewPiController:
             self.serial.request_lcd()
             self.serial.request_control_constants()
             self.serial.request_device_list()
+            time.sleep(0.1)
             self.serial.parse_responses(self)
 
         except SerialControllerError as e:
@@ -463,6 +464,22 @@ class BrewPiController:
         try:
             # Process each message type
             processed = False
+
+            if messages.restart_device:
+                logger.debug("Processing device restart")
+                self.serial.restart_device()
+                processed = True
+                # Since the device is restarting, we're going to get disconnected. Sleep for 2 seconds and just exit the app
+                time.sleep(2)
+                exit(0)
+
+            if messages.reset_eeprom:
+                logger.debug("Processing EEPROM reset")
+                self.serial.reset_eeprom()
+                processed = True
+                # Since the device is being reset, we need to reload everything
+                time.sleep(0.2)  # Give the reset command time to process
+                self._refresh_controller_state()
 
             # Process control settings update
             if messages.update_control_settings:

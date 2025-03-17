@@ -376,6 +376,23 @@ class SerialController:
         except SerialControllerError:
             raise
 
+    def restart_device(self) -> None:
+        """Restart the device. Note that we will disconnect after this command is processed.
+        """
+        try:
+            self._send_command("R")
+        except SerialControllerError:
+            raise
+
+    def reset_eeprom(self) -> None:
+        """Reset EEPROM settings. After resetting the settings, we will need to refresh everything, but that is left
+        to the calling function.
+        """
+        try:
+            self._send_command("E{\"confirmReset\": true}")
+        except SerialControllerError:
+            raise
+
     def request_control_constants(self):
         """Request control constants.
 

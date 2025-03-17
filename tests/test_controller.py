@@ -389,3 +389,58 @@ def test_brewpi_controller_process_messages(mock_serial_controller):
     controller.apply_settings.assert_called_once_with({"mode": "f"})
     controller.apply_constants.assert_called_once_with({"Kp": 25.0})
     controller.apply_device_config.assert_called_once_with({"devices": [{"id": 1}]})
+
+
+def test_brewpi_controller_process_reset_eeprom_message(mock_serial_controller):
+    """Test processing reset_eeprom message."""
+    # Since this calls _refresh_controller_state and has a sleep,
+    # we need to patch those
+    with patch.object(BrewPiController, '_refresh_controller_state') as mock_refresh, \
+         patch('bpr.controller.brewpi_controller.time.sleep') as mock_sleep:
+        
+        controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+        controller.connected = True
+        
+        # Create message with reset_eeprom flag
+        messages = MessageStatus(reset_eeprom=True)
+        
+        # Process messages
+        result = controller.process_messages(messages)
+        
+        # Check result
+        assert result is True
+        
+        # Check method calls
+        mock_serial_controller.reset_eeprom.assert_called_once()
+        mock_sleep.assert_called_once_with(0.2)  # Verify sleep was called with correct time
+        mock_refresh.assert_called_once()  # Verify refresh was called
+
+
+def test_brewpi_controller_process_restart_device_message(mock_serial_controller):
+    """Test processing restart_device message.
+    
+    This test doesn't actually test the exit(0) call since that would terminate the test process.
+    We'll patch the exit function to verify it's called."""
+    with patch('bpr.controller.brewpi_controller.time.sleep') as mock_sleep, \
+         patch('bpr.controller.brewpi_controller.exit') as mock_exit:
+        
+        controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+        controller.connected = True
+        
+        # Create message with restart_device flag
+        messages = MessageStatus(restart_device=True)
+        
+        # Process messages
+        result = controller.process_messages(messages)
+        
+        # The method should return True
+        assert result is True
+        
+        # Verify restart_device was called
+        mock_serial_controller.restart_device.assert_called_once()
+        
+        # Verify sleep was called with 3 seconds
+        mock_sleep.assert_called_once_with(3)
+        
+        # Verify exit was called with code 0
+        mock_exit.assert_called_once_with(0)
