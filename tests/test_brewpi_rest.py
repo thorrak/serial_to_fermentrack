@@ -323,6 +323,62 @@ def test_brewpi_rest_check_messages_restart_device(app, mock_controller, mock_ap
     mock_api_client.mark_message_processed.assert_called_once_with("restart_device")
 
 
+def test_brewpi_rest_check_messages_default_control_settings(app, mock_controller, mock_api_client):
+    """Test check_messages method with default_cs message."""
+    app.setup()
+    app.check_configuration()
+
+    # Reset mocks for a clean test
+    mock_controller.reset_mock()
+    mock_api_client.reset_mock()
+
+    # Set up mocks with default_cs message
+    messages = {
+        "default_cs": True
+    }
+    mock_api_client.get_messages.return_value = messages
+    mock_controller.process_messages.return_value = True
+
+    # Check messages
+    result = app.check_messages()
+
+    # Check result
+    assert result is True
+
+    # Verify method calls
+    mock_api_client.get_messages.assert_called_once()
+    mock_controller.process_messages.assert_called_once()
+    mock_api_client.mark_message_processed.assert_called_once_with("default_cs")
+
+
+def test_brewpi_rest_check_messages_default_control_constants(app, mock_controller, mock_api_client):
+    """Test check_messages method with default_cc message."""
+    app.setup()
+    app.check_configuration()
+
+    # Reset mocks for a clean test
+    mock_controller.reset_mock()
+    mock_api_client.reset_mock()
+
+    # Set up mocks with default_cc message
+    messages = {
+        "default_cc": True
+    }
+    mock_api_client.get_messages.return_value = messages
+    mock_controller.process_messages.return_value = True
+
+    # Check messages
+    result = app.check_messages()
+
+    # Check result
+    assert result is True
+
+    # Verify method calls
+    mock_api_client.get_messages.assert_called_once()
+    mock_controller.process_messages.assert_called_once()
+    mock_api_client.mark_message_processed.assert_called_once_with("default_cc")
+
+
 def test_brewpi_rest_update_full_config(app, mock_controller, mock_api_client):
     """Test update_full_config method."""
     app.setup()

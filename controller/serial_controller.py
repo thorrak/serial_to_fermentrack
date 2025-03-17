@@ -296,6 +296,17 @@ class SerialController:
         except SerialControllerError:
             raise
 
+    def default_control_settings(self):
+        """Request default control settings.
+
+        Raises:
+            SerialControllerError: If communication failed
+        """
+        try:
+            self._send_command("S")
+        except SerialControllerError:
+            raise
+
     def request_settings(self):
         """Request control settings.
 
@@ -390,6 +401,17 @@ class SerialController:
         """
         try:
             self._send_command("E{\"confirmReset\": true}")
+        except SerialControllerError:
+            raise
+
+    def default_control_constants(self):
+        """Request default control constants.
+
+        Raises:
+            SerialControllerError: If communication failed
+        """
+        try:
+            self._send_command("C")
         except SerialControllerError:
             raise
 

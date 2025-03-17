@@ -454,3 +454,43 @@ def test_reset_eeprom_not_connected():
 
     with pytest.raises(SerialControllerError):
         controller.reset_eeprom()
+
+
+def test_default_control_settings(mock_serial):
+    """Test requesting default control settings."""
+    controller = SerialController('/dev/ttyUSB0')
+    controller.connect()
+
+    controller.default_control_settings()
+
+    # Check that the command was sent with the correct format
+    mock_serial.write.assert_called_once_with(b'S\n')
+    mock_serial.flush.assert_called_once()
+
+
+def test_default_control_settings_not_connected():
+    """Test requesting default control settings when not connected."""
+    controller = SerialController('/dev/ttyUSB0')
+
+    with pytest.raises(SerialControllerError):
+        controller.default_control_settings()
+
+
+def test_default_control_constants(mock_serial):
+    """Test requesting default control constants."""
+    controller = SerialController('/dev/ttyUSB0')
+    controller.connect()
+
+    controller.default_control_constants()
+
+    # Check that the command was sent with the correct format
+    mock_serial.write.assert_called_once_with(b'C\n')
+    mock_serial.flush.assert_called_once()
+
+
+def test_default_control_constants_not_connected():
+    """Test requesting default control constants when not connected."""
+    controller = SerialController('/dev/ttyUSB0')
+
+    with pytest.raises(SerialControllerError):
+        controller.default_control_constants()

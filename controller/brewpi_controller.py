@@ -465,6 +465,7 @@ class BrewPiController:
             # Process each message type
             processed = False
 
+            # Device reset messages
             if messages.restart_device:
                 logger.debug("Processing device restart")
                 self.serial.restart_device()
@@ -480,6 +481,22 @@ class BrewPiController:
                 # Since the device is being reset, we need to reload everything
                 time.sleep(0.2)  # Give the reset command time to process
                 self._refresh_controller_state()
+
+            # Device defaults message
+            if messages.default_cc:
+                logger.debug("Processing default control constants")
+                self.serial.default_control_constants()
+                processed = True
+                time.sleep(0.2)  # Give the reset command time to process
+                self._refresh_controller_state()  # This will refresh the control constants
+
+            # Device defaults message
+            if messages.default_cs:
+                logger.debug("Processing default control settings")
+                self.serial.default_control_settings()
+                processed = True
+                time.sleep(0.2)  # Give the reset command time to process
+                self._refresh_controller_state()  # This will refresh the control settings
 
             # Process control settings update
             if messages.update_control_settings:

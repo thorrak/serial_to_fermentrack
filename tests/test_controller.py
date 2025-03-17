@@ -439,8 +439,58 @@ def test_brewpi_controller_process_restart_device_message(mock_serial_controller
         # Verify restart_device was called
         mock_serial_controller.restart_device.assert_called_once()
         
-        # Verify sleep was called with 3 seconds
-        mock_sleep.assert_called_once_with(3)
+        # Verify sleep was called with 2 seconds (changed from 3 to 2 in implementation)
+        mock_sleep.assert_called_once_with(2)
         
         # Verify exit was called with code 0
         mock_exit.assert_called_once_with(0)
+
+
+def test_brewpi_controller_process_default_control_settings_message(mock_serial_controller):
+    """Test processing default_cs message."""
+    # Since this calls _refresh_controller_state and has a sleep,
+    # we need to patch those
+    with patch.object(BrewPiController, '_refresh_controller_state') as mock_refresh, \
+         patch('bpr.controller.brewpi_controller.time.sleep') as mock_sleep:
+        
+        controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+        controller.connected = True
+        
+        # Create message with default_cs flag
+        messages = MessageStatus(default_cs=True)
+        
+        # Process messages
+        result = controller.process_messages(messages)
+        
+        # Check result
+        assert result is True
+        
+        # Check method calls
+        mock_serial_controller.default_control_settings.assert_called_once()
+        mock_sleep.assert_called_once_with(0.2)  # Verify sleep was called with correct time
+        mock_refresh.assert_called_once()  # Verify refresh was called
+
+
+def test_brewpi_controller_process_default_control_constants_message(mock_serial_controller):
+    """Test processing default_cc message."""
+    # Since this calls _refresh_controller_state and has a sleep,
+    # we need to patch those
+    with patch.object(BrewPiController, '_refresh_controller_state') as mock_refresh, \
+         patch('bpr.controller.brewpi_controller.time.sleep') as mock_sleep:
+        
+        controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+        controller.connected = True
+        
+        # Create message with default_cc flag
+        messages = MessageStatus(default_cc=True)
+        
+        # Process messages
+        result = controller.process_messages(messages)
+        
+        # Check result
+        assert result is True
+        
+        # Check method calls
+        mock_serial_controller.default_control_constants.assert_called_once()
+        mock_sleep.assert_called_once_with(0.2)  # Verify sleep was called with correct time
+        mock_refresh.assert_called_once()  # Verify refresh was called
