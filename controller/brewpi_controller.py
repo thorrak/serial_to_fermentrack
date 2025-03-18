@@ -171,25 +171,25 @@ class BrewPiController:
                 self.serial.set_mode_and_temp(mode, temp)
                 # Update local state immediately (will be confirmed by response)
                 if self.control_settings:
-                    # TODO - Make sure this works with Pydantic the way I think it does
+                    # Update with new camelCase field names
                     self.control_settings.mode = mode
                     if mode == "b" or mode == "p":
-                        self.control_settings.beer_set = temp
+                        self.control_settings.beerSet = temp
                     elif mode == "f":
-                        self.control_settings.fridge_set = temp
+                        self.control_settings.fridgeSet = temp
                     elif mode == "o":
-                        # TODO - determine if this should be None or 0
-                        self.control_settings.beer_set = None
-                        self.control_settings.fridge_set = None
+                        # In off mode, set both to 0 (consistent with example)
+                        self.control_settings.beerSet = 0
+                        self.control_settings.fridgeSet = 0
             else:
                 if self.control_settings.mode == "b" or self.control_settings.mode == "p":
                     # In practice, this will only get hit when the mode is "p"
                     self.serial.set_beer_temp(temp)
-                    self.control_settings.beer_set = temp
+                    self.control_settings.beerSet = temp
                 elif self.control_settings.mode == "f":
                     # In practice, this branch will never get hit, but things may change at some point
                     self.serial.set_fridge_temp(temp)
-                    self.control_settings.fridge_set = temp
+                    self.control_settings.fridgeSet = temp
             self.serial.parse_responses(self)
 
             return True

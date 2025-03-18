@@ -225,12 +225,12 @@ class BrewPiRest:
             # Get configuration from Fermentrack
             config_data = self.api_client.get_full_config()
 
-            # Apply to controller
-            if "control_settings" in config_data:
-                self.controller.apply_settings(config_data["control_settings"])
+            # Apply to controller - using the new cs/cc key format
+            if "cs" in config_data:
+                self.controller.apply_settings(config_data["cs"])
 
-            if "control_constants" in config_data:
-                self.controller.apply_constants(config_data["control_constants"])
+            if "cc" in config_data:
+                self.controller.apply_constants(config_data["cc"])
 
             if "devices" in config_data:
                 self.controller.apply_device_config({"devices": config_data["devices"]})

@@ -98,38 +98,75 @@ class DeviceListItem(BaseModel):
 
 
 class ControlSettings(BaseModel):
-    """Controller settings."""
+    """Controller settings.
+    
+    This model matches the exact keys/values received from the controller and used in the 
+    full config endpoint with "cs" key. The attribute names use camelCase as expected by Fermentrack.
+    """
     
     mode: ControllerMode
-    beer_set: float = Field(0.0, alias="beerSet")
-    fridge_set: float = Field(0.0, alias="fridgeSet")
-    heat_estimator: float = Field(0.0, alias="heatEst")
-    cool_estimator: float = Field(0.0, alias="coolEst")
+    beerSet: float = 0.0
+    fridgeSet: float = 0.0
+    heatEst: float = 0.0  # Heat estimator
+    coolEst: float = 0.0  # Cool estimator
+    
+    class Config:
+        """Pydantic configuration."""
+        populate_by_name = True
 
 
 class ControlConstants(BaseModel):
-    """Controller constants."""
+    """Controller constants.
+    
+    This model matches the exact keys/values received from the controller and used in the
+    full config endpoint with "cc" key. The attribute names use camelCase as expected by Fermentrack.
+    
+    Field names follow the exact format from the example:
+    "tempFormat":"C","tempSetMin":1,"tempSetMax":30,"pidMax":10,"Kp":5,"Ki":0.25,"Kd":1.5,"iMaxErr":0.5,
+    "idleRangeH":1,"idleRangeL":1,"heatTargetH":0.299,"heatTargetL":0.199,"coolTargetH":0.199,
+    "coolTargetL":0.299,"maxHeatTimeForEst":600,"maxCoolTimeForEst":1200,"fridgeFastFilt":1,
+    "fridgeSlowFilt":4,"fridgeSlopeFilt":3,"beerFastFilt":3,"beerSlowFilt":4,"beerSlopeFilt":4,"lah":0,"hs":0
+    """
     
     # Temperature settings
-    temp_format: str = Field("C", alias="tempFormat")
-    temp_setting_min: float = Field(1.0, alias="tempSettingMin")
-    temp_setting_max: float = Field(30.0, alias="tempSettingMax")
+    tempFormat: str = "C"
+    tempSetMin: float = 1.0
+    tempSetMax: float = 30.0
     
-    # Control algorithms
-    pid_max: float = Field(10.0, alias="pidMax")
-    k_p: float = Field(20.0, alias="Kp")
-    k_i: float = Field(0.5, alias="Ki")
-    k_d: float = Field(2.0, alias="Kd")
-    imax: float = Field(10.0, alias="iMaxError")
-    i_max_slope: float = Field(0.1, alias="iMaxSlope")
+    # PID control parameters
+    pidMax: float = 10.0
+    Kp: float = 5.0
+    Ki: float = 0.25
+    Kd: float = 1.5
+    iMaxErr: float = 0.5
     
-    # Filter time constants
-    beer_fast_filter: int = Field(400, alias="beerFastFilt")
-    beer_slow_filter: int = Field(1200, alias="beerSlowFilt")
-    beer_slope_filter: int = Field(1800, alias="beerSlopeFilt")
-    fridge_fast_filter: int = Field(400, alias="fridgeFastFilt")
-    fridge_slow_filter: int = Field(1200, alias="fridgeSlowFilt")
-    fridge_slope_filter: int = Field(1200, alias="fridgeSlopeFilt")
+    # Control ranges
+    idleRangeH: float = 1.0
+    idleRangeL: float = 1.0
+    heatTargetH: float = 0.299
+    heatTargetL: float = 0.199
+    coolTargetH: float = 0.199
+    coolTargetL: float = 0.299
+    
+    # Time estimation
+    maxHeatTimeForEst: int = 600
+    maxCoolTimeForEst: int = 1200
+    
+    # Filter settings
+    fridgeFastFilt: int = 1
+    fridgeSlowFilt: int = 4
+    fridgeSlopeFilt: int = 3
+    beerFastFilt: int = 3
+    beerSlowFilt: int = 4
+    beerSlopeFilt: int = 4
+    
+    # Hardware settings
+    lah: int = 0  # Light as heater
+    hs: int = 0   # Heating shared
+    
+    class Config:
+        """Pydantic configuration."""
+        populate_by_name = True
 
 
 class MinimumTime(BaseModel):
@@ -140,15 +177,6 @@ class MinimumTime(BaseModel):
     min_heat_time: int = Field(300, alias="minHeatTime")
     min_heat_idle_time: int = Field(300, alias="minHeatIdleTime")
     min_idle_time: int = Field(300, alias="minIdleTime")
-
-
-class FullConfig(BaseModel):
-    """Full controller configuration."""
-    
-    control_settings: ControlSettings = Field(..., alias="control_settings")
-    control_constants: ControlConstants = Field(..., alias="control_constants")
-    minimum_times: MinimumTime = Field(..., alias="minimum_times")
-    devices: List[Device] = Field(..., alias="devices")
 
 
 class TemperatureData(BaseModel):
@@ -210,38 +238,84 @@ class MessageStatus(BaseModel):
 
 
 class SerializedDevice(BaseModel):
-    """Device for API serialization."""
+    """Device for API serialization in the compact format expected by Fermentrack.
     
-    id: int
-    chamber: int
-    beer: int
-    type: str
-    hardware_type: str
-    pin: int
-    pin_type: str
-    calibration_offset: float = 0.0
-    calibration_factor: float = 1.0
-    function: str = "0"
-    value: Optional[float] = None
+    These fields match the device list response from the controller:
+    c: chamber
+    b: beer
+    f: function (device function as integer)
+    h: hardware type (as integer)
+    p: pin
+    x: value (boolean or sensor value)
+    d: deactivated
+    r: name/role (string)
+    i: id
+    a: address (optional, for OneWire devices)
+    j: calibration offset (optional, for sensors)
+    v: value as string (optional, for sensors)
+    """
+    
+    c: int  # chamber
+    b: int  # beer
+    f: int  # function
+    h: int  # hardware type
+    p: int  # pin
+    x: bool  # value as boolean
+    d: bool = False  # deactivated
+    r: str = ""  # name/role
+    i: int  # id
+    a: Optional[str] = None  # address (OneWire devices)
+    j: Optional[str] = None  # calibration offset
+    v: Optional[str] = None  # value as string
     
     class Config:
         """Pydantic configuration."""
         
         populate_by_name = True
 
+    # TODO - Check if this is needed?
     @classmethod
     def from_device(cls, device: Device) -> 'SerializedDevice':
-        """Convert Device to SerializedDevice."""
+        """Convert Device to SerializedDevice in the compact format."""
+        # Convert hardware_type string to integer code
+        hw_type = 1  # Default to temp sensor
+        
+        # Convert function to integer
+        function_value = int(device.function.value) if hasattr(device.function, 'value') else 0
+        
+        # Format value as string for sensor devices, or use boolean value for actuators
+        is_sensor = device.type in [SensorType.TEMP_SENSOR]
+        device_value = device.value
+        value_str = f"{device_value:.3f}" if device_value is not None and is_sensor else None
+        
+        # Value as boolean (x) depends on device type
+        bool_value = False
+        if device_value is not None:
+            if is_sensor:
+                bool_value = device_value > 0
+            else:
+                bool_value = device_value > 0
+        
         return cls(
-            id=device.id,
-            chamber=device.chamber,
-            beer=device.beer,
-            type=device.type,
-            hardware_type=device.hardware_type,
-            pin=device.pin,
-            pin_type=device.pin_type,
-            calibration_offset=device.calibration_offset,
-            calibration_factor=device.calibration_factor,
-            function=device.function,
-            value=device.value
+            c=device.chamber,
+            b=device.beer,
+            f=function_value,
+            h=hw_type,
+            p=device.pin,
+            x=bool_value,
+            d=False,  # Default to not deactivated
+            r=f"Device {device.id}",  # Default name
+            i=device.id,
+            j=f"{device.calibration_offset:.3f}" if is_sensor else None,
+            v=value_str
         )
+
+
+class FullConfig(BaseModel):
+    """Full controller configuration in Fermentrack format."""
+    
+    cs: ControlSettings  # Control settings
+    cc: ControlConstants  # Control constants
+    devices: List[SerializedDevice]  # Device list
+    deviceID: str  # Device ID from Fermentrack
+    apiKey: str  # API key from Fermentrack

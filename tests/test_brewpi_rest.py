@@ -69,11 +69,10 @@ def mock_controller():
         )
         mock_instance.get_status.return_value = mock_status
 
-        # Create mock full config
+        # Create mock full config in new format with cs/cc/devices keys
         mock_config = {
-            "control_settings": {"mode": "b", "beerSet": 20.0},
-            "control_constants": {"Kp": 20.0, "Ki": 0.5},
-            "minimum_times": {"minCoolTime": 300},
+            "cs": {"mode": "b", "beerSet": 20.0, "fridgeSet": 18.0, "heatEst": 0.199, "coolEst": 5.0},
+            "cc": {"Kp": 5.0, "Ki": 0.25, "tempFormat": "C"},
             "devices": []
         }
         mock_instance.get_full_config.return_value = mock_config
@@ -400,10 +399,10 @@ def test_brewpi_rest_get_updated_config(app, mock_controller, mock_api_client):
     app.setup()
     app.check_configuration()
 
-    # Set up mocks
+    # Set up mocks with the new format
     config_data = {
-        "control_settings": {"mode": "b", "beerSet": 20.0},
-        "control_constants": {"Kp": 20.0, "Ki": 0.5},
+        "cs": {"mode": "b", "beerSet": 20.0, "fridgeSet": 18.0, "heatEst": 0.199, "coolEst": 5.0},
+        "cc": {"Kp": 5.0, "Ki": 0.25, "tempFormat": "C"},
         "devices": []
     }
     mock_api_client.get_full_config.return_value = config_data
@@ -416,8 +415,8 @@ def test_brewpi_rest_get_updated_config(app, mock_controller, mock_api_client):
 
     # Verify method calls
     mock_api_client.get_full_config.assert_called_once()
-    mock_controller.apply_settings.assert_called_once_with(config_data["control_settings"])
-    mock_controller.apply_constants.assert_called_once_with(config_data["control_constants"])
+    mock_controller.apply_settings.assert_called_once_with(config_data["cs"])
+    mock_controller.apply_constants.assert_called_once_with(config_data["cc"])
     mock_controller.apply_device_config.assert_called_once_with({"devices": config_data["devices"]})
 
 

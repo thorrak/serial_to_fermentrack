@@ -188,10 +188,10 @@ def test_send_full_config():
             fermentrack_api_key="abc456"
         )
 
+        # Config data with control_settings/control_constants/devices format
         config_data = {
             "control_settings": {"mode": "o", "beerSet": 20.0},
             "control_constants": {"Kp": 20.0, "Ki": 0.5},
-            "minimum_times": {"minCoolTime": 300},
             "devices": []
         }
 
@@ -205,18 +205,18 @@ def test_send_full_config():
         request_data = json.loads(request.text)
         assert request_data["deviceID"] == "test123"
         assert request_data["apiKey"] == "abc456"
-        assert request_data["control_settings"]["mode"] == "o"
-        assert request_data["control_constants"]["Kp"] == 20.0
+        # Now it should be formatted with cs/cc keys
+        assert request_data["cs"]["mode"] == "o"
+        assert request_data["cc"]["Kp"] == 20.0
 
 
 def test_get_full_config():
     """Test getting full configuration."""
     with requests_mock.Mocker() as m:
-        # Mock successful response
+        # Mock successful response in new cs/cc/devices format
         config_data = {
-            "control_settings": {"mode": "o", "beerSet": 20.0},
-            "control_constants": {"Kp": 20.0, "Ki": 0.5},
-            "minimum_times": {"minCoolTime": 300},
+            "cs": {"mode": "o", "beerSet": 20.0},
+            "cc": {"Kp": 20.0, "Ki": 0.5, "tempFormat": "C"},
             "devices": []
         }
 
@@ -234,8 +234,9 @@ def test_get_full_config():
         result = client.get_full_config()
 
         # Check result
-        assert result["control_settings"]["mode"] == "o"
-        assert result["control_constants"]["Kp"] == 20.0
+        assert result["cs"]["mode"] == "o"
+        assert result["cc"]["Kp"] == 20.0
+        assert result["cc"]["tempFormat"] == "C"
 
         # Check that the request URL contains credentials
         request = m.request_history[0]

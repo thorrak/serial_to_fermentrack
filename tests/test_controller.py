@@ -84,8 +84,8 @@ def test_brewpi_controller_get_status(mock_serial_controller):
         controller.firmware_version = "0.5.0"
         controller.control_settings = MagicMock()
         controller.control_settings.mode = "b"
-        controller.control_settings.beer_set = 20.0
-        controller.control_settings.fridge_set = 18.0
+        controller.control_settings.beerSet = 20.0
+        controller.control_settings.fridgeSet = 18.0
         controller.control_settings.heat_estimator = 0.0
         controller.control_settings.cool_estimator = 0.5
         # Now using a list for lcd_content instead of a dictionary
@@ -189,7 +189,7 @@ def test_brewpi_controller_set_mode_and_temp_beer_mode(mock_serial_controller):
     
     # Check local state update
     assert controller.control_settings.mode == 'b'
-    assert controller.control_settings.beer_set == 20.5
+    assert controller.control_settings.beerSet == 20.5
 
 
 def test_brewpi_controller_set_mode_and_temp_fridge_mode(mock_serial_controller):
@@ -210,7 +210,7 @@ def test_brewpi_controller_set_mode_and_temp_fridge_mode(mock_serial_controller)
     
     # Check local state update
     assert controller.control_settings.mode == 'f'
-    assert controller.control_settings.fridge_set == 18.5
+    assert controller.control_settings.fridgeSet == 18.5
 
 
 def test_brewpi_controller_set_mode_and_temp_off_mode(mock_serial_controller):
@@ -231,8 +231,8 @@ def test_brewpi_controller_set_mode_and_temp_off_mode(mock_serial_controller):
     
     # Check local state update
     assert controller.control_settings.mode == 'o'
-    assert controller.control_settings.beer_set is None
-    assert controller.control_settings.fridge_set is None
+    assert controller.control_settings.beerSet == 0
+    assert controller.control_settings.fridgeSet == 0
 
 
 def test_brewpi_controller_set_mode_and_temp_update_beer_only(mock_serial_controller):
@@ -327,13 +327,13 @@ def test_brewpi_controller_parse_response(mock_serial_controller):
     result = controller.parse_response(settings_response)
     assert result is True
     assert controller.control_settings.mode == "o"
-    assert controller.control_settings.beer_set == 20
+    assert controller.control_settings.beerSet == 20
     
     # Test control constants response
     constants_response = 'C:{"tempFormat":"C","tempSetMin":1,"tempSetMax":30,"pidMax":10,"Kp":5,"Ki":0.25,"Kd":-1.5,"iMaxErr":0.5,"idleRangeH":1,"idleRangeL":-1,"heatTargetH":0.299,"heatTargetL":-0.199,"coolTargetH":0.199,"coolTargetL":-0.299,"maxHeatTimeForEst":600,"maxCoolTimeForEst":1200,"fridgeFastFilt":1,"fridgeSlowFilt":4,"fridgeSlopeFilt":3,"beerFastFilt":3,"beerSlowFilt":4,"beerSlopeFilt":4,"lah":0,"hs":0}'
     result = controller.parse_response(constants_response)
     assert result is True
-    assert controller.control_constants.k_p == 5
+    assert controller.control_constants.Kp == 5
     
     # Test device list response
     device_list_response = 'h:[{"c":1,"b":0,"f":0,"h":1,"p":5,"x":true,"d":false,"r":"Heat","i":-1},{"c":1,"b":0,"f":0,"h":1,"p":7,"x":true,"d":false,"r":"Cool","i":-1},{"c":1,"b":0,"f":0,"h":1,"p":11,"x":true,"d":false,"r":"Door","i":-1}]'

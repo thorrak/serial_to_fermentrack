@@ -157,7 +157,8 @@ class FermentrackClient:
         """Send full device configuration to Fermentrack.
 
         Args:
-            config_data: Complete configuration data
+            config_data: Complete configuration data with 'control_settings', 'control_constants',
+                         and 'devices' keys.
 
         Returns:
             Configuration response
@@ -166,15 +167,29 @@ class FermentrackClient:
         if not auth_params:
             raise APIError("Missing device ID or API key in configuration.")
 
-        data = {
-            **auth_params,
-            **config_data
-        }
+        # Format data as expected by Fermentrack (cs, cc, devices)
+        formatted_data = {}
+        
+        # Add control settings (cs)
+        if "control_settings" in config_data:
+            formatted_data["cs"] = config_data["control_settings"]
+        
+        # Add control constants (cc)
+        if "control_constants" in config_data:
+            formatted_data["cc"] = config_data["control_constants"]
+        
+        # Add devices array
+        if "devices" in config_data:
+            formatted_data["devices"] = config_data["devices"]
+        
+        # Add auth params
+        formatted_data["deviceID"] = auth_params["deviceID"]
+        formatted_data["apiKey"] = auth_params["apiKey"]
 
         logger.debug("Sending full configuration")
         response = requests.put(
             self._get_url(self.full_config_endpoint),
-            json=data,
+            json=formatted_data,
             timeout=self.timeout
         )
 
