@@ -3,6 +3,7 @@
 import pytest
 import time
 import os
+import signal
 from unittest.mock import MagicMock, patch, ANY
 import sys
 import os
@@ -405,8 +406,8 @@ def test_brewpi_rest_check_messages_refresh_config(app, mock_controller, mock_ap
         # Verify method calls
         mock_api_client.get_messages.assert_called_once()
         mock_controller.process_messages.assert_called_once()
-        # Verify that update_full_config was called
-        mock_update_full_config.assert_called_once()
+        # Verify that awaiting_config_push was set
+        assert mock_controller.awaiting_config_push
         # Verify message was marked as processed
         mock_api_client.mark_message_processed.assert_called_once_with("refresh_config")
 
@@ -467,6 +468,70 @@ def test_brewpi_rest_stop(app, mock_controller, mock_api_client):
 
     # Verify controller disconnect
     mock_controller.disconnect.assert_called_once()
+
+
+def test_brewpi_rest_run(app, mock_controller, mock_api_client):
+    """Test run method with graceful shutdown."""
+    app.setup()
+    app.check_configuration()
+    
+    # Mock the Signal module to avoid actual signal registration
+    with patch('signal.signal'):
+        # Use a side effect to set running to False after first call to update_status
+        def stop_after_update(*args, **kwargs):
+            app.running = False
+            return True
+        
+        app.update_status = MagicMock(side_effect=stop_after_update)
+        
+        # Run app (will stop after first update)
+        app.run()
+        
+        # Check that update_status was called
+        app.update_status.assert_called_once()
+
+
+def test_brewpi_rest_run_error_handling(app, mock_controller, mock_api_client):
+    """Test run method error handling."""
+    app.setup()
+    app.check_configuration()
+    
+    # Mock the Signal module to avoid actual signal registration
+    with patch('signal.signal'), patch('time.sleep') as mock_sleep:
+        # Use a side effect to raise an exception then set running to False
+        update_count = 0
+        
+        def update_with_error(*args, **kwargs):
+            nonlocal update_count
+            update_count += 1
+            if update_count == 1:
+                raise Exception("Test error")
+            app.running = False
+            return True
+        
+        app.update_status = MagicMock(side_effect=update_with_error)
+        
+        # Run app (will continue after error and stop on second call)
+        app.run()
+        
+        # Check that update_status was called and sleep was called after error
+        assert app.update_status.call_count == 2
+        # Sleep should be called with 5 (seconds) after error
+        mock_sleep.assert_any_call(5)
+
+
+def test_brewpi_rest_signal_handler(app, mock_controller, mock_api_client):
+    """Test signal handler."""
+    app.setup()
+    app.check_configuration()
+    
+    # Mock the stop method
+    with patch.object(app, 'stop') as mock_stop:
+        # Call signal handler directly
+        app._signal_handler(signal.SIGINT, None)
+        
+        # Verify stop was called
+        mock_stop.assert_called_once()
 
 
 def test_main_function():

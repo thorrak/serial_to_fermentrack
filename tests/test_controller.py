@@ -512,5 +512,5 @@ def test_brewpi_controller_process_refresh_config_message(mock_serial_controller
         # Check result
         assert result is True
         
-        # Check that controller state was refreshed
-        mock_refresh.assert_called_once()  # Verify refresh was called
+        # Check that controller state is set to be refreshed
+        assert controller.awaiting_config_push
