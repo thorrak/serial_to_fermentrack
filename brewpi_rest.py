@@ -208,6 +208,7 @@ class BrewPiRest:
             # Send to Fermentrack
             self.api_client.send_full_config(config_data)
 
+            self.controller.awaiting_config_push = False
             self.last_full_config_update = time.time()
             return True
 
@@ -271,7 +272,10 @@ class BrewPiRest:
 
                 # Check if it's time to update full configuration
                 # if current_time - self.last_full_config_update >= FULL_CONFIG_UPDATE_INTERVAL:
-                #     self.update_full_config()
+                #     self.controller.awaiting_config_push = True  # Trigger a full config update
+
+                if self.controller.awaiting_config_push:
+                    self.update_full_config()
 
                 # Sleep to avoid CPU hogging
                 time.sleep(1)

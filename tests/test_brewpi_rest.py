@@ -378,6 +378,39 @@ def test_brewpi_rest_check_messages_default_control_constants(app, mock_controll
     mock_api_client.mark_message_processed.assert_called_once_with("default_cc")
 
 
+def test_brewpi_rest_check_messages_refresh_config(app, mock_controller, mock_api_client):
+    """Test check_messages method with refresh_config message."""
+    app.setup()
+    app.check_configuration()
+
+    # Reset mocks for a clean test
+    mock_controller.reset_mock()
+    mock_api_client.reset_mock()
+
+    # Set up mocks with refresh_config message
+    messages = {
+        "refresh_config": True
+    }
+    mock_api_client.get_messages.return_value = messages
+    mock_controller.process_messages.return_value = True
+
+    # Create a patch for the update_full_config method 
+    with patch.object(app, 'update_full_config') as mock_update_full_config:
+        # Check messages
+        result = app.check_messages()
+
+        # Check result
+        assert result is True
+
+        # Verify method calls
+        mock_api_client.get_messages.assert_called_once()
+        mock_controller.process_messages.assert_called_once()
+        # Verify that update_full_config was called
+        mock_update_full_config.assert_called_once()
+        # Verify message was marked as processed
+        mock_api_client.mark_message_processed.assert_called_once_with("refresh_config")
+
+
 def test_brewpi_rest_update_full_config(app, mock_controller, mock_api_client):
     """Test update_full_config method."""
     app.setup()

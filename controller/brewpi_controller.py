@@ -42,6 +42,7 @@ class BrewPiController:
         self.devices = None
         self.lcd_content = ["", "", "", ""]  # Initialize with 4 empty lines
         self.temperature_data = {}
+        self.awaiting_config_push = False
 
         if auto_connect:
             self.connect()
@@ -118,25 +119,31 @@ class BrewPiController:
         return status
 
     def get_full_config(self) -> Dict[str, Any]:
-        """Get full controller configuration.
+        """Get full controller configuration formatted for Fermentrack.
 
         Returns:
-            Dictionary with full controller configuration
+            Dictionary with full controller configuration in Fermentrack expected format (cs, cc, devices)
         """
         if not self.connected:
             raise SerialControllerError("Not connected to controller")
 
         # Refresh state to ensure latest data
         self._refresh_controller_state()
-
-        # Build full config object
-        config = FullConfig(
-            control_settings=self.control_settings,
-            control_constants=self.control_constants,
-            devices=[SerializedDevice.from_device(d) for d in (self.devices or [])]
-        )
-
-        return config.dict()
+        
+        # Convert devices to serialized format
+        serialized_devices = []
+        if self.devices:
+            serialized_devices = [SerializedDevice.from_device(d) for d in self.devices]
+            
+        # Format data in the structure expected by Fermentrack
+        # No need to use FullConfig since we're directly returning the dictionary format
+        config = {
+            "cs": self.control_settings.dict(by_alias=True) if self.control_settings else {},
+            "cc": self.control_constants.dict(by_alias=True) if self.control_constants else {},
+            "devices": [device.dict(by_alias=True, exclude_none=True) for device in serialized_devices]
+        }
+        
+        return config
 
 
     def set_mode_and_temp(self, mode: str or None, temp: float or None) -> bool:
@@ -497,6 +504,12 @@ class BrewPiController:
                 processed = True
                 time.sleep(0.2)  # Give the reset command time to process
                 self._refresh_controller_state()  # This will refresh the control settings
+            
+            # Process refresh config message
+            if messages.refresh_config:
+                logger.debug("Processing refresh config request")
+                self.awaiting_config_push = True  # Update the flag to trigger a refresh/send on the next loop in app()
+                processed = True
 
             # Process control settings update
             if messages.update_control_settings:

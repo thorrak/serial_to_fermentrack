@@ -494,3 +494,23 @@ def test_brewpi_controller_process_default_control_constants_message(mock_serial
         mock_serial_controller.default_control_constants.assert_called_once()
         mock_sleep.assert_called_once_with(0.2)  # Verify sleep was called with correct time
         mock_refresh.assert_called_once()  # Verify refresh was called
+
+
+def test_brewpi_controller_process_refresh_config_message(mock_serial_controller):
+    """Test processing refresh_config message."""
+    # Since this calls _refresh_controller_state, we need to patch it
+    with patch.object(BrewPiController, '_refresh_controller_state') as mock_refresh:
+        controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+        controller.connected = True
+        
+        # Create message with refresh_config flag
+        messages = MessageStatus(refresh_config=True)
+        
+        # Process messages
+        result = controller.process_messages(messages)
+        
+        # Check result
+        assert result is True
+        
+        # Check that controller state was refreshed
+        mock_refresh.assert_called_once()  # Verify refresh was called
