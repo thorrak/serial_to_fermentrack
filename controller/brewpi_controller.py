@@ -484,10 +484,11 @@ class BrewPiController:
             if messages.reset_eeprom:
                 logger.debug("Processing EEPROM reset")
                 self.serial.reset_eeprom()
-                processed = True
                 # Since the device is being reset, we need to reload everything
                 time.sleep(0.2)  # Give the reset command time to process
                 self._refresh_controller_state()
+                 # If we reset the eeprom, don't process any other messages.
+                return True
 
             # Device defaults message
             if messages.default_cc:
