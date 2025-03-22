@@ -487,7 +487,8 @@ class BrewPiController:
                 # Since the device is being reset, we need to reload everything
                 time.sleep(0.2)  # Give the reset command time to process
                 self._refresh_controller_state()
-                 # If we reset the eeprom, don't process any other messages.
+                self.awaiting_config_push = True  # Update the flag to trigger a refresh/send on the next loop in app()
+                # If we reset the eeprom, don't process any other messages.
                 return True
 
             # Device defaults message
@@ -497,6 +498,7 @@ class BrewPiController:
                 processed = True
                 time.sleep(0.2)  # Give the reset command time to process
                 self._refresh_controller_state()  # This will refresh the control constants
+                self.awaiting_config_push = True  # Update the flag to trigger a refresh/send on the next loop in app()
 
             # Device defaults message
             if messages.default_cs:
@@ -505,7 +507,8 @@ class BrewPiController:
                 processed = True
                 time.sleep(0.2)  # Give the reset command time to process
                 self._refresh_controller_state()  # This will refresh the control settings
-            
+                self.awaiting_config_push = True  # Update the flag to trigger a refresh/send on the next loop in app()
+
             # Process refresh config message
             if messages.refresh_config:
                 logger.debug("Processing refresh config request")
@@ -513,6 +516,8 @@ class BrewPiController:
                 processed = True
 
             # Process control settings update
+            # I don't think this ever gets used, as control settings updates are mostly control mode/setting changes
+            # and are therefore done on the status message directly
             if messages.update_control_settings:
                 logger.debug("Processing control settings update")
                 self.apply_settings(messages.update_control_settings)
