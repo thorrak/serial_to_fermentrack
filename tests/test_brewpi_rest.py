@@ -99,8 +99,13 @@ def mock_api_client():
 
         # Mock get_messages
         mock_instance.get_messages.return_value = {
-            "updated_cs": True,
-            "reset_eeprom": False
+            "message": "Messages retrieved", 
+            "messages": {
+                "updated_cs": True,
+                "reset_eeprom": False
+            },
+            "msg_code": 0, 
+            "success": True
         }
 
         mock.return_value = mock_instance
@@ -249,8 +254,13 @@ def test_brewpi_rest_check_messages(app, mock_controller, mock_api_client):
 
     # Set up mocks
     messages = {
-        "updated_cs": True,
-        "reset_eeprom": False
+        "message": "Messages retrieved", 
+        "messages": {
+            "updated_cs": True,
+            "reset_eeprom": False
+        },
+        "msg_code": 0, 
+        "success": True
     }
     mock_api_client.get_messages.return_value = messages
     mock_controller.process_messages.return_value = True
@@ -278,7 +288,12 @@ def test_brewpi_rest_check_messages_reset_eeprom(app, mock_controller, mock_api_
 
     # Set up mocks with reset_eeprom message
     messages = {
-        "reset_eeprom": True
+        "message": "Messages retrieved",
+        "messages": {
+            "reset_eeprom": True
+        },
+        "msg_code": 0,
+        "success": True
     }
     mock_api_client.get_messages.return_value = messages
     mock_controller.process_messages.return_value = True
@@ -306,7 +321,12 @@ def test_brewpi_rest_check_messages_restart_device(app, mock_controller, mock_ap
 
     # Set up mocks with restart_device message
     messages = {
-        "restart_device": True
+        "message": "Messages retrieved",
+        "messages": {
+            "restart_device": True
+        },
+        "msg_code": 0,
+        "success": True
     }
     mock_api_client.get_messages.return_value = messages
     mock_controller.process_messages.return_value = True
@@ -334,7 +354,12 @@ def test_brewpi_rest_check_messages_default_control_settings(app, mock_controlle
 
     # Set up mocks with default_cs message
     messages = {
-        "default_cs": True
+        "message": "Messages retrieved",
+        "messages": {
+            "default_cs": True
+        },
+        "msg_code": 0,
+        "success": True
     }
     mock_api_client.get_messages.return_value = messages
     mock_controller.process_messages.return_value = True
@@ -362,7 +387,12 @@ def test_brewpi_rest_check_messages_default_control_constants(app, mock_controll
 
     # Set up mocks with default_cc message
     messages = {
-        "default_cc": True
+        "message": "Messages retrieved",
+        "messages": {
+            "default_cc": True
+        },
+        "msg_code": 0,
+        "success": True
     }
     mock_api_client.get_messages.return_value = messages
     mock_controller.process_messages.return_value = True
@@ -390,7 +420,12 @@ def test_brewpi_rest_check_messages_refresh_config(app, mock_controller, mock_ap
 
     # Set up mocks with refresh_config message
     messages = {
-        "refresh_config": True
+        "message": "Messages retrieved",
+        "messages": {
+            "refresh_config": True
+        },
+        "msg_code": 0,
+        "success": True
     }
     mock_api_client.get_messages.return_value = messages
     mock_controller.process_messages.return_value = True

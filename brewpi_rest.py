@@ -179,13 +179,13 @@ class BrewPiRest:
             messages_data = self.api_client.get_messages()
 
             # Convert to MessageStatus object
-            messages = MessageStatus(**messages_data)
+            messages = MessageStatus(**messages_data['messages'])
 
             # Process messages
             if self.controller.process_messages(messages):
                 # Mark processed messages
-                for field in messages_data:
-                    if messages_data[field]:
+                for field in messages_data['messages']:
+                    if messages_data['messages'][field]:
                         self.api_client.mark_message_processed(field)
 
             self.last_message_check = time.time()

@@ -161,6 +161,7 @@ class ControlConstants(BaseModel):
     beerSlopeFilt: int = 4
     
     # Hardware settings
+    # NOTE - lah and hs are sent as booleans from Fermentrack, but are sent as/expected to be integers in the controller
     lah: int = 0  # Light as heater
     hs: int = 0   # Heating shared
     
@@ -220,7 +221,7 @@ class MessageStatus(BaseModel):
     # Device update messages
     updated_cc: bool = False
     updated_cs: bool = False
-    updated_mt: bool = False
+    updated_mt: bool = False  # Not processed in this app currently - May be something to add for ESP32-S2 later
     updated_devices: Any = False
 
     refresh_config: bool = False
@@ -235,6 +236,10 @@ class MessageStatus(BaseModel):
     update_control_settings: Optional[Dict[str, Any]] = None
     update_control_constants: Optional[Dict[str, Any]] = None
     update_devices: Optional[List[Dict[str, Any]]] = None
+    
+    class Config:
+        """Pydantic configuration."""
+        populate_by_name = True
 
 
 class SerializedDevice(BaseModel):

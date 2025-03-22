@@ -37,7 +37,7 @@ class FermentrackClient:
         # Endpoints
         self.status_endpoint = "/api/brewpi/device/status/"
         self.messages_endpoint = "/api/brewpi/device/messages/"
-        self.full_config_endpoint = "/api/brewpi/device/full-config/"
+        self.full_config_endpoint = "/api/brewpi/device/fullconfig/"
 
     def _get_auth_params(self) -> Dict[str, str]:
         """Get authentication parameters."""
@@ -157,7 +157,7 @@ class FermentrackClient:
         """Send full device configuration to Fermentrack.
 
         Args:
-            config_data: Complete configuration data with 'control_settings', 'control_constants',
+            config_data: Complete configuration data with 'cs', 'cc',
                          and 'devices' keys.
 
         Returns:
@@ -169,18 +169,13 @@ class FermentrackClient:
 
         # Format data as expected by Fermentrack (cs, cc, devices)
         formatted_data = {}
-        
-        # Add control settings (cs)
-        if "control_settings" in config_data:
-            formatted_data["cs"] = config_data["control_settings"]
-        
-        # Add control constants (cc)
-        if "control_constants" in config_data:
-            formatted_data["cc"] = config_data["control_constants"]
-        
-        # Add devices array
-        if "devices" in config_data:
-            formatted_data["devices"] = config_data["devices"]
+
+        if 'cs' not in config_data or 'cc' not in config_data or 'devices' not in config_data:
+            raise APIError("Missing required keys in configuration data: 'cs', 'cc', 'devices'")
+
+        formatted_data["cs"] = config_data["cs"]  # Add control settings (cs)
+        formatted_data["cc"] = config_data["cc"]  # Add control constants (cc)
+        formatted_data["devices"] = config_data["devices"]  # Add devices array
         
         # Add auth params
         formatted_data["deviceID"] = auth_params["deviceID"]

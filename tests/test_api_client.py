@@ -178,7 +178,7 @@ def test_send_full_config():
     with requests_mock.Mocker() as m:
         # Mock successful response
         m.put(
-            "http://localhost:8000/api/brewpi/device/full-config/",
+            "http://localhost:8000/api/brewpi/device/fullconfig/",
             json={"status": "success"}
         )
 
@@ -188,10 +188,10 @@ def test_send_full_config():
             fermentrack_api_key="abc456"
         )
 
-        # Config data with control_settings/control_constants/devices format
+        # Config data with cs/cc/devices format
         config_data = {
-            "control_settings": {"mode": "o", "beerSet": 20.0},
-            "control_constants": {"Kp": 20.0, "Ki": 0.5},
+            "cs": {"mode": "o", "beerSet": 20.0},
+            "cc": {"Kp": 20.0, "Ki": 0.5},
             "devices": []
         }
 
@@ -210,6 +210,36 @@ def test_send_full_config():
         assert request_data["cc"]["Kp"] == 20.0
 
 
+def test_send_full_config_missing_keys():
+    """Test sending full configuration with missing required keys."""
+    client = FermentrackClient(
+        base_url="http://localhost:8000",
+        device_id="test123",
+        fermentrack_api_key="abc456"
+    )
+
+    # Test missing cs
+    with pytest.raises(APIError, match="Missing required keys in configuration data"):
+        client.send_full_config({
+            "cc": {"Kp": 20.0, "Ki": 0.5},
+            "devices": []
+        })
+
+    # Test missing cc
+    with pytest.raises(APIError, match="Missing required keys in configuration data"):
+        client.send_full_config({
+            "cs": {"mode": "o", "beerSet": 20.0},
+            "devices": []
+        })
+
+    # Test missing devices
+    with pytest.raises(APIError, match="Missing required keys in configuration data"):
+        client.send_full_config({
+            "cs": {"mode": "o", "beerSet": 20.0},
+            "cc": {"Kp": 20.0, "Ki": 0.5}
+        })
+
+
 def test_get_full_config():
     """Test getting full configuration."""
     with requests_mock.Mocker() as m:
@@ -221,7 +251,7 @@ def test_get_full_config():
         }
 
         m.get(
-            "http://localhost:8000/api/brewpi/device/full-config/",
+            "http://localhost:8000/api/brewpi/device/fullconfig/",
             json=config_data
         )
 
