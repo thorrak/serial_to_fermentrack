@@ -43,6 +43,9 @@ class BrewPiController:
         self.lcd_content = ["", "", "", ""]  # Initialize with 4 empty lines
         self.temperature_data = {}
         self.awaiting_config_push = False
+        self.awaiting_settings_update = False
+        self.awaiting_constants_update = False
+        self.awaiting_devices_update = False
 
         if auto_connect:
             self.connect()
@@ -516,23 +519,21 @@ class BrewPiController:
                 processed = True
 
             # Process control settings update
-            # I don't think this ever gets used, as control settings updates are mostly control mode/setting changes
-            # and are therefore done on the status message directly
-            if messages.update_control_settings:
+            if messages.updated_cs:
                 logger.debug("Processing control settings update")
-                self.apply_settings(messages.update_control_settings)
+                self.awaiting_settings_update = True
                 processed = True
 
             # Process control constants update
-            if messages.update_control_constants:
+            if messages.updated_cc:
                 logger.debug("Processing control constants update")
-                self.apply_constants(messages.update_control_constants)
+                self.awaiting_constants_update = True
                 processed = True
 
             # Process device list update
-            if messages.update_devices:
+            if messages.updated_devices:
                 logger.debug("Processing device list update")
-                self.apply_device_config({"devices": messages.update_devices})
+                self.awaiting_devices_update = True
                 processed = True
 
             return processed

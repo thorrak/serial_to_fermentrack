@@ -194,7 +194,7 @@ class FermentrackClient:
         """Get full device configuration from Fermentrack.
 
         Returns:
-            Complete configuration data
+            Complete configuration data with 'cs', 'cc', and 'devices' keys
         """
         auth_params = self._get_auth_params()
         if not auth_params:
@@ -207,4 +207,11 @@ class FermentrackClient:
             timeout=self.timeout
         )
 
-        return self._handle_response(response)
+        response_data = self._handle_response(response)
+        
+        # The API returns the config inside a 'config' field
+        if 'config' in response_data:
+            return response_data['config']
+        
+        # Fallback to the old format if 'config' field is not present
+        return response_data

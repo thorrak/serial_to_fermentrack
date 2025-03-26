@@ -274,6 +274,20 @@ class BrewPiRest:
                 # if current_time - self.last_full_config_update >= FULL_CONFIG_UPDATE_INTERVAL:
                 #     self.controller.awaiting_config_push = True  # Trigger a full config update
 
+                # Check if we need to fetch updated configuration
+                if self.controller.awaiting_settings_update or  self.controller.awaiting_constants_update or self.controller.awaiting_devices_update:
+                    logger.info("Fetching updated configuration from Fermentrack")
+                    config_success = self.get_updated_config()
+                    
+                    # Reset flags
+                    self.controller.awaiting_settings_update = False
+                    self.controller.awaiting_constants_update = False
+                    self.controller.awaiting_devices_update = False
+                    
+                    if not config_success:
+                        logger.error("Failed to get updated configuration from Fermentrack")
+                
+                # Check if we need to push full config to Fermentrack
                 if self.controller.awaiting_config_push:
                     self.update_full_config()
 

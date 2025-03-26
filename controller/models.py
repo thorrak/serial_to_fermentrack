@@ -230,13 +230,6 @@ class MessageStatus(BaseModel):
     default_cc: bool = False
     default_cs: bool = False
 
-    # The following messages are hallucinations and should be deleted
-    # TODO - Delete these
-    # Config updates
-    update_control_settings: Optional[Dict[str, Any]] = None
-    update_control_constants: Optional[Dict[str, Any]] = None
-    update_devices: Optional[List[Dict[str, Any]]] = None
-    
     class Config:
         """Pydantic configuration."""
         populate_by_name = True

@@ -242,8 +242,9 @@ def test_send_full_config_missing_keys():
 
 def test_get_full_config():
     """Test getting full configuration."""
+    # Test 1: Direct response format (without 'config' field)
     with requests_mock.Mocker() as m:
-        # Mock successful response in new cs/cc/devices format
+        # Mock successful response in direct format
         config_data = {
             "cs": {"mode": "o", "beerSet": 20.0},
             "cc": {"Kp": 20.0, "Ki": 0.5, "tempFormat": "C"},
@@ -272,6 +273,40 @@ def test_get_full_config():
         request = m.request_history[0]
         assert "test123" in request.url
         assert "abc456" in request.url
+        
+    # Test 2: Response with 'config' field (new format)
+    with requests_mock.Mocker() as m:
+        # Mock successful response with config field
+        config_data = {
+            "cs": {"mode": "f", "beerSet": 21.0},
+            "cc": {"Kp": 10.0, "Ki": 0.25, "tempFormat": "C"},
+            "devices": []
+        }
+        
+        response_data = {
+            "success": True, 
+            "message": "Full config retrieved", 
+            "msg_code": 0, 
+            "config": config_data
+        }
+
+        m.get(
+            "http://localhost:8000/api/brewpi/device/fullconfig/",
+            json=response_data
+        )
+
+        client = FermentrackClient(
+            base_url="http://localhost:8000",
+            device_id="test123",
+            fermentrack_api_key="abc456"
+        )
+
+        result = client.get_full_config()
+
+        # Check result
+        assert result["cs"]["mode"] == "f"
+        assert result["cc"]["Kp"] == 10.0
+        assert result["cc"]["tempFormat"] == "C"
 
 
 def test_get_full_config_no_auth():

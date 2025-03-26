@@ -526,6 +526,44 @@ def test_brewpi_rest_run(app, mock_controller, mock_api_client):
         app.update_status.assert_called_once()
 
 
+def test_brewpi_rest_run_with_config_updates(app, mock_controller, mock_api_client):
+    """Test run method with configuration updates."""
+    app.setup()
+    app.check_configuration()
+    
+    # Set flags to trigger config updates
+    mock_controller.awaiting_settings_update = True
+    mock_controller.awaiting_constants_update = True
+    mock_controller.awaiting_devices_update = True
+    mock_controller.awaiting_config_push = True
+    
+    # Mock the methods that should be called
+    app.get_updated_config = MagicMock(return_value=True)
+    app.update_full_config = MagicMock(return_value=True)
+    
+    # Mock the Signal module to avoid actual signal registration
+    with patch('signal.signal'), patch('time.sleep'):
+        # Use a side effect to set running to False after processing updates
+        def stop_after_processing(*args, **kwargs):
+            app.running = False
+            return True
+        
+        # Mock update_status to trigger exit after one loop
+        app.update_status = MagicMock(side_effect=stop_after_processing)
+        
+        # Run app (will stop after processing updates)
+        app.run()
+        
+        # Check that get_updated_config and update_full_config were called
+        app.get_updated_config.assert_called_once()
+        app.update_full_config.assert_called_once()
+        
+        # Check that flags were reset
+        assert mock_controller.awaiting_settings_update is False
+        assert mock_controller.awaiting_constants_update is False
+        assert mock_controller.awaiting_devices_update is False
+
+
 def test_brewpi_rest_run_error_handling(app, mock_controller, mock_api_client):
     """Test run method error handling."""
     app.setup()

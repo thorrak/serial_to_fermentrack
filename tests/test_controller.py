@@ -372,11 +372,11 @@ def test_brewpi_controller_process_messages(mock_serial_controller):
     controller.apply_constants = MagicMock(return_value=True)
     controller.apply_device_config = MagicMock(return_value=True)
     
-    # Create messages
+    # Create messages with updated flags
     messages = MessageStatus(
-        update_control_settings={"mode": "f"},
-        update_control_constants={"Kp": 25.0},
-        update_devices=[{"id": 1}]
+        updated_cs=True,
+        updated_cc=True,
+        updated_devices=True
     )
     
     # Process messages
@@ -385,10 +385,10 @@ def test_brewpi_controller_process_messages(mock_serial_controller):
     # Check result
     assert result is True
     
-    # Check method calls
-    controller.apply_settings.assert_called_once_with({"mode": "f"})
-    controller.apply_constants.assert_called_once_with({"Kp": 25.0})
-    controller.apply_device_config.assert_called_once_with({"devices": [{"id": 1}]})
+    # Check flags are set
+    assert controller.awaiting_settings_update is True
+    assert controller.awaiting_constants_update is True
+    assert controller.awaiting_devices_update is True
 
 
 def test_brewpi_controller_process_reset_eeprom_message(mock_serial_controller):
@@ -514,3 +514,57 @@ def test_brewpi_controller_process_refresh_config_message(mock_serial_controller
         
         # Check that controller state is set to be refreshed
         assert controller.awaiting_config_push
+
+
+def test_brewpi_controller_process_updated_cs_message(mock_serial_controller):
+    """Test processing updated_cs message."""
+    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+    controller.connected = True
+    
+    # Create message with updated_cs flag
+    messages = MessageStatus(updated_cs=True)
+    
+    # Process messages
+    result = controller.process_messages(messages)
+    
+    # Check result
+    assert result is True
+    
+    # Check that awaiting_settings_update flag is set
+    assert controller.awaiting_settings_update
+
+
+def test_brewpi_controller_process_updated_cc_message(mock_serial_controller):
+    """Test processing updated_cc message."""
+    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+    controller.connected = True
+    
+    # Create message with updated_cc flag
+    messages = MessageStatus(updated_cc=True)
+    
+    # Process messages
+    result = controller.process_messages(messages)
+    
+    # Check result
+    assert result is True
+    
+    # Check that awaiting_constants_update flag is set
+    assert controller.awaiting_constants_update
+
+
+def test_brewpi_controller_process_updated_devices_message(mock_serial_controller):
+    """Test processing updated_devices message."""
+    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+    controller.connected = True
+    
+    # Create message with updated_devices flag
+    messages = MessageStatus(updated_devices=True)
+    
+    # Process messages
+    result = controller.process_messages(messages)
+    
+    # Check result
+    assert result is True
+    
+    # Check that awaiting_devices_update flag is set
+    assert controller.awaiting_devices_update
