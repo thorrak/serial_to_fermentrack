@@ -142,7 +142,15 @@ class BrewPiRest:
             return True
 
         except (APIError, Exception) as e:
-            logger.error(f"Failed to update status: {e}")
+            error_msg = f"Failed to update status: {e}"
+            logger.error(error_msg)
+            
+            # Check if this is a disconnected device error
+            if "Device not configured" in str(e):
+                logger.critical("Device disconnected. Exiting application in 5 seconds...")
+                time.sleep(5)
+                sys.exit(1)
+                
             return False
 
     def _process_status_response(self, response: Dict[str, Any]) -> None:

@@ -136,8 +136,12 @@ class SerialController:
             self.serial_conn.write(cmd_bytes)
             self.serial_conn.flush()
         except (serial.SerialException, OSError) as e:
-            logger.error(f"Serial communication error: {e}")
-            raise SerialControllerError(f"Serial communication error: {e}")
+            error_msg = f"Serial communication error: {e}"
+            logger.error(error_msg)
+            # This is the send command method
+            if "Device not configured" in str(e):
+                logger.critical("Device disconnected during write. Continuing to allow exit logic to handle.")
+            raise SerialControllerError(error_msg)
 
     def _read_response(self) -> Optional[str]:
         """Read response from controller.
@@ -187,8 +191,12 @@ class SerialController:
 
             return response.strip()
         except (serial.SerialException, OSError) as e:
-            logger.error(f"Serial communication error: {e}")
-            raise SerialControllerError(f"Serial communication error: {e}")
+            error_msg = f"Serial communication error: {e}"
+            logger.error(error_msg)
+            # This is the read response method
+            if "Device not configured" in str(e):
+                logger.critical("Device disconnected during read. Continuing to allow exit logic to handle.")
+            raise SerialControllerError(error_msg)
 
     # TODO - Eliminate uses of _send_json_command, as they don't really work with the controller
     def _send_json_command(self, command: str, data: Dict[str, Any] = None) -> None:
