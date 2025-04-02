@@ -3,7 +3,7 @@
 from .brewpi_controller import BrewPiController
 from .serial_controller import SerialController, SerialControllerError
 from .models import (
-    ControllerMode, SensorType, DeviceFunction, PinType,
+    ControllerMode, DeviceFunction, DeviceHardware,
     Device, ControlSettings, ControlConstants, MinimumTime,
     FullConfig, TemperatureData, ControllerStatus, MessageStatus,
     SerializedDevice
@@ -11,7 +11,7 @@ from .models import (
 
 __all__ = [
     "BrewPiController", "SerialController", "SerialControllerError",
-    "ControllerMode", "SensorType", "DeviceFunction", "PinType",
+    "ControllerMode", "DeviceFunction", "DeviceHardware",
     "Device", "ControlSettings", "ControlConstants", "MinimumTime",
     "FullConfig", "TemperatureData", "ControllerStatus", "MessageStatus",
     "SerializedDevice"

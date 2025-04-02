@@ -14,87 +14,105 @@ class ControllerMode(str, Enum):
     OFF = "o"
 
 
-class SensorType(str, Enum):
-    """Sensor types."""
+class DeviceFunction(int, Enum):
+    """Device functions matching the firmware enum."""
     
-    TEMP_SENSOR = "0"
-    SWITCH_SENSOR = "1"
-    TEMP_SETTING_ACTUATOR = "2"
-    PWM_ACTUATOR = "3"
-    DIGITAL_ACTUATOR = "4"
+    DEVICE_NONE = 0
+    DEVICE_CHAMBER_DOOR = 1
+    DEVICE_CHAMBER_HEAT = 2
+    DEVICE_CHAMBER_COOL = 3
+    DEVICE_CHAMBER_LIGHT = 4
+    DEVICE_CHAMBER_TEMP = 5
+    DEVICE_CHAMBER_ROOM_TEMP = 6
+    DEVICE_CHAMBER_FAN = 7
+    DEVICE_CHAMBER_RESERVED1 = 8
+    DEVICE_BEER_TEMP = 9
+    DEVICE_BEER_TEMP2 = 10
+    DEVICE_BEER_HEAT = 11
+    DEVICE_BEER_COOL = 12
+    DEVICE_BEER_SG = 13
+    DEVICE_BEER_RESERVED1 = 14
+    DEVICE_BEER_RESERVED2 = 15
+    DEVICE_MAX = 16
 
 
-class DeviceFunction(str, Enum):
-    """Device functions."""
+class DeviceHardware(int, Enum):
+    """Device hardware types matching the firmware enum."""
     
-    NONE = "0"
-    CHAMBER_DOOR = "1"
-    CHAMBER_HEAT = "2"
-    CHAMBER_COOL = "3"
-    CHAMBER_LIGHT = "4"
-    CHAMBER_FAN = "5"
-    CHAMBER_TEMP = "6"
-    ROOM_TEMP = "7"
-    BEER_TEMP = "8"
-    BEER_HEAT = "9"
-    BEER_COOL = "10"
-    BEER_SG = "11"
-
-
-class PinType(str, Enum):
-    """Pin types."""
-    
-    NOT_ASSIGNED = "0"
-    DIGITAL_INPUT = "1"
-    DIGITAL_OUTPUT = "2"
-    ANALOG_INPUT = "3"
-    ANALOG_OUTPUT = "4"
-    DIGITAL_INPUT_PULLUP = "5"
-    DIGITAL_OUTPUT_FAST = "6"
+    DEVICE_HARDWARE_NONE = 0
+    DEVICE_HARDWARE_PIN = 1
+    DEVICE_HARDWARE_ONEWIRE_TEMP = 2
+    DEVICE_HARDWARE_ONEWIRE_2413 = 3
+    # Skip 4 as mentioned in the comment
+    DEVICE_HARDWARE_BLUETOOTH_INKBIRD = 5
+    DEVICE_HARDWARE_BLUETOOTH_TILT = 6
+    DEVICE_HARDWARE_TPLINK_SWITCH = 7
 
 
 class Device(BaseModel):
-    """BrewPi device (sensor/actuator)."""
+    """BrewPi device (sensor/actuator) matching the C++ DeviceDefinition struct."""
     
-    id: int
-    chamber: int
-    beer: int
-    type: SensorType
-    hardware_type: str
-    pin: int
-    pin_type: PinType
-    calibration_offset: float = 0.0
-    calibration_factor: float = 1.0
-    function: DeviceFunction = DeviceFunction.NONE
-    value: Optional[float] = None
+    id: int = -1
+    chamber: int = 0
+    beer: int = 0
+    deviceFunction: int = 0
+    deviceHardware: int = 0
+    pinNr: int = 0
+    invert: int = 0
+    pio: int = 0
+    deactivate: int = 0
+    calibrationAdjust: int = 0
+    address: Optional[List[int]] = None
+    value: Optional[float] = None  # Not in the C++ struct
     
-    @validator('value')
-    def validate_value(cls, value, values):
-        """Validate sensor value based on type."""
-        if value is None:
-            return value
+    # Map int values to enums for convenience
+    @property
+    def function_enum(self) -> DeviceFunction:
+        try:
+            return DeviceFunction(self.deviceFunction)
+        except ValueError:
+            return DeviceFunction.DEVICE_NONE
             
-        device_type = values.get('type')
-        
-        if device_type == SensorType.SWITCH_SENSOR:
-            # For switch sensors, value should be 0 or 1
-            return 1 if value > 0 else 0
-            
-        return value
+    @property
+    def hardware_enum(self) -> DeviceHardware:
+        try:
+            return DeviceHardware(self.deviceHardware)
+        except ValueError:
+            return DeviceHardware.DEVICE_HARDWARE_NONE
 
 
 class DeviceListItem(BaseModel):
-    """Item in the device list response from controller."""
+    """Item in the device list response from controller using the exact JSON keys.
     
+    As defined in DeviceDefinitionKeys namespace in the firmware:
+    - i: index
+    - c: chamber
+    - b: beer
+    - f: function
+    - h: hardware
+    - p: pin
+    - x: invert
+    - d: deactivated
+    - a: address (optional)
+    - n: child_id or pio (optional)
+    - j: calibrateadjust (optional)
+    """
+    
+    i: int  # index (id)
     c: int  # chamber
     b: int  # beer
     f: int  # function
-    h: int  # hardware type
+    h: int  # hardware
     p: int  # pin
-    x: bool  # value
-    d: bool  # deactivated
-    r: str  # name/role
-    i: int  # id
+    x: int = 0  # invert
+    d: int = 0  # deactivated
+    a: Optional[List[int]] = None  # address (optional)
+    n: Optional[int] = None  # child_id or pio (optional)
+    j: Optional[int] = None  # calibrateadjust (optional)
+    
+    # Additional fields not part of the core definition
+    v: Optional[float] = None  # value (for sensors)
+    w: Optional[int] = None  # write value (for actuators)
 
 
 class ControlSettings(BaseModel):
@@ -238,74 +256,60 @@ class MessageStatus(BaseModel):
 class SerializedDevice(BaseModel):
     """Device for API serialization in the compact format expected by Fermentrack.
     
-    These fields match the device list response from the controller:
+    These fields directly match the firmware JSON keys for DeviceDefinition:
+    i: index (id)
     c: chamber
     b: beer
-    f: function (device function as integer)
-    h: hardware type (as integer)
+    f: function
+    h: hardware
     p: pin
-    x: value (boolean or sensor value)
+    x: invert
     d: deactivated
-    r: name/role (string)
-    i: id
-    a: address (optional, for OneWire devices)
-    j: calibration offset (optional, for sensors)
-    v: value as string (optional, for sensors)
+    a: address (optional)
+    n: child_id or pio (optional)
+    j: calibrateadjust (optional)
+    v: value (optional)
+    w: write value (optional)
     """
     
+    i: int  # index (id) 
     c: int  # chamber
     b: int  # beer
     f: int  # function
     h: int  # hardware type
     p: int  # pin
-    x: bool  # value as boolean
-    d: bool = False  # deactivated
-    r: str = ""  # name/role
-    i: int  # id
-    a: Optional[str] = None  # address (OneWire devices)
-    j: Optional[str] = None  # calibration offset
-    v: Optional[str] = None  # value as string
+    x: int = 0  # invert
+    d: int = 0  # deactivated
+    a: Optional[List[int]] = None  # address (for OneWire devices)
+    n: Optional[int] = None  # child_id or pio
+    j: Optional[int] = None  # calibration adjust
+    r: Optional[str] = None  # alias (name/role)
+    
+    # Runtime values that aren't part of the definition
+    v: Optional[float] = None  # sensor value
+    w: Optional[int] = None  # write value for actuators
     
     class Config:
         """Pydantic configuration."""
-        
         populate_by_name = True
 
-    # TODO - Check if this is needed?
     @classmethod
     def from_device(cls, device: Device) -> 'SerializedDevice':
-        """Convert Device to SerializedDevice in the compact format."""
-        # Convert hardware_type string to integer code
-        hw_type = 1  # Default to temp sensor
-        
-        # Convert function to integer
-        function_value = int(device.function.value) if hasattr(device.function, 'value') else 0
-        
-        # Format value as string for sensor devices, or use boolean value for actuators
-        is_sensor = device.type in [SensorType.TEMP_SENSOR]
-        device_value = device.value
-        value_str = f"{device_value:.3f}" if device_value is not None and is_sensor else None
-        
-        # Value as boolean (x) depends on device type
-        bool_value = False
-        if device_value is not None:
-            if is_sensor:
-                bool_value = device_value > 0
-            else:
-                bool_value = device_value > 0
-        
+        """Convert Device to SerializedDevice in the compact format that matches C++ implementation."""
         return cls(
+            i=device.id,
             c=device.chamber,
             b=device.beer,
-            f=function_value,
-            h=hw_type,
-            p=device.pin,
-            x=bool_value,
-            d=False,  # Default to not deactivated
+            f=device.deviceFunction,
+            h=device.deviceHardware,
+            p=device.pinNr,
+            x=device.invert,
+            d=device.deactivate,
+            a=device.address,
+            n=device.pio,
+            j=device.calibrationAdjust,
             r=f"Device {device.id}",  # Default name
-            i=device.id,
-            j=f"{device.calibration_offset:.3f}" if is_sensor else None,
-            v=value_str
+            v=device.value
         )
 
 

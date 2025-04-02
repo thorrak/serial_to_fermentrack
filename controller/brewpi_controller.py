@@ -10,7 +10,7 @@ from .models import (
     ControllerMode, ControlSettings, ControlConstants,
     MinimumTime, Device, DeviceListItem, FullConfig, TemperatureData,
     ControllerStatus, MessageStatus, SerializedDevice,
-    SensorType, DeviceFunction, PinType
+    DeviceFunction, DeviceHardware
 )
 
 logger = logging.getLogger(__name__)
@@ -388,18 +388,22 @@ class BrewPiController:
                     # Parse with DeviceListItem model first
                     device_items = [DeviceListItem(**d) for d in devices_list]
 
-                    # Convert to Device objects
+                    # Convert DeviceListItem objects to Device objects
                     self.devices = []
                     for item in device_items:
                         device = Device(
                             id=item.i,
                             chamber=item.c,
                             beer=item.b,
-                            function=DeviceFunction(str(item.f)) if item.f < 12 else DeviceFunction.NONE,
-                            hardware_type="UNKNOWN",  # Default value
-                            type=SensorType.TEMP_SENSOR,  # Default value
-                            pin=item.p,
-                            pin_type=PinType.DIGITAL_INPUT  # Default value
+                            deviceFunction=item.f,
+                            deviceHardware=item.h,
+                            pinNr=item.p,
+                            invert=item.x,
+                            deactivate=item.d,
+                            pio=item.n if item.n is not None else 0,
+                            calibrationAdjust=item.j if item.j is not None else 0,
+                            address=item.a,
+                            value=item.v
                         )
                         self.devices.append(device)
 

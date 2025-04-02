@@ -2,50 +2,49 @@
 
 import pytest
 from unittest.mock import MagicMock, patch
-from ..controller.brewpi_controller import BrewPiController
-from ..controller.serial_controller import SerialControllerError
-from ..controller.models import ControllerMode, MessageStatus, Device
+from controller.brewpi_controller import BrewPiController
+from controller.serial_controller import SerialControllerError
+from controller.models import ControllerMode, MessageStatus, Device
 
 
 @pytest.fixture
 def mock_serial_controller():
     """Create a mock serial controller."""
-    with patch("bpr.controller.brewpi_controller.SerialController") as mock:
+    with patch("controller.brewpi_controller.SerialController") as mock:
         # Set up the mock controller
         mock_instance = MagicMock()
+        # Mock the serial connection to always return True
         mock_instance.connect.return_value = True
-        mock_instance.get_settings.return_value = {
-            "mode": "b",
-            "beerSet": 20.0,
-            "fridgeSet": 18.0,
-            "heatEst": 0.0,
-            "coolEst": 0.5
-        }
-        mock_instance.get_lcd.return_value = {
-            "1": "Line 1",
-            "2": "Line 2",
-            "3": "Line 3",
-            "4": "Line 4"
-        }
-        mock_instance.get_control_constants.return_value = {
-            "Kp": 20.0,
-            "Ki": 0.5,
-            "Kd": 2.0
-        }
-        mock_instance.get_device_list.return_value = {
-            "devices": [
-                {
-                    "id": 1,
-                    "chamber": 0,
-                    "beer": 0,
-                    "type": "0",
-                    "hardware_type": "ONEWIRE_TEMP",
-                    "pin": 0,
-                    "pin_type": "1",
-                    "function": "8"
-                }
-            ]
-        }
+        
+        # Instead of get_* methods, we now use request_* methods
+        # These don't return values directly but instead call parse_responses
+        
+        # Mock the parse_responses method to simply call the controller's parse_response
+        # with the appropriate messages later
+        def mock_parse_responses(controller):
+            pass  # The actual parsing is mocked separately in the tests
+            
+        mock_instance.parse_responses.side_effect = mock_parse_responses
+        
+        # Mock all the request_* methods to do nothing (they just trigger responses)
+        mock_instance.request_version = MagicMock()
+        mock_instance.request_settings = MagicMock()
+        mock_instance.request_lcd = MagicMock()
+        mock_instance.request_temperatures = MagicMock()
+        mock_instance.request_control_constants = MagicMock()
+        mock_instance.request_device_list = MagicMock()
+        
+        # Mock the setter methods 
+        mock_instance.set_mode_and_temp = MagicMock()
+        mock_instance.set_beer_temp = MagicMock()
+        mock_instance.set_fridge_temp = MagicMock()
+        mock_instance.set_control_settings = MagicMock()
+        mock_instance.set_control_constants = MagicMock()
+        mock_instance.set_device_list = MagicMock()
+        mock_instance.restart_device = MagicMock()
+        mock_instance.reset_eeprom = MagicMock()
+        mock_instance.default_control_settings = MagicMock()
+        mock_instance.default_control_constants = MagicMock()
         
         mock.return_value = mock_instance
         yield mock_instance
@@ -336,7 +335,7 @@ def test_brewpi_controller_parse_response(mock_serial_controller):
     assert controller.control_constants.Kp == 5
     
     # Test device list response
-    device_list_response = 'h:[{"c":1,"b":0,"f":0,"h":1,"p":5,"x":true,"d":false,"r":"Heat","i":-1},{"c":1,"b":0,"f":0,"h":1,"p":7,"x":true,"d":false,"r":"Cool","i":-1},{"c":1,"b":0,"f":0,"h":1,"p":11,"x":true,"d":false,"r":"Door","i":-1}]'
+    device_list_response = 'h:[{"c":1,"b":0,"f":2,"h":1,"p":5,"x":0,"d":0,"r":"Heat","i":-1},{"c":1,"b":0,"f":3,"h":1,"p":7,"x":0,"d":0,"r":"Cool","i":-1},{"c":1,"b":0,"f":1,"h":1,"p":11,"x":0,"d":0,"r":"Door","i":-1}]'
     result = controller.parse_response(device_list_response)
     assert result is True
     assert len(controller.devices) == 3
@@ -396,7 +395,7 @@ def test_brewpi_controller_process_reset_eeprom_message(mock_serial_controller):
     # Since this calls _refresh_controller_state and has a sleep,
     # we need to patch those
     with patch.object(BrewPiController, '_refresh_controller_state') as mock_refresh, \
-         patch('bpr.controller.brewpi_controller.time.sleep') as mock_sleep:
+         patch('controller.brewpi_controller.time.sleep') as mock_sleep:
         
         controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
         controller.connected = True
@@ -421,8 +420,8 @@ def test_brewpi_controller_process_restart_device_message(mock_serial_controller
     
     This test doesn't actually test the exit(0) call since that would terminate the test process.
     We'll patch the exit function to verify it's called."""
-    with patch('bpr.controller.brewpi_controller.time.sleep') as mock_sleep, \
-         patch('bpr.controller.brewpi_controller.exit') as mock_exit:
+    with patch('controller.brewpi_controller.time.sleep') as mock_sleep, \
+         patch('controller.brewpi_controller.exit') as mock_exit:
         
         controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
         controller.connected = True
@@ -451,7 +450,7 @@ def test_brewpi_controller_process_default_control_settings_message(mock_serial_
     # Since this calls _refresh_controller_state and has a sleep,
     # we need to patch those
     with patch.object(BrewPiController, '_refresh_controller_state') as mock_refresh, \
-         patch('bpr.controller.brewpi_controller.time.sleep') as mock_sleep:
+         patch('controller.brewpi_controller.time.sleep') as mock_sleep:
         
         controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
         controller.connected = True
@@ -476,7 +475,7 @@ def test_brewpi_controller_process_default_control_constants_message(mock_serial
     # Since this calls _refresh_controller_state and has a sleep,
     # we need to patch those
     with patch.object(BrewPiController, '_refresh_controller_state') as mock_refresh, \
-         patch('bpr.controller.brewpi_controller.time.sleep') as mock_sleep:
+         patch('controller.brewpi_controller.time.sleep') as mock_sleep:
         
         controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
         controller.connected = True

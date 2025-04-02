@@ -609,24 +609,36 @@ def test_brewpi_rest_signal_handler(app, mock_controller, mock_api_client):
 
 def test_main_function():
     """Test main function with command line arguments."""
-    with patch("bpr.brewpi_rest.parse_args") as mock_parse_args:
-        with patch("bpr.brewpi_rest.Config") as mock_config_class:
-            with patch("bpr.brewpi_rest.setup_logging") as mock_setup_logging:
-                with patch("bpr.brewpi_rest.ensure_directories") as mock_ensure_dirs:
-                    with patch("bpr.brewpi_rest.BrewPiRest") as mock_app_class:
-                        from ..brewpi_rest import main
-
-                        # Configure mocks
-                        mock_args = MagicMock()
-                        mock_args.location = "1-1"
-                        mock_args.verbose = False
-                        mock_parse_args.return_value = mock_args
+    import argparse
+    
+    # Create a mock ArgumentParser that always returns our args
+    class MockArgParser(object):
+        def __init__(self, *args, **kwargs):
+            pass
+        
+        def add_argument(self, *args, **kwargs):
+            pass
+        
+        def parse_args(self):
+            # Return our mock args
+            args = argparse.Namespace()
+            args.location = "1-1"
+            args.verbose = False
+            return args
+    
+    with patch("argparse.ArgumentParser", MockArgParser):
+        with patch("brewpi_rest.Config") as mock_config_class:
+            with patch("brewpi_rest.setup_logging") as mock_setup_logging:
+                with patch("brewpi_rest.ensure_directories") as mock_ensure_dirs:
+                    with patch("brewpi_rest.BrewPiRest") as mock_app_class:
+                        from brewpi_rest import main
 
                         mock_config_instance = MagicMock()
                         mock_config_instance.LOG_LEVEL = "INFO"
                         mock_config_instance.LOG_FILE = "/tmp/brewpi_rest.log"
                         mock_config_instance.SERIAL_PORT = "/dev/ttyUSB0"
                         mock_config_instance.DEFAULT_API_URL = "http://localhost:8000"
+                        mock_config_instance.app_config = {"use_fermentrack_net": False}
                         mock_config_class.return_value = mock_config_instance
 
                         mock_logger = MagicMock()
@@ -644,7 +656,6 @@ def test_main_function():
                         assert result == 0
 
                         # Verify initialization
-                        mock_parse_args.assert_called_once()
                         mock_config_class.assert_called_once_with("1-1")
                         mock_setup_logging.assert_called_once()
                         mock_ensure_dirs.assert_called_once()

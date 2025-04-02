@@ -11,7 +11,7 @@ from ..controller.serial_controller import SerialController, SerialControllerErr
 @pytest.fixture
 def mock_serial():
     """Mock the serial connection."""
-    with patch('bpr.controller.serial_controller.serial.Serial') as mock_serial:
+    with patch('controller.serial_controller.serial.Serial') as mock_serial:
         # Configure the mock
         mock_instance = MagicMock()
         mock_instance.in_waiting = 0
@@ -146,7 +146,7 @@ def test_read_response_timeout(mock_serial):
     controller.connect()
 
     # Patch time.time to simulate timeout
-    with patch('bpr.controller.serial_controller.time.time') as mock_time:
+    with patch('controller.serial_controller.time.time') as mock_time:
         mock_time.side_effect = [0, 0.05, 0.11]  # Start, during loop, after timeout
         response = controller._read_response()
 
