@@ -64,21 +64,6 @@ class Device(BaseModel):
     calibrationAdjust: int = 0
     address: Optional[List[int]] = None
     value: Optional[float] = None  # Not in the C++ struct
-    
-    # Map int values to enums for convenience
-    @property
-    def function_enum(self) -> DeviceFunction:
-        try:
-            return DeviceFunction(self.deviceFunction)
-        except ValueError:
-            return DeviceFunction.DEVICE_NONE
-            
-    @property
-    def hardware_enum(self) -> DeviceHardware:
-        try:
-            return DeviceHardware(self.deviceHardware)
-        except ValueError:
-            return DeviceHardware.DEVICE_HARDWARE_NONE
 
     def __eq__(self, other: Any) -> bool:
         """Check equality based on all attributes"""
@@ -122,7 +107,7 @@ class Device(BaseModel):
         if isinstance(self.deactivate, bool):
             controller_dict["d"] = 1 if self.deactivate else 0
 
-        # Conditionally add address here
+        # Conditionally add address hereW
         if self.address is not None:
             controller_dict["a"] = self.address
 
