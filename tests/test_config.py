@@ -80,6 +80,11 @@ def test_config_properties(mock_config_files):
     assert config.API_TIMEOUT == 10  # Default value
     assert config.DEVICE_ID == "test-device-id"
     assert config.FERMENTRACK_API_KEY == "test-api-key"
+    
+    # Test directory properties
+    assert config.DATA_DIR is not None  # DATA_DIR
+    assert config.LOG_FORMAT is not None  # LOG_FORMAT
+    assert config.LOG_LEVEL == "INFO"  # Default LOG_LEVEL
 
 
 def test_serial_port_match(mock_config_files, mock_comports):
@@ -275,6 +280,44 @@ def test_save_device_config():
                 assert args[1] == 'w', "File not opened for writing"
 
 
+def test_save_device_config_exception():
+    """Test exception handling in save_device_config."""
+    app_config_data = {
+        "host": "localhost",
+        "port": "8000",
+        "fermentrack_api_key": "test-api-key"
+    }
+    
+    device_config = {
+        "location": "1-1",
+        "fermentrack_id": "test-device-id"
+    }
+    
+    def mock_file_opener(filename, mode, *args, **kwargs):
+        if mode == 'r':
+            # For reading during init, return a mock file
+            mock_file = mock_open(read_data=json.dumps(app_config_data if 'app_config.json' in str(filename) else device_config))()
+            return mock_file
+        else:
+            # For writing during save_device_config, raise an error
+            raise IOError("Permission denied during write")
+    
+    with patch("pathlib.Path.exists", return_value=True):
+        with patch("builtins.open", mock_file_opener):
+            with patch("logging.Logger.error") as mock_error:
+                config = Config("1-1")
+                
+                # Reset the mock to ensure we only capture errors from save_device_config
+                mock_error.reset_mock()
+                
+                # Try to save config - this should catch the IOError
+                config.save_device_config()
+                
+                # Verify error was logged
+                mock_error.assert_called_once()
+                assert "Error saving device config" in mock_error.call_args[0][0]
+
+
 def test_save_device_config_no_location():
     """Test saving device config with no location."""
     app_config_data = {
@@ -315,6 +358,62 @@ def test_config_missing_app_config():
         assert "Required configuration file not found" in str(exc_info.value)
 
 
+def test_missing_device_config_file():
+    """Test behavior when device config file is missing."""
+    app_config_data = {
+        "host": "localhost",
+        "port": "8000",
+        "fermentrack_api_key": "test-api-key"
+    }
+    
+    # Using a more specific approach to control which file exists
+    original_exists = Path.exists
+    
+    def patched_exists(self):
+        if "app_config.json" in str(self):
+            return True
+        if "1-1.json" in str(self):
+            return False
+        return original_exists(self)
+    
+    with patch("pathlib.Path.exists", patched_exists):
+        with patch("builtins.open", mock_open(read_data=json.dumps(app_config_data))):
+            with pytest.raises(FileNotFoundError) as exc_info:
+                config = Config(location="1-1")
+            
+            assert "Required device configuration file not found" in str(exc_info.value)
+
+
+def test_device_config_location_mismatch():
+    """Test behavior when location in device config doesn't match the requested location."""
+    app_config_data = {
+        "host": "localhost",
+        "port": "8000",
+        "fermentrack_api_key": "test-api-key"
+    }
+    
+    # Device config has location 1-2, but we'll request 1-1
+    device_config = {
+        "location": "1-2",  # Mismatch with requested location
+        "fermentrack_id": "test-device-id"
+    }
+    
+    def mock_file_opener(filename, *args, **kwargs):
+        if "app_config.json" in str(filename):
+            return mock_open(read_data=json.dumps(app_config_data))()
+        elif "1-1.json" in str(filename):
+            return mock_open(read_data=json.dumps(device_config))()
+        return mock_open()()
+    
+    with patch("builtins.open", mock_file_opener):
+        with patch("pathlib.Path.exists", return_value=True):
+            with pytest.raises(ValueError) as exc_info:
+                config = Config(location="1-1")
+            
+            assert "Location mismatch in config file" in str(exc_info.value)
+            assert "expected '1-1', got '1-2'" in str(exc_info.value)
+
+
 def test_config_invalid_app_config():
     """Test behavior with invalid app_config.json."""
     invalid_json = "{"  # Incomplete JSON
@@ -325,6 +424,88 @@ def test_config_invalid_app_config():
                 config = Config(location=None)
             
             assert "Invalid JSON in application config" in str(exc_info.value)
+
+
+def test_device_config_invalid_json():
+    """Test behavior with invalid JSON in device config."""
+    app_config_data = {
+        "host": "localhost",
+        "port": "8000",
+        "fermentrack_api_key": "test-api-key"
+    }
+    
+    invalid_device_json = "{"  # Incomplete JSON
+    
+    def mock_file_opener(filename, *args, **kwargs):
+        if "app_config.json" in str(filename):
+            return mock_open(read_data=json.dumps(app_config_data))()
+        elif "1-1.json" in str(filename):
+            return mock_open(read_data=invalid_device_json)()
+        return mock_open()()
+    
+    with patch("builtins.open", mock_file_opener):
+        with patch("pathlib.Path.exists", return_value=True):
+            with pytest.raises(ValueError) as exc_info:
+                config = Config(location="1-1")
+            
+            assert "Invalid JSON in device config" in str(exc_info.value)
+
+
+def test_device_config_missing_required_fields():
+    """Test behavior when device config is missing required fields."""
+    app_config_data = {
+        "host": "localhost",
+        "port": "8000",
+        "fermentrack_api_key": "test-api-key"
+    }
+    
+    # Missing required fermentrack_id
+    incomplete_device_config = {
+        "location": "1-1"
+        # Missing fermentrack_id
+    }
+    
+    def mock_file_opener(filename, *args, **kwargs):
+        if "app_config.json" in str(filename):
+            return mock_open(read_data=json.dumps(app_config_data))()
+        elif "1-1.json" in str(filename):
+            return mock_open(read_data=json.dumps(incomplete_device_config))()
+        return mock_open()()
+    
+    with patch("builtins.open", mock_file_opener):
+        with patch("pathlib.Path.exists", return_value=True):
+            with pytest.raises(ValueError) as exc_info:
+                config = Config(location="1-1")
+            
+            assert "Missing required fields in device config" in str(exc_info.value)
+            assert "fermentrack_id" in str(exc_info.value)
+
+
+def test_device_config_unhandled_exception():
+    """Test behavior when an unhandled exception occurs during device config loading."""
+    app_config_data = {
+        "host": "localhost",
+        "port": "8000",
+        "fermentrack_api_key": "test-api-key"
+    }
+    
+    # Mock open to raise an unexpected exception for device config
+    def mock_file_opener(filename, *args, **kwargs):
+        if "app_config.json" in str(filename):
+            return mock_open(read_data=json.dumps(app_config_data))()
+        elif "1-1.json" in str(filename):
+            raise PermissionError("Permission denied")
+        return mock_open()()
+    
+    with patch("builtins.open", mock_file_opener):
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("logging.Logger.error") as mock_error:
+                with pytest.raises(PermissionError) as exc_info:
+                    config = Config(location="1-1")
+                
+                assert "Permission denied" in str(exc_info.value)
+                mock_error.assert_called_once()
+                assert "Error loading device config" in mock_error.call_args[0][0]
 
 
 def test_config_missing_required_fields():
