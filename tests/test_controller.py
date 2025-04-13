@@ -1144,3 +1144,154 @@ def test_device_to_controller_dict_with_bool_values():
     # Verify boolean values are converted to integers
     assert controller_dict["x"] == 1  # True -> 1
     assert controller_dict["d"] == 0  # False -> 0
+
+
+def test_device_from_controller_dict():
+    """Test the Device.from_controller_dict class method."""
+    
+    # Basic controller dict with all integer fields
+    controller_dict = {
+        "i": 1,
+        "c": 2,
+        "b": 3,
+        "f": 5,
+        "h": 2,
+        "p": 10,
+        "x": 0,
+        "d": 0,
+        "n": 1,
+        "j": 10
+    }
+    
+    device = Device.from_controller_dict(controller_dict)
+    
+    # Verify all fields are mapped correctly from compact keys to full field names
+    assert device.index == 1
+    assert device.chamber == 2
+    assert device.beer == 3
+    assert device.deviceFunction == 5
+    assert device.deviceHardware == 2
+    assert device.pinNr == 10
+    assert device.invert == 0
+    assert device.deactivate == 0
+    assert device.pio == 1
+    assert device.calibrationAdjust == 10
+    assert device.address is None
+    assert device.value is None
+
+
+def test_device_from_controller_dict_with_address():
+    """Test the Device.from_controller_dict method with an address field."""
+    
+    # Controller dict with an address field
+    controller_dict = {
+        "i": 1,
+        "c": 2,
+        "b": 3,
+        "f": 5,
+        "h": 2,
+        "p": 10,
+        "x": 0,
+        "d": 0,
+        "n": 1,
+        "j": 10,
+        "a": [28, 123, 456]
+    }
+    
+    device = Device.from_controller_dict(controller_dict)
+    
+    # Verify address field is mapped correctly
+    assert device.address == [28, 123, 456]
+
+
+def test_device_from_controller_dict_with_value():
+    """Test the Device.from_controller_dict method with a value field."""
+    
+    # Controller dict with a value field (for sensors)
+    controller_dict = {
+        "i": 1,
+        "c": 2,
+        "b": 3,
+        "f": 5,
+        "h": 2,
+        "p": 10,
+        "x": 0,
+        "d": 0,
+        "n": 1,
+        "j": 10,
+        "v": 21.5  # Temperature value for a sensor
+    }
+    
+    device = Device.from_controller_dict(controller_dict)
+    
+    # Verify value field is mapped correctly
+    assert device.value == 21.5
+
+
+def test_device_from_controller_dict_missing_fields():
+    """Test the Device.from_controller_dict method with missing fields."""
+    
+    # Controller dict with minimal fields
+    controller_dict = {
+        "f": 5,  # Only function defined
+        "h": 2   # Only hardware defined
+    }
+    
+    device = Device.from_controller_dict(controller_dict)
+    
+    # Verify defaults are used for missing fields
+    assert device.index == -1  # Default for index
+    assert device.chamber == 0  # Default for chamber
+    assert device.beer == 0  # Default for beer
+    assert device.deviceFunction == 5  # Provided value
+    assert device.deviceHardware == 2  # Provided value
+    assert device.pinNr == 0  # Default for pinNr
+    assert device.invert == 0  # Default for invert
+    assert device.deactivate == 0  # Default for deactivate
+    assert device.pio == 0  # Default for pio
+    assert device.calibrationAdjust == 0  # Default for calibrationAdjust
+    assert device.address is None  # Default for address
+    assert device.value is None  # Default for value
+
+
+def test_device_round_trip_conversion():
+    """Test round-trip conversion between Device and controller dict format."""
+    
+    # Create original device
+    original_device = Device(
+        index=1,
+        chamber=2,
+        beer=3,
+        deviceFunction=5,
+        deviceHardware=2,
+        pinNr=10,
+        invert=1,
+        deactivate=0,
+        pio=1,
+        calibrationAdjust=10,
+        address=[28, 123, 456],
+        value=21.5
+    )
+    
+    # Convert to controller dict
+    controller_dict = original_device.to_controller_dict()
+    
+    # Convert back to Device object
+    round_trip_device = Device.from_controller_dict(controller_dict)
+    
+    # Verify the round-trip device has all the same attributes as the original
+    assert round_trip_device.index == original_device.index
+    assert round_trip_device.chamber == original_device.chamber
+    assert round_trip_device.beer == original_device.beer
+    assert round_trip_device.deviceFunction == original_device.deviceFunction
+    assert round_trip_device.deviceHardware == original_device.deviceHardware
+    assert round_trip_device.pinNr == original_device.pinNr
+    assert round_trip_device.invert == original_device.invert
+    assert round_trip_device.deactivate == original_device.deactivate
+    assert round_trip_device.pio == original_device.pio
+    assert round_trip_device.calibrationAdjust == original_device.calibrationAdjust
+    assert round_trip_device.address == original_device.address
+    
+    # Note: value won't be preserved in the round trip because to_controller_dict() doesn't include it
+    # The value field is for runtime state, not device definition
+    assert round_trip_device.value is None

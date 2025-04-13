@@ -8,8 +8,8 @@ from typing import Dict, Any, Optional, List, Union, Tuple
 from .serial_controller import SerialController, SerialControllerError
 from .models import (
     ControllerMode, ControlSettings, ControlConstants,
-    MinimumTime, Device, DeviceListItem, FullConfig, TemperatureData,
-    ControllerStatus, MessageStatus, SerializedDevice,
+    MinimumTime, Device, FullConfig, TemperatureData,
+    ControllerStatus, MessageStatus,
     DeviceFunction, DeviceHardware
 )
 
@@ -350,24 +350,8 @@ class BrewPiController:
             # Parse and convert the incoming devices (which is a complete list)
             new_devices = []
             for d in devices_data["devices"]:
-                # First create SerializedDevice which handles compact field names (i, c, b, f, h, etc.)
-                serialized = SerializedDevice(**d)
-
-                # Then convert to Device with full field names
-                device = Device(
-                    index=serialized.i,
-                    chamber=serialized.c,
-                    beer=serialized.b,
-                    deviceFunction=serialized.f,
-                    deviceHardware=serialized.h,
-                    pinNr=serialized.p,
-                    invert=serialized.x,
-                    deactivate=serialized.d,
-                    pio=serialized.n if serialized.n is not None else 0,
-                    calibrationAdjust=serialized.j if serialized.j is not None else 0,
-                    address=serialized.a
-                    # value removed since it's no longer in SerializedDevice
-                )
+                # Convert directly from controller dict format to Device object
+                device = Device.from_controller_dict(d)
                 new_devices.append(device)
             
             # Identify devices that need to be sent (changed or new)
@@ -495,26 +479,11 @@ class BrewPiController:
                 json_str = response[2:]
                 try:
                     devices_list = json.loads(json_str)
-                    # Parse with DeviceListItem model first
-                    device_items = [DeviceListItem(**d) for d in devices_list]
-
-                    # Convert DeviceListItem objects to Device objects
+                    
+                    # Convert device dicts directly to Device objects
                     self.devices = []
-                    for item in device_items:
-                        device = Device(
-                            id=item.i,
-                            chamber=item.c,
-                            beer=item.b,
-                            deviceFunction=item.f,
-                            deviceHardware=item.h,
-                            pinNr=item.p,
-                            invert=item.x,
-                            deactivate=item.d,
-                            pio=item.n if item.n is not None else 0,
-                            calibrationAdjust=item.j if item.j is not None else 0,
-                            address=item.a,
-                            value=item.v
-                        )
+                    for device_dict in devices_list:
+                        device = Device.from_controller_dict(device_dict)
                         self.devices.append(device)
 
                     logger.debug(f"Received device list with {len(self.devices)} devices")

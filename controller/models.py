@@ -129,6 +129,32 @@ class Device(BaseModel):
         # TODO - Determine if we need to conditionally add pio and/or calibrationAdjust
 
         return controller_dict
+        
+    @classmethod
+    def from_controller_dict(cls, controller_dict: Dict[str, Any]) -> 'Device':
+        """Create a Device object from the controller's dictionary format.
+        
+        Args:
+            controller_dict: Dictionary with compact keys as used by the controller
+            
+        Returns:
+            A new Device instance with mapped values
+        """
+        device = cls(
+            index=controller_dict.get("i", -1),
+            chamber=controller_dict.get("c", 0),
+            beer=controller_dict.get("b", 0),
+            deviceFunction=controller_dict.get("f", 0),
+            deviceHardware=controller_dict.get("h", 0),
+            pinNr=controller_dict.get("p", 0),
+            invert=controller_dict.get("x", 0),
+            deactivate=controller_dict.get("d", 0),
+            pio=controller_dict.get("n", 0),
+            calibrationAdjust=controller_dict.get("j", 0),
+            address=controller_dict.get("a"),
+            value=controller_dict.get("v")
+        )
+        return device
 
 
 class DeviceListItem(BaseModel):
