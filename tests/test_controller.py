@@ -1153,6 +1153,105 @@ def test_device_to_controller_dict_with_bool_values():
     assert controller_dict["d"] == 0  # False -> 0
 
 
+def test_device_to_controller_dict_boolean_conversion():
+    """Comprehensive test for boolean conversion in Device.to_controller_dict method."""
+    
+    # Test case 1: Both invert and deactivate as True booleans
+    device1 = Device(
+        index=1,
+        chamber=2,
+        beer=3,
+        deviceFunction=5,
+        deviceHardware=2,
+        pinNr=10,
+        invert=True,    # Boolean true
+        deactivate=True, # Boolean true
+        pio=1
+    )
+    
+    dict1 = device1.to_controller_dict()
+    assert isinstance(dict1["x"], int), "invert should be converted to int"
+    assert isinstance(dict1["d"], int), "deactivate should be converted to int"
+    assert dict1["x"] == 1, "True should be converted to 1 for invert field"
+    assert dict1["d"] == 1, "True should be converted to 1 for deactivate field"
+    
+    # Test case 2: Both invert and deactivate as False booleans
+    device2 = Device(
+        index=1,
+        chamber=2,
+        beer=3,
+        deviceFunction=5,
+        deviceHardware=2,
+        pinNr=10,
+        invert=False,    # Boolean false
+        deactivate=False, # Boolean false
+        pio=1
+    )
+    
+    dict2 = device2.to_controller_dict()
+    assert isinstance(dict2["x"], int), "invert should be converted to int"
+    assert isinstance(dict2["d"], int), "deactivate should be converted to int"
+    assert dict2["x"] == 0, "False should be converted to 0 for invert field"
+    assert dict2["d"] == 0, "False should be converted to 0 for deactivate field"
+    
+    # Test case 3: One as boolean, one as integer
+    device3 = Device(
+        index=1,
+        chamber=2,
+        beer=3,
+        deviceFunction=5,
+        deviceHardware=2,
+        pinNr=10,
+        invert=True,     # Boolean true
+        deactivate=0,    # Already an integer
+        pio=1
+    )
+    
+    dict3 = device3.to_controller_dict()
+    assert isinstance(dict3["x"], int), "invert should be converted to int"
+    assert isinstance(dict3["d"], int), "deactivate should remain int"
+    assert dict3["x"] == 1, "True should be converted to 1 for invert field"
+    assert dict3["d"] == 0, "Integer 0 should remain 0 for deactivate field"
+    
+    # Test case 4: Both as integers already
+    device4 = Device(
+        index=1,
+        chamber=2,
+        beer=3,
+        deviceFunction=5,
+        deviceHardware=2,
+        pinNr=10,
+        invert=1,        # Already an integer
+        deactivate=0,    # Already an integer
+        pio=1
+    )
+    
+    dict4 = device4.to_controller_dict()
+    assert isinstance(dict4["x"], int), "invert should remain int"
+    assert isinstance(dict4["d"], int), "deactivate should remain int"
+    assert dict4["x"] == 1, "Integer 1 should remain 1 for invert field"
+    assert dict4["d"] == 0, "Integer 0 should remain 0 for deactivate field"
+    
+    # Test case 5: Non-zero integer values
+    device5 = Device(
+        index=1,
+        chamber=2,
+        beer=3,
+        deviceFunction=5,
+        deviceHardware=2,
+        pinNr=10,
+        invert=42,       # Non-zero integer
+        deactivate=99,   # Non-zero integer
+        pio=1
+    )
+    
+    dict5 = device5.to_controller_dict()
+    assert isinstance(dict5["x"], int), "invert should remain int"
+    assert isinstance(dict5["d"], int), "deactivate should remain int"
+    assert dict5["x"] == 42, "Non-zero integer should not be modified by conversion"
+    assert dict5["d"] == 99, "Non-zero integer should not be modified by conversion"
+
+
 def test_device_from_controller_dict():
     """Test the Device.from_controller_dict class method."""
     
