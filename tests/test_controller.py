@@ -746,16 +746,17 @@ def test_brewpi_controller_apply_constants_no_changes(mock_serial_controller):
     assert controller.control_constants.tempSetMax == 30.0
 
 
-def test_brewpi_controller_apply_device_config(mock_serial_controller):
-    """Test apply_device_config method with compact field names."""
+def test_brewpi_controller_apply_device_config_no_previous(mock_serial_controller):
+    """Test apply_device_config method with no previous devices."""
     controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
     controller.connected = True
+    controller.devices = None  # Ensure no previous devices
     
     # Test data with compact field names
     devices_data = {
         "devices": [
-            {"b": 0, "c": 1, "f": 3, "h": 1, "i": 0, "p": 5, "r": "Device -1", "x": 1},
-            {"b": 0, "c": 1, "f": 0, "h": 1, "i": -1, "p": 7, "r": "Device -1", "x": 0}
+            {"b": 0, "c": 1, "f": 3, "h": 1, "i": 0, "p": 5, "x": 1},
+            {"b": 0, "c": 1, "f": 0, "h": 1, "i": -1, "p": 7, "x": 0}
         ]
     }
     
@@ -765,16 +766,35 @@ def test_brewpi_controller_apply_device_config(mock_serial_controller):
     # Check result
     assert result is True
     
-    # Check method calls
-    mock_serial_controller.set_device_list.assert_called_once_with(devices_data)
+    # With no previous devices, should send all devices
+    # Check that set_device_list was called with a list of Device objects
+    mock_serial_controller.set_device_list.assert_called_once()
+    
+    # Get the actual call arguments (devices list)
+    devices_arg = mock_serial_controller.set_device_list.call_args[0][0]
+    
+    # Verify we passed a list of Device objects
+    assert isinstance(devices_arg, list)
+    assert len(devices_arg) == 2
+    assert all(isinstance(device, Device) for device in devices_arg)
+    
+    # Verify correct device data was sent
+    assert devices_arg[0].deviceFunction == 3
+    assert devices_arg[0].chamber == 1
+    assert devices_arg[0].beer == 0
+    assert devices_arg[0].pinNr == 5
+    
+    assert devices_arg[1].deviceFunction == 0
+    assert devices_arg[1].pinNr == 7
+    
     mock_serial_controller.parse_responses.assert_called_once_with(controller)
     
-    # Check that devices list was created correctly
+    # Check that devices list was created correctly in the controller
     assert len(controller.devices) == 2
     
     # Verify the first device has the correct attributes
     first_device = controller.devices[0]
-    assert first_device.id == 0
+    assert first_device.index == 0
     assert first_device.chamber == 1
     assert first_device.beer == 0
     assert first_device.deviceFunction == 3  # Most important - previously not mapping correctly
@@ -784,8 +804,247 @@ def test_brewpi_controller_apply_device_config(mock_serial_controller):
     
     # Verify the second device
     second_device = controller.devices[1]
-    assert second_device.id == -1
+    assert second_device.index == -1
     assert second_device.deviceFunction == 0
+
+
+def test_brewpi_controller_apply_device_config_with_changes(mock_serial_controller):
+    """Test apply_device_config method with previous devices and changes."""
+    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+    controller.connected = True
+    
+    # Create initial devices
+    initial_devices = [
+        Device(index=0, chamber=1, beer=0, deviceFunction=3, deviceHardware=1, pinNr=5, invert=1),
+        Device(index=-1, chamber=1, beer=0, deviceFunction=0, deviceHardware=1, pinNr=7, invert=0)
+    ]
+    controller.devices = initial_devices
+    
+    # Reset mock to clear any previous calls
+    mock_serial_controller.reset_mock()
+    
+    # Test data with one device changed
+    devices_data = {
+        "devices": [
+            {"b": 0, "c": 1, "f": 3, "h": 1, "i": 0, "p": 5, "x": 1},  # Unchanged
+            {"b": 0, "c": 1, "f": 2, "h": 1, "i": -1, "p": 7, "x": 0}   # Changed f from 0 to 2
+        ]
+    }
+    
+    # Apply device config
+    result = controller.apply_device_config(devices_data)
+    
+    # Check result
+    assert result is True
+    
+    # Verify set_device_list was called once with a list containing only the changed device
+    mock_serial_controller.set_device_list.assert_called_once()
+    
+    # Check that only one device was sent
+    devices_list = mock_serial_controller.set_device_list.call_args[0][0]
+    assert isinstance(devices_list, list)
+    assert len(devices_list) == 1
+    
+    # Verify it was the second device with the changed function
+    changed_device = devices_list[0]
+    assert isinstance(changed_device, Device)
+    assert changed_device.index == -1
+    assert changed_device.deviceFunction == 2
+    mock_serial_controller.parse_responses.assert_called_once_with(controller)
+    
+    # Check that devices list was updated correctly
+    assert len(controller.devices) == 2
+    
+    # Verify both devices have been updated
+    assert controller.devices[0].index == 0
+    assert controller.devices[0].deviceFunction == 3  # Unchanged
+    
+    assert controller.devices[1].index == -1
+    assert controller.devices[1].deviceFunction == 2  # Changed
+
+
+def test_brewpi_controller_apply_device_config_new_device(mock_serial_controller):
+    """Test apply_device_config method with a new device added."""
+    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+    controller.connected = True
+    
+    # Create initial devices
+    initial_devices = [
+        Device(index=0, chamber=1, beer=0, deviceFunction=3, deviceHardware=1, pinNr=5, invert=1)
+    ]
+    controller.devices = initial_devices
+    
+    # Reset mock to clear any previous calls
+    mock_serial_controller.reset_mock()
+    
+    # Test data with one existing and one new device
+    devices_data = {
+        "devices": [
+            {"b": 0, "c": 1, "f": 3, "h": 1, "i": 0, "p": 5, "x": 1},  # Unchanged
+            {"b": 0, "c": 1, "f": 0, "h": 1, "i": -1, "p": 7, "x": 0}   # New device
+        ]
+    }
+    
+    # Apply device config
+    result = controller.apply_device_config(devices_data)
+    
+    # Check result
+    assert result is True
+    
+    # Verify set_device_list was called once with a list containing only the new device
+    mock_serial_controller.set_device_list.assert_called_once()
+    
+    # Check that only one device was sent
+    devices_list = mock_serial_controller.set_device_list.call_args[0][0]
+    assert isinstance(devices_list, list)
+    assert len(devices_list) == 1
+    
+    # Verify it was the second device (the new one)
+    new_device = devices_list[0]
+    assert isinstance(new_device, Device)
+    assert new_device.index == -1
+    assert new_device.deviceFunction == 0
+    mock_serial_controller.parse_responses.assert_called_once_with(controller)
+    
+    # Check that devices list was updated correctly (should have 2 now)
+    assert len(controller.devices) == 2
+    
+    # Verify the new device was added
+    assert controller.devices[1].index == -1
+    assert controller.devices[1].deviceFunction == 0
+
+
+def test_brewpi_controller_apply_device_config_no_changes(mock_serial_controller):
+    """Test apply_device_config method with no changes to previous devices."""
+    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+    controller.connected = True
+    
+    # Create initial devices
+    initial_devices = [
+        Device(index=0, chamber=1, beer=0, deviceFunction=3, deviceHardware=1, pinNr=5, invert=1),
+        Device(index=-1, chamber=1, beer=0, deviceFunction=0, deviceHardware=1, pinNr=7, invert=0)
+    ]
+    controller.devices = initial_devices
+    
+    # Reset mock to clear any previous calls
+    mock_serial_controller.reset_mock()
+    
+    # Test data with the same devices, no changes
+    devices_data = {
+        "devices": [
+            {"b": 0, "c": 1, "f": 3, "h": 1, "i": 0, "p": 5, "x": 1},
+            {"b": 0, "c": 1, "f": 0, "h": 1, "i": -1, "p": 7, "x": 0}
+        ]
+    }
+    
+    # Apply device config
+    result = controller.apply_device_config(devices_data)
+    
+    # Check result
+    assert result is True
+    
+    # Should not call set_device_list since nothing changed
+    mock_serial_controller.set_device_list.assert_not_called()
+    mock_serial_controller.parse_responses.assert_not_called()
+    
+    # Check that devices list remains the same
+    assert len(controller.devices) == 2
+    assert controller.devices[0].index == 0
+    assert controller.devices[1].index == -1
+
+
+def test_device_equality():
+    """Test the equality method for Device model."""
+    # Create two devices with same functional attributes but different index/chamber/beer/value
+    device1 = Device(
+        index=1,  # Different - not used in equality check
+        chamber=2,  # Different - not used in equality check
+        beer=3,  # Different - not used in equality check
+        deviceFunction=5,
+        deviceHardware=2,
+        pinNr=10,
+        invert=0,
+        pio=1,
+        deactivate=0,
+        calibrationAdjust=0,
+        address=[28, 123],
+        value=20.5  # Different - not used in equality check
+    )
+    
+    device2 = Device(
+        index=99,  # Different - not used in equality check
+        chamber=99,  # Different - not used in equality check
+        beer=99,  # Different - not used in equality check
+        deviceFunction=5,  # Same
+        deviceHardware=2,  # Same
+        pinNr=10,  # Same
+        invert=0,  # Same
+        pio=1,  # Same
+        deactivate=0,  # Same
+        calibrationAdjust=0,  # Same
+        address=[28, 123],  # Same
+        value=99.9  # Different - not used in equality check
+    )
+    
+    # Create a device with a different functional attribute
+    device3 = Device(
+        index=1,
+        chamber=2,
+        beer=3,
+        deviceFunction=6,  # Different
+        deviceHardware=2,
+        pinNr=10,
+        invert=0,
+        pio=1,
+        deactivate=0,
+        calibrationAdjust=0,
+        address=[28, 123],
+        value=20.5
+    )
+    
+    # Test equality based on functional attributes
+    assert device1 == device2, "Devices with same functional attributes should be equal"
+    assert device1 != device3, "Devices with different functional attributes should not be equal"
+    
+    # Test equality with non-Device object
+    assert device1 != "not a device"
+    
+    # Test equality with null address
+    device4 = Device(
+        index=1,
+        chamber=2,
+        beer=3,
+        deviceFunction=5,
+        deviceHardware=2,
+        pinNr=10,
+        invert=0,
+        pio=1,
+        deactivate=0,
+        calibrationAdjust=0,
+        address=None,  # Different
+        value=20.5
+    )
+    
+    device5 = Device(
+        index=2,
+        chamber=2,
+        beer=3,
+        deviceFunction=5,
+        deviceHardware=2,
+        pinNr=10,
+        invert=0,
+        pio=1,
+        deactivate=0,
+        calibrationAdjust=0,
+        address=None,  # Different
+        value=20.5
+    )
+    
+    # Both have null address, should be equal on functional attributes
+    assert device4 == device5, "Devices with same functional attributes (null address) should be equal"
+    
+    # One has address, one doesn't
+    assert device1 != device4, "Device with address should not equal device without address"
 
 
 def test_brewpi_controller_apply_device_config_error(mock_serial_controller):
@@ -802,3 +1061,86 @@ def test_brewpi_controller_apply_device_config_error(mock_serial_controller):
     controller.connected = False
     with pytest.raises(SerialControllerError):
         controller.apply_device_config({"devices": []})
+
+
+def test_device_to_controller_dict():
+    """Test the Device.to_controller_dict method."""
+    
+    # Basic device with all integer fields
+    device = Device(
+        index=1,
+        chamber=2,
+        beer=3,
+        deviceFunction=5,
+        deviceHardware=2,
+        pinNr=10,
+        invert=0,
+        pio=1,
+        deactivate=0,
+        calibrationAdjust=10
+    )
+    
+    controller_dict = device.to_controller_dict()
+    
+    # Verify all fields are mapped correctly with the compact keys
+    assert controller_dict["i"] == 1
+    assert controller_dict["c"] == 2
+    assert controller_dict["b"] == 3
+    assert controller_dict["f"] == 5
+    assert controller_dict["h"] == 2
+    assert controller_dict["p"] == 10
+    assert controller_dict["x"] == 0
+    assert controller_dict["d"] == 0
+    assert controller_dict["n"] == 1
+    assert controller_dict["j"] == 10
+    
+    # Verify address is not included when None
+    assert "a" not in controller_dict
+
+
+def test_device_to_controller_dict_with_address():
+    """Test the Device.to_controller_dict method with an address field."""
+    
+    # Device with an address field
+    device = Device(
+        index=1,
+        chamber=2,
+        beer=3,
+        deviceFunction=5,
+        deviceHardware=2,
+        pinNr=10,
+        invert=0,
+        pio=1,
+        deactivate=0,
+        calibrationAdjust=10,
+        address=[28, 123, 456]
+    )
+    
+    controller_dict = device.to_controller_dict()
+    
+    # Verify address field is included
+    assert controller_dict["a"] == [28, 123, 456]
+
+
+def test_device_to_controller_dict_with_bool_values():
+    """Test the Device.to_controller_dict method with boolean values for invert and deactivate."""
+    
+    # Device with boolean values for invert and deactivate
+    device = Device(
+        index=1,
+        chamber=2,
+        beer=3,
+        deviceFunction=5,
+        deviceHardware=2,
+        pinNr=10,
+        invert=True,  # Boolean true
+        pio=1,
+        deactivate=False,  # Boolean false
+        calibrationAdjust=10
+    )
+    
+    controller_dict = device.to_controller_dict()
+    
+    # Verify boolean values are converted to integers
+    assert controller_dict["x"] == 1  # True -> 1
+    assert controller_dict["d"] == 0  # False -> 0

@@ -52,7 +52,7 @@ class DeviceHardware(int, Enum):
 class Device(BaseModel):
     """BrewPi device (sensor/actuator) matching the C++ DeviceDefinition struct."""
     
-    id: int = -1
+    index: int = -1
     chamber: int = 0
     beer: int = 0
     deviceFunction: int = 0
@@ -79,6 +79,56 @@ class Device(BaseModel):
             return DeviceHardware(self.deviceHardware)
         except ValueError:
             return DeviceHardware.DEVICE_HARDWARE_NONE
+
+    def __eq__(self, other: Any) -> bool:
+        """Check equality based on all attributes"""
+        if not isinstance(other, Device):
+            return False
+
+        # Interestingly, with the way that we treat devices, equality doesn't actually use all attributes. We don't
+        # check id/index, chamber, beer, or value, as all of these are subject to change on the controller itself,
+        # and we are seeking equality in the definition of the device, not its state.
+        return (
+            self.deviceFunction == other.deviceFunction and
+            self.deviceHardware == other.deviceHardware and
+            self.pinNr == other.pinNr and
+            self.invert == other.invert and
+            self.pio == other.pio and
+            self.deactivate == other.deactivate and
+            self.calibrationAdjust == other.calibrationAdjust and
+            self.address == other.address
+        )
+
+    def to_controller_dict(self) -> Dict[str, Union[int, List[int]]]:
+        """Convert to dictionary format expected by the controller."""
+
+        controller_dict = {
+            "i": self.index,
+            "c": self.chamber,
+            "b": self.beer,
+            "f": self.deviceFunction,
+            "h": self.deviceHardware,
+            "p": self.pinNr,
+            "x": self.invert,
+            "d": self.deactivate,
+            "n": self.pio,
+            "j": self.calibrationAdjust
+        }
+
+        # Arduinos don't accept "true" or "false" as booleans, so we need to convert them - if they are booleans - to 1 or 0
+        # This should only be invert and deactivate
+        if isinstance(self.invert, bool):
+            controller_dict["x"] = 1 if self.invert else 0
+        if isinstance(self.deactivate, bool):
+            controller_dict["d"] = 1 if self.deactivate else 0
+
+        # Conditionally add address here
+        if self.address is not None:
+            controller_dict["a"] = self.address
+
+        # TODO - Determine if we need to conditionally add pio and/or calibrationAdjust
+
+        return controller_dict
 
 
 class DeviceListItem(BaseModel):
@@ -257,7 +307,7 @@ class SerializedDevice(BaseModel):
     """Device for API serialization in the compact format expected by Fermentrack.
     
     These fields directly match the firmware JSON keys for DeviceDefinition:
-    i: index (id)
+    i: index
     c: chamber
     b: beer
     f: function
@@ -268,11 +318,10 @@ class SerializedDevice(BaseModel):
     a: address (optional)
     n: child_id or pio (optional)
     j: calibrateadjust (optional)
-    v: value (optional)
     w: write value (optional)
     """
     
-    i: int  # index (id) 
+    i: int  # index
     c: int  # chamber
     b: int  # beer
     f: int  # function
@@ -283,10 +332,8 @@ class SerializedDevice(BaseModel):
     a: Optional[List[int]] = None  # address (for OneWire devices)
     n: Optional[int] = None  # child_id or pio
     j: Optional[int] = None  # calibration adjust
-    r: Optional[str] = None  # alias (name/role)
-    
+
     # Runtime values that aren't part of the definition
-    v: Optional[float] = None  # sensor value
     w: Optional[int] = None  # write value for actuators
     
     class Config:
@@ -297,7 +344,7 @@ class SerializedDevice(BaseModel):
     def from_device(cls, device: Device) -> 'SerializedDevice':
         """Convert Device to SerializedDevice in the compact format that matches C++ implementation."""
         return cls(
-            i=device.id,
+            i=device.index,
             c=device.chamber,
             b=device.beer,
             f=device.deviceFunction,
@@ -307,9 +354,7 @@ class SerializedDevice(BaseModel):
             d=device.deactivate,
             a=device.address,
             n=device.pio,
-            j=device.calibrationAdjust,
-            r=f"Device {device.id}",  # Default name
-            v=device.value
+            j=device.calibrationAdjust
         )
 
 

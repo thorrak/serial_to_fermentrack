@@ -6,6 +6,7 @@ import time
 from typing import Dict, Any, Optional, Callable, List, Union, Tuple
 import serial
 from serial.tools import list_ports
+from .models import Device
 
 logger = logging.getLogger(__name__)
 
@@ -469,61 +470,30 @@ class SerialController:
         except SerialControllerError:
             raise
 
-    def set_device_list(self, devices: Dict[str, Any]) -> None:
+    def set_device_list(self, devices: List[Device]) -> None:
         """Set device list asynchronously.
 
         Args:
-            devices: Device list data with devices in compact format (i, c, b, f, h, p, etc.)
+            devices: List of Device objects to transmit
 
         Raises:
             SerialControllerError: If communication failed
         """
         try:
-            # The controller accepts only one device at a time
-            # So we need to send each device separately
-            if "devices" in devices and isinstance(devices["devices"], list):
-                device_count = len(devices["devices"])
-                for i, device in enumerate(devices["devices"], 1):
-                    logger.info(f"Setting device {i}/{device_count}")
-                    
-                    # Convert any boolean values to 0 or 1 integers
-                    device_copy = {}
-                    for key, value in device.items():
-                        if isinstance(value, bool):
-                            device_copy[key] = 1 if value else 0
-                        else:
-                            device_copy[key] = value
-                    
-                    # Format the command as 'U' followed by a single device in JSON
-                    # Manually construct the JSON string instead of using json.dumps
-                    # to ensure consistent formatting with successful test code
-                    device_str = '{'
-                    for idx, (key, val) in enumerate(device_copy.items()):
-                        if isinstance(val, str):
-                            device_str += f'"{key}": "{val}"'
-                        else:
-                            device_str += f'"{key}": {val}'
-                        
-                        # Add comma if not the last item
-                        if idx < len(device_copy) - 1:
-                            device_str += ', '
-                    device_str += '}'
-                    
-                    logger.info(f"Sending device update with command: U{device_str}")
-                    
-                    # Add a longer delay before sending the update command
-                    time.sleep(0.5)
-                    
-                    self._send_command(f"U{device_str}")
+            device_count = len(devices)
+            for i, device in enumerate(devices, 1):
+                # The controller accepts only one device at a time so we need to send each device separately
+                json_str = json.dumps(device.to_controller_dict())
 
-                    # Allow a longer delay between device updates (0.3 seconds instead of 0.1)
-                    # This gives the controller more time to process each update
-                    time.sleep(0.3)
-                    
-                logger.info(f"Successfully set all {device_count} devices")
-            else:
-                logger.error("Invalid device data format: expected dict with 'devices' list")
-                raise SerialControllerError("Invalid device data format")
+                logger.info(f"Updating device {i}/{device_count}  with command: U{json_str}")
+
+                self._send_command(f"U{json_str}")
+
+                # Allow a longer delay after device updates (additional 0.2 seconds)
+                # This gives the controller time to process each update (there are EEPROM writes, after all)
+                time.sleep(0.2)
+
+            logger.info(f"Successfully set all {device_count} devices")
         except SerialControllerError:
             # Re-raise any errors that weren't handled
             raise

@@ -328,6 +328,9 @@ class BrewPiController:
 
     def apply_device_config(self, devices_data: Dict[str, Any]) -> bool:
         """Apply device configuration to the controller.
+        
+        Only sends devices that have changed or are new compared to the 
+        existing device list, to minimize communication with the controller.
 
         Args:
             devices_data: Device configuration data with "devices" key
@@ -344,15 +347,15 @@ class BrewPiController:
                 logger.error("Invalid devices data: missing 'devices' key")
                 return False
 
-            # Create device objects
-            devices = []
+            # Parse and convert the incoming devices (which is a complete list)
+            new_devices = []
             for d in devices_data["devices"]:
                 # First create SerializedDevice which handles compact field names (i, c, b, f, h, etc.)
                 serialized = SerializedDevice(**d)
-                
+
                 # Then convert to Device with full field names
                 device = Device(
-                    id=serialized.i,
+                    index=serialized.i,
                     chamber=serialized.c,
                     beer=serialized.b,
                     deviceFunction=serialized.f,
@@ -362,18 +365,43 @@ class BrewPiController:
                     deactivate=serialized.d,
                     pio=serialized.n if serialized.n is not None else 0,
                     calibrationAdjust=serialized.j if serialized.j is not None else 0,
-                    address=serialized.a,
-                    value=serialized.v
+                    address=serialized.a
+                    # value removed since it's no longer in SerializedDevice
                 )
-                devices.append(device)
-
-            # Send devices to controller asynchronously
-            self.serial.set_device_list(devices_data)
-            self.serial.parse_responses(self)
-
-            # Update local state immediately (will be confirmed by response)
-            self.devices = devices
-
+                new_devices.append(device)
+            
+            # Identify devices that need to be sent (changed or new)
+            changed_devices = []
+            
+            # If we don't have existing devices, send all
+            if self.devices is None:
+                logger.debug("No existing devices, sending all devices")
+                changed_devices = new_devices
+            else:
+                for new_device in new_devices:
+                    device_exists = False
+                    for old_device in self.devices:
+                        if new_device == old_device:
+                            # The equality check checks for everything other than index, beer, chamber, and value, so
+                            # if the device function has changed, we will know
+                            device_exists = True
+                            break
+                    if not device_exists:
+                        # This is a new device, so add it
+                        logger.debug(f"New/Updated device found: {new_device}")
+                        changed_devices.append(new_device)
+            
+            # Only send if there are changes
+            if changed_devices:
+                logger.info(f"Sending {len(changed_devices)} of {len(devices_data['devices'])} devices that have changed")
+                self.serial.set_device_list(changed_devices)
+                self.serial.parse_responses(self)
+            else:
+                logger.info("No devices have changed, skipping update")
+            
+            # Update local state with all devices, even if we didn't send them all
+            self.devices = new_devices
+            
             return True
         except (SerialControllerError, ValueError) as e:
             logger.error(f"Failed to apply device configuration: {e}")

@@ -235,6 +235,7 @@ class BrewPiRest:
             # Get configuration from Fermentrack
             config_data = self.api_client.get_full_config()
 
+            # TODO - Only apply CS/CC/Devices if the specific flag was set when triggering the update
             # Apply to controller - using the new cs/cc key format
             if "cs" in config_data:
                 self.controller.apply_settings(config_data["cs"])
