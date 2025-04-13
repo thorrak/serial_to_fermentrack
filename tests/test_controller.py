@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 from bpr.controller.brewpi_controller import BrewPiController
 from bpr.controller.serial_controller import SerialControllerError
-from bpr.controller.models import ControllerMode, MessageStatus, Device
+from bpr.controller.models import ControllerMode, MessageStatus, Device, ControlSettings, ControlConstants
 
 
 @pytest.fixture
@@ -153,10 +153,11 @@ def test_brewpi_controller_get_full_config(mock_serial_controller):
         assert config == {"mock": "config"}
     
 
-def test_brewpi_controller_apply_settings(mock_serial_controller):
-    """Test apply_settings method."""
+def test_brewpi_controller_apply_settings_no_previous(mock_serial_controller):
+    """Test apply_settings method with no previous settings."""
     controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
     controller.connected = True
+    controller.control_settings = None  # Ensure no previous settings
     
     # Apply settings
     settings = {"mode": "b", "beerSet": 20.0}
@@ -165,9 +166,72 @@ def test_brewpi_controller_apply_settings(mock_serial_controller):
     # Check result
     assert result is True
     
-    # Check method calls - asynchronous with parse_responses
+    # With no previous settings, should send all settings
     mock_serial_controller.set_json_setting.assert_called_once_with(settings)
     mock_serial_controller.parse_responses.assert_called_once_with(controller)
+    
+    # Check that controller.control_settings was updated
+    assert controller.control_settings is not None
+    assert controller.control_settings.mode == "b"
+    assert controller.control_settings.beerSet == 20.0
+
+
+def test_brewpi_controller_apply_settings_with_changes(mock_serial_controller):
+    """Test apply_settings method with previous settings and changes."""
+    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+    controller.connected = True
+    
+    # Set up initial settings
+    initial_settings = {"mode": "b", "beerSet": 20.0, "fridgeSet": 18.0}
+    controller.control_settings = ControlSettings(**initial_settings)
+    
+    # Reset mock to clear any previous calls
+    mock_serial_controller.reset_mock()
+    
+    # Apply settings with changed values
+    new_settings = {"mode": "b", "beerSet": 21.0, "fridgeSet": 18.0}  # Only beerSet changed
+    result = controller.apply_settings(new_settings)
+    
+    # Check result
+    assert result is True
+    
+    # Should only send the changed settings
+    mock_serial_controller.set_json_setting.assert_called_once_with({"beerSet": 21.0})
+    mock_serial_controller.parse_responses.assert_called_once_with(controller)
+    
+    # Check that controller.control_settings was updated
+    assert controller.control_settings.mode == "b"
+    assert controller.control_settings.beerSet == 21.0
+    assert controller.control_settings.fridgeSet == 18.0
+
+
+def test_brewpi_controller_apply_settings_no_changes(mock_serial_controller):
+    """Test apply_settings method with previous settings but no changes."""
+    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+    controller.connected = True
+    
+    # Set up initial settings
+    initial_settings = {"mode": "b", "beerSet": 20.0, "fridgeSet": 18.0}
+    controller.control_settings = ControlSettings(**initial_settings)
+    
+    # Reset mock to clear any previous calls
+    mock_serial_controller.reset_mock()
+    
+    # Apply the same settings
+    new_settings = {"mode": "b", "beerSet": 20.0, "fridgeSet": 18.0}  # No changes
+    result = controller.apply_settings(new_settings)
+    
+    # Check result
+    assert result is True
+    
+    # Should not call set_json_setting since nothing changed
+    mock_serial_controller.set_json_setting.assert_not_called()
+    mock_serial_controller.parse_responses.assert_not_called()
+    
+    # Check that controller.control_settings was still updated (though values are the same)
+    assert controller.control_settings.mode == "b"
+    assert controller.control_settings.beerSet == 20.0
+    assert controller.control_settings.fridgeSet == 18.0
 
 
 def test_brewpi_controller_set_mode_and_temp_beer_mode(mock_serial_controller):
@@ -567,6 +631,119 @@ def test_brewpi_controller_process_updated_devices_message(mock_serial_controlle
     
     # Check that awaiting_devices_update flag is set
     assert controller.awaiting_devices_update
+
+
+def test_brewpi_controller_apply_constants_no_previous(mock_serial_controller):
+    """Test apply_constants method with no previous constants."""
+    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+    controller.connected = True
+    controller.control_constants = None  # Ensure no previous constants
+    
+    # Apply constants
+    constants = {
+        "tempFormat": "C",
+        "tempSetMin": 1.0,
+        "tempSetMax": 30.0,
+        "Kp": 5.0,
+        "Ki": 0.25
+    }
+    result = controller.apply_constants(constants)
+    
+    # Check result
+    assert result is True
+    
+    # With no previous constants, should send all constants
+    mock_serial_controller.set_json_setting.assert_called_once_with(constants)
+    mock_serial_controller.parse_responses.assert_called_once_with(controller)
+    
+    # Check that controller.control_constants was updated
+    assert controller.control_constants is not None
+    assert controller.control_constants.tempFormat == "C"
+    assert controller.control_constants.Kp == 5.0
+
+
+def test_brewpi_controller_apply_constants_with_changes(mock_serial_controller):
+    """Test apply_constants method with previous constants and changes."""
+    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+    controller.connected = True
+    
+    # Set up initial constants
+    initial_constants = {
+        "tempFormat": "C", 
+        "tempSetMin": 1.0, 
+        "tempSetMax": 30.0,
+        "Kp": 5.0,
+        "Ki": 0.25
+    }
+    controller.control_constants = ControlConstants(**initial_constants)
+    
+    # Reset mock to clear any previous calls
+    mock_serial_controller.reset_mock()
+    
+    # Apply constants with changed values
+    new_constants = {
+        "tempFormat": "C", 
+        "tempSetMin": 1.0, 
+        "tempSetMax": 35.0,  # Changed
+        "Kp": 6.0,  # Changed
+        "Ki": 0.25
+    }
+    result = controller.apply_constants(new_constants)
+    
+    # Check result
+    assert result is True
+    
+    # Should only send the changed constants
+    expected_changes = {"tempSetMax": 35.0, "Kp": 6.0}
+    mock_serial_controller.set_json_setting.assert_called_once_with(expected_changes)
+    mock_serial_controller.parse_responses.assert_called_once_with(controller)
+    
+    # Check that controller.control_constants was updated
+    assert controller.control_constants.tempFormat == "C"
+    assert controller.control_constants.tempSetMax == 35.0
+    assert controller.control_constants.Kp == 6.0
+    assert controller.control_constants.Ki == 0.25
+
+
+def test_brewpi_controller_apply_constants_no_changes(mock_serial_controller):
+    """Test apply_constants method with previous constants but no changes."""
+    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+    controller.connected = True
+    
+    # Set up initial constants
+    initial_constants = {
+        "tempFormat": "C", 
+        "tempSetMin": 1.0, 
+        "tempSetMax": 30.0,
+        "Kp": 5.0,
+        "Ki": 0.25
+    }
+    controller.control_constants = ControlConstants(**initial_constants)
+    
+    # Reset mock to clear any previous calls
+    mock_serial_controller.reset_mock()
+    
+    # Apply the same constants
+    new_constants = {
+        "tempFormat": "C", 
+        "tempSetMin": 1.0, 
+        "tempSetMax": 30.0,
+        "Kp": 5.0,
+        "Ki": 0.25
+    }
+    result = controller.apply_constants(new_constants)
+    
+    # Check result
+    assert result is True
+    
+    # Should not call set_json_setting since nothing changed
+    mock_serial_controller.set_json_setting.assert_not_called()
+    mock_serial_controller.parse_responses.assert_not_called()
+    
+    # Check that controller.control_constants was still updated (though values are the same)
+    assert controller.control_constants.tempFormat == "C"
+    assert controller.control_constants.tempSetMin == 1.0
+    assert controller.control_constants.tempSetMax == 30.0
 
 
 def test_brewpi_controller_apply_device_config(mock_serial_controller):

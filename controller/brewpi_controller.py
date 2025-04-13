@@ -210,6 +210,8 @@ class BrewPiController:
 
     def apply_settings(self, settings_data: Dict[str, Any]) -> bool:
         """Apply control settings to the controller.
+        
+        Only sends values that have changed since the last update to minimize communication.
 
         Args:
             settings_data: Control settings data
@@ -221,16 +223,45 @@ class BrewPiController:
             raise SerialControllerError("Not connected to controller")
 
         try:
-            # Create settings object
-            settings = ControlSettings(**settings_data)
-
-            # Send settings to controller asynchronously
-            self.serial.set_json_setting(settings_data)
-            self.serial.parse_responses(self)
-
-            # Update local state immediately (will be confirmed by response)
-            self.control_settings = settings
-
+            # Create settings object from new data
+            new_settings = ControlSettings(**settings_data)
+            
+            # Determine which values have changed
+            changed_values = {}
+            
+            # If we don't have existing settings, send all values
+            if self.control_settings is None:
+                logger.debug("No existing settings, sending all values")
+                changed_values = settings_data
+            else:
+                # Compare each field to find changed values
+                for field_name, new_value in settings_data.items():
+                    # Get current value if it exists
+                    if hasattr(self.control_settings, field_name):
+                        current_value = getattr(self.control_settings, field_name)
+                        
+                        # Check if the value has changed (handle different types appropriately)
+                        if isinstance(current_value, float) and isinstance(new_value, (int, float)):
+                            # For float comparisons, allow for small differences
+                            if abs(current_value - float(new_value)) > 0.0001:
+                                changed_values[field_name] = new_value
+                        elif current_value != new_value:
+                            changed_values[field_name] = new_value
+                    else:
+                        # If the field doesn't exist in current settings, it's new
+                        changed_values[field_name] = new_value
+            
+            # Only send if there are changes
+            if changed_values:
+                logger.debug(f"Sending changed settings: {changed_values}")
+                self.serial.set_json_setting(changed_values)
+                self.serial.parse_responses(self)
+            else:
+                logger.debug("No settings have changed, skipping update")
+            
+            # Update local state immediately with complete new settings
+            self.control_settings = new_settings
+            
             return True
         except (SerialControllerError, ValueError) as e:
             logger.error(f"Failed to apply settings: {e}")
@@ -238,6 +269,8 @@ class BrewPiController:
 
     def apply_constants(self, constants_data: Dict[str, Any]) -> bool:
         """Apply control constants to the controller.
+        
+        Only sends values that have changed since the last update to minimize communication.
 
         Args:
             constants_data: Control constants data
@@ -249,16 +282,45 @@ class BrewPiController:
             raise SerialControllerError("Not connected to controller")
 
         try:
-            # Create constants object
-            constants = ControlConstants(**constants_data)
-
-            # Send constants to controller asynchronously
-            self.serial.set_json_setting(constants_data)
-            self.serial.parse_responses(self)
-
-            # Update local state immediately (will be confirmed by response)
-            self.control_constants = constants
-
+            # Create constants object from new data
+            new_constants = ControlConstants(**constants_data)
+            
+            # Determine which values have changed
+            changed_values = {}
+            
+            # If we don't have existing constants, send all values
+            if self.control_constants is None:
+                logger.debug("No existing constants, sending all values")
+                changed_values = constants_data
+            else:
+                # Compare each field to find changed values
+                for field_name, new_value in constants_data.items():
+                    # Get current value if it exists
+                    if hasattr(self.control_constants, field_name):
+                        current_value = getattr(self.control_constants, field_name)
+                        
+                        # Check if the value has changed (handle different types appropriately)
+                        if isinstance(current_value, float) and isinstance(new_value, (int, float)):
+                            # For float comparisons, allow for small differences
+                            if abs(current_value - float(new_value)) > 0.0001:
+                                changed_values[field_name] = new_value
+                        elif current_value != new_value:
+                            changed_values[field_name] = new_value
+                    else:
+                        # If the field doesn't exist in current constants, it's new
+                        changed_values[field_name] = new_value
+            
+            # Only send if there are changes
+            if changed_values:
+                logger.debug(f"Sending changed constants: {changed_values}")
+                self.serial.set_json_setting(changed_values)
+                self.serial.parse_responses(self)
+            else:
+                logger.debug("No constants have changed, skipping update")
+            
+            # Update local state immediately with complete new constants
+            self.control_constants = new_constants
+            
             return True
         except (SerialControllerError, ValueError) as e:
             logger.error(f"Failed to apply constants: {e}")
