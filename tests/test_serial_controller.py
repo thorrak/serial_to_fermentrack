@@ -5,13 +5,13 @@ import json
 import time
 import serial
 from unittest.mock import MagicMock, patch
-from ..controller.serial_controller import SerialController, SerialControllerError
+from bpr.controller.serial_controller import SerialController, SerialControllerError
 
 
 @pytest.fixture
 def mock_serial():
     """Mock the serial connection."""
-    with patch('controller.serial_controller.serial.Serial') as mock_serial:
+    with patch('bpr.controller.serial_controller.serial.Serial') as mock_serial:
         # Configure the mock
         mock_instance = MagicMock()
         mock_instance.in_waiting = 0
@@ -494,3 +494,59 @@ def test_default_control_constants_not_connected():
 
     with pytest.raises(SerialControllerError):
         controller.default_control_constants()
+
+
+def test_set_device_list(mock_serial):
+    """Test setting device list with the 'U' command format."""
+    controller = SerialController('/dev/ttyUSB0')
+    controller.connect()
+
+    # Test data with compact field names as expected by the controller
+    devices_data = {
+        "devices": [
+            {"b": 0, "c": 1, "f": 3, "h": 1, "i": 0, "p": 5, "r": "Device -1", "x": 1},
+            {"b": 0, "c": 1, "f": 0, "h": 1, "i": -1, "p": 7, "r": "Device -1", "x": 0},
+            {"b": 0, "c": 1, "f": 0, "h": 1, "i": -1, "p": 11, "r": "Device -1", "x": 0}
+        ]
+    }
+
+    # Boolean value to test conversion
+    devices_data["devices"][1]["x"] = True
+
+    # Need to patch time.sleep to speed up test
+    with patch('bpr.controller.serial_controller.time.sleep'):
+        controller.set_device_list(devices_data)
+
+    # Verify correct number of write calls (one per device)
+    assert mock_serial.write.call_count == 3
+
+    # Parse the calls to verify format
+    call_args = [call[0][0].decode('utf-8') for call in mock_serial.write.call_args_list]
+
+    # Verify first device command format (U + JSON)
+    first_cmd = call_args[0]
+    assert first_cmd.startswith('U')
+    assert '"b": 0' in first_cmd  # beer 0
+    assert '"c": 1' in first_cmd  # chamber 1
+    assert '"f": 3' in first_cmd  # function 3
+    assert '"h": 1' in first_cmd  # hardware 1
+    assert '"i": 0' in first_cmd  # id 0
+    assert '"p": 5' in first_cmd  # pin 5
+    assert '"x": 1' in first_cmd  # invert 1
+
+    # Verify second device (with boolean conversion)
+    second_cmd = call_args[1]
+    assert second_cmd.startswith('U')
+    assert '"x": 1' in second_cmd  # invert True converted to 1
+
+
+def test_set_device_list_invalid_data(mock_serial):
+    """Test setting device list with invalid data format."""
+    controller = SerialController('/dev/ttyUSB0')
+    controller.connect()
+
+    # Test invalid data (missing "devices" key)
+    invalid_data = {"invalid_key": []}
+
+    with pytest.raises(SerialControllerError):
+        controller.set_device_list(invalid_data)

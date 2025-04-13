@@ -2,15 +2,15 @@
 
 import pytest
 from unittest.mock import MagicMock, patch
-from controller.brewpi_controller import BrewPiController
-from controller.serial_controller import SerialControllerError
-from controller.models import ControllerMode, MessageStatus, Device
+from bpr.controller.brewpi_controller import BrewPiController
+from bpr.controller.serial_controller import SerialControllerError
+from bpr.controller.models import ControllerMode, MessageStatus, Device
 
 
 @pytest.fixture
 def mock_serial_controller():
     """Create a mock serial controller."""
-    with patch("controller.brewpi_controller.SerialController") as mock:
+    with patch("bpr.controller.brewpi_controller.SerialController") as mock:
         # Set up the mock controller
         mock_instance = MagicMock()
         # Mock the serial connection to always return True
@@ -395,7 +395,7 @@ def test_brewpi_controller_process_reset_eeprom_message(mock_serial_controller):
     # Since this calls _refresh_controller_state and has a sleep,
     # we need to patch those
     with patch.object(BrewPiController, '_refresh_controller_state') as mock_refresh, \
-         patch('controller.brewpi_controller.time.sleep') as mock_sleep:
+         patch('bpr.controller.brewpi_controller.time.sleep') as mock_sleep:
         
         controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
         controller.connected = True
@@ -420,8 +420,8 @@ def test_brewpi_controller_process_restart_device_message(mock_serial_controller
     
     This test doesn't actually test the exit(0) call since that would terminate the test process.
     We'll patch the exit function to verify it's called."""
-    with patch('controller.brewpi_controller.time.sleep') as mock_sleep, \
-         patch('controller.brewpi_controller.exit') as mock_exit:
+    with patch('bpr.controller.brewpi_controller.time.sleep') as mock_sleep, \
+         patch('bpr.controller.brewpi_controller.exit') as mock_exit:
         
         controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
         controller.connected = True
@@ -450,7 +450,7 @@ def test_brewpi_controller_process_default_control_settings_message(mock_serial_
     # Since this calls _refresh_controller_state and has a sleep,
     # we need to patch those
     with patch.object(BrewPiController, '_refresh_controller_state') as mock_refresh, \
-         patch('controller.brewpi_controller.time.sleep') as mock_sleep:
+         patch('bpr.controller.brewpi_controller.time.sleep') as mock_sleep:
         
         controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
         controller.connected = True
@@ -475,7 +475,7 @@ def test_brewpi_controller_process_default_control_constants_message(mock_serial
     # Since this calls _refresh_controller_state and has a sleep,
     # we need to patch those
     with patch.object(BrewPiController, '_refresh_controller_state') as mock_refresh, \
-         patch('controller.brewpi_controller.time.sleep') as mock_sleep:
+         patch('bpr.controller.brewpi_controller.time.sleep') as mock_sleep:
         
         controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
         controller.connected = True
@@ -567,3 +567,61 @@ def test_brewpi_controller_process_updated_devices_message(mock_serial_controlle
     
     # Check that awaiting_devices_update flag is set
     assert controller.awaiting_devices_update
+
+
+def test_brewpi_controller_apply_device_config(mock_serial_controller):
+    """Test apply_device_config method with compact field names."""
+    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+    controller.connected = True
+    
+    # Test data with compact field names
+    devices_data = {
+        "devices": [
+            {"b": 0, "c": 1, "f": 3, "h": 1, "i": 0, "p": 5, "r": "Device -1", "x": 1},
+            {"b": 0, "c": 1, "f": 0, "h": 1, "i": -1, "p": 7, "r": "Device -1", "x": 0}
+        ]
+    }
+    
+    # Apply device config
+    result = controller.apply_device_config(devices_data)
+    
+    # Check result
+    assert result is True
+    
+    # Check method calls
+    mock_serial_controller.set_device_list.assert_called_once_with(devices_data)
+    mock_serial_controller.parse_responses.assert_called_once_with(controller)
+    
+    # Check that devices list was created correctly
+    assert len(controller.devices) == 2
+    
+    # Verify the first device has the correct attributes
+    first_device = controller.devices[0]
+    assert first_device.id == 0
+    assert first_device.chamber == 1
+    assert first_device.beer == 0
+    assert first_device.deviceFunction == 3  # Most important - previously not mapping correctly
+    assert first_device.deviceHardware == 1
+    assert first_device.pinNr == 5
+    assert first_device.invert == 1
+    
+    # Verify the second device
+    second_device = controller.devices[1]
+    assert second_device.id == -1
+    assert second_device.deviceFunction == 0
+
+
+def test_brewpi_controller_apply_device_config_error(mock_serial_controller):
+    """Test apply_device_config method with errors."""
+    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+    controller.connected = True
+    
+    # Test missing devices key
+    invalid_data = {"invalid_key": []}
+    result = controller.apply_device_config(invalid_data)
+    assert result is False
+    
+    # Test with not connected
+    controller.connected = False
+    with pytest.raises(SerialControllerError):
+        controller.apply_device_config({"devices": []})
