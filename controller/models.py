@@ -142,40 +142,6 @@ class Device(BaseModel):
         return device
 
 
-class DeviceListItem(BaseModel):
-    """Item in the device list response from controller using the exact JSON keys.
-    
-    As defined in DeviceDefinitionKeys namespace in the firmware:
-    - i: index
-    - c: chamber
-    - b: beer
-    - f: function
-    - h: hardware
-    - p: pin
-    - x: invert
-    - d: deactivated
-    - a: address (optional)
-    - n: child_id or pio (optional)
-    - j: calibrateadjust (optional)
-    """
-    
-    i: int  # index (id)
-    c: int  # chamber
-    b: int  # beer
-    f: int  # function
-    h: int  # hardware
-    p: int  # pin
-    x: int = 0  # invert
-    d: int = 0  # deactivated
-    a: Optional[str] = None  # address (optional)
-    n: Optional[int] = None  # child_id or pio (optional)
-    j: Optional[int] = None  # calibrateadjust (optional)
-    
-    # Additional fields not part of the core definition
-    v: Optional[float] = None  # value (for sensors)
-    w: Optional[int] = None  # write value (for actuators)
-
-
 class ControlSettings(BaseModel):
     """Controller settings.
     
