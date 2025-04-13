@@ -1,0 +1,25 @@
+[run]
+source = .
+omit = 
+    */tests/*
+    */test_*.py
+    */__pycache__/*
+    */venv/*
+    setup.py
+    debug_serial.py
+    debug_update_command.py
+    test_device.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    pass
+    raise ImportError
+    except ImportError
+
+[html]
+directory = htmlcov
+title = BPR Coverage Report
