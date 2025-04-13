@@ -62,7 +62,7 @@ class Device(BaseModel):
     pio: int = 0
     deactivate: int = 0
     calibrationAdjust: int = 0
-    address: Optional[List[int]] = None
+    address: Optional[str] = None
     value: Optional[float] = None  # Not in the C++ struct
 
     def __eq__(self, other: Any) -> bool:
@@ -84,7 +84,7 @@ class Device(BaseModel):
             self.address == other.address
         )
 
-    def to_controller_dict(self) -> Dict[str, Union[int, List[int]]]:
+    def to_controller_dict(self) -> Dict[str, Union[int, str]]:
         """Convert to dictionary format expected by the controller."""
 
         controller_dict = {
@@ -167,7 +167,7 @@ class DeviceListItem(BaseModel):
     p: int  # pin
     x: int = 0  # invert
     d: int = 0  # deactivated
-    a: Optional[List[int]] = None  # address (optional)
+    a: Optional[str] = None  # address (optional)
     n: Optional[int] = None  # child_id or pio (optional)
     j: Optional[int] = None  # calibrateadjust (optional)
     

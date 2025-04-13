@@ -974,7 +974,7 @@ def test_device_equality():
         pio=1,
         deactivate=0,
         calibrationAdjust=0,
-        address=[28, 123],
+        address="28:A1:B2:C3:D4",  # String address
         value=20.5  # Different - not used in equality check
     )
     
@@ -989,7 +989,7 @@ def test_device_equality():
         pio=1,  # Same
         deactivate=0,  # Same
         calibrationAdjust=0,  # Same
-        address=[28, 123],  # Same
+        address="28:A1:B2:C3:D4",  # Same
         value=99.9  # Different - not used in equality check
     )
     
@@ -1005,7 +1005,7 @@ def test_device_equality():
         pio=1,
         deactivate=0,
         calibrationAdjust=0,
-        address=[28, 123],
+        address="28:A1:B2:C3:D4",  # String address
         value=20.5
     )
     
@@ -1028,7 +1028,7 @@ def test_device_equality():
         pio=1,
         deactivate=0,
         calibrationAdjust=0,
-        address=None,  # Different
+        address=None,  # None instead of string
         value=20.5
     )
     
@@ -1043,7 +1043,7 @@ def test_device_equality():
         pio=1,
         deactivate=0,
         calibrationAdjust=0,
-        address=None,  # Different
+        address=None,  # None instead of string
         value=20.5
     )
     
@@ -1120,13 +1120,13 @@ def test_device_to_controller_dict_with_address():
         pio=1,
         deactivate=0,
         calibrationAdjust=10,
-        address=[28, 123, 456]
+        address="28:A1:B2:C3:D4"  # String address
     )
     
     controller_dict = device.to_controller_dict()
     
     # Verify address field is included
-    assert controller_dict["a"] == [28, 123, 456]
+    assert controller_dict["a"] == "28:A1:B2:C3:D4"
 
 
 def test_device_to_controller_dict_with_bool_values():
@@ -1301,13 +1301,13 @@ def test_device_from_controller_dict_with_address():
         "d": 0,
         "n": 1,
         "j": 10,
-        "a": [28, 123, 456]
+        "a": "28:A1:B2:C3:D4"  # String address
     }
     
     device = Device.from_controller_dict(controller_dict)
     
     # Verify address field is mapped correctly
-    assert device.address == [28, 123, 456]
+    assert device.address == "28:A1:B2:C3:D4"
 
 
 def test_device_from_controller_dict_with_value():
@@ -1375,7 +1375,7 @@ def test_device_round_trip_conversion():
         deactivate=0,
         pio=1,
         calibrationAdjust=10,
-        address=[28, 123, 456],
+        address="28:A1:B2:C3:D4",  # String address
         value=21.5
     )
     
