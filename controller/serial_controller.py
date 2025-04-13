@@ -493,7 +493,6 @@ class SerialController:
                 # This gives the controller time to process each update (there are EEPROM writes, after all)
                 time.sleep(0.2)
 
-            logger.info(f"Successfully set all {device_count} devices")
         except SerialControllerError:
             # Re-raise any errors that weren't handled
             raise

@@ -122,7 +122,7 @@ class BrewPiController:
         return status
 
     def get_full_config(self) -> Dict[str, Any]:
-        """Get full controller configuration formatted for Fermentrack.
+        """Get full controller configuration from the device, and format to be sent to Fermentrack
 
         Returns:
             Dictionary with full controller configuration in Fermentrack expected format (cs, cc, devices)
@@ -132,18 +132,13 @@ class BrewPiController:
 
         # Refresh state to ensure latest data
         self._refresh_controller_state()
-        
-        # Convert devices to serialized format
-        serialized_devices = []
-        if self.devices:
-            serialized_devices = [SerializedDevice.from_device(d) for d in self.devices]
-            
+
         # Format data in the structure expected by Fermentrack
         # No need to use FullConfig since we're directly returning the dictionary format
         config = {
             "cs": self.control_settings.dict(by_alias=True) if self.control_settings else {},
             "cc": self.control_constants.dict(by_alias=True) if self.control_constants else {},
-            "devices": [device.dict(by_alias=True, exclude_none=True) for device in serialized_devices]
+            "devices": [device.to_controller_dict() for device in self.devices],
         }
         
         return config
@@ -377,7 +372,7 @@ class BrewPiController:
             
             # Only send if there are changes
             if changed_devices:
-                logger.info(f"Sending {len(changed_devices)} of {len(devices_data['devices'])} devices that have changed")
+                logger.info(f"Sending {len(changed_devices)} changed devices of {len(devices_data['devices'])} total devices received")
                 self.serial.set_device_list(changed_devices)
                 self.serial.parse_responses(self)
             else:

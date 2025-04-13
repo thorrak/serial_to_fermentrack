@@ -205,7 +205,7 @@ class BrewPiRest:
             return False
 
     def update_full_config(self) -> bool:
-        """Update full controller configuration to Fermentrack.
+        """Update full controller configuration and send to Fermentrack.
 
         Returns:
             True if update was successful
@@ -235,16 +235,24 @@ class BrewPiRest:
             # Get configuration from Fermentrack
             config_data = self.api_client.get_full_config()
 
-            # TODO - Only apply CS/CC/Devices if the specific flag was set when triggering the update
             # Apply to controller - using the new cs/cc key format
-            if "cs" in config_data:
-                self.controller.apply_settings(config_data["cs"])
+            if self.controller.awaiting_settings_update:
+                if "cs" in config_data:
+                    self.controller.apply_settings(config_data["cs"])
+                else:
+                    logger.error("Settings update requested, but no control settings (cs) found in configuration data from Fermentrack")
 
-            if "cc" in config_data:
-                self.controller.apply_constants(config_data["cc"])
+            if self.controller.awaiting_constants_update:
+                if "cc" in config_data:
+                    self.controller.apply_constants(config_data["cc"])
+                else:
+                    logger.error("Constants update requested, but no control constants (cc) found in configuration data from Fermentrack")
 
-            if "devices" in config_data:
-                self.controller.apply_device_config({"devices": config_data["devices"]})
+            if self.controller.awaiting_devices_update:
+                if "devices" in config_data:
+                    self.controller.apply_device_config({"devices": config_data["devices"]})
+                else:
+                    logger.error("Devices update requested, but no devices found in configuration data from Fermentrack")
 
             return True
 
@@ -293,8 +301,10 @@ class BrewPiRest:
                     self.controller.awaiting_settings_update = False
                     self.controller.awaiting_constants_update = False
                     self.controller.awaiting_devices_update = False
-                    
-                    if not config_success:
+
+                    if config_success:
+                        self.controller.awaiting_config_push = True  # Presuming we updated something above, we need to tell Fermentrack
+                    else:
                         logger.error("Failed to get updated configuration from Fermentrack")
                 
                 # Check if we need to push full config to Fermentrack

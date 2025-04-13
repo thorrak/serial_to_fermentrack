@@ -328,67 +328,11 @@ class MessageStatus(BaseModel):
         """Pydantic configuration."""
         populate_by_name = True
 
-
-class SerializedDevice(BaseModel):
-    """Device for API serialization in the compact format expected by Fermentrack.
-    
-    These fields directly match the firmware JSON keys for DeviceDefinition:
-    i: index
-    c: chamber
-    b: beer
-    f: function
-    h: hardware
-    p: pin
-    x: invert
-    d: deactivated
-    a: address (optional)
-    n: child_id or pio (optional)
-    j: calibrateadjust (optional)
-    w: write value (optional)
-    """
-    
-    i: int  # index
-    c: int  # chamber
-    b: int  # beer
-    f: int  # function
-    h: int  # hardware type
-    p: int  # pin
-    x: int = 0  # invert
-    d: int = 0  # deactivated
-    a: Optional[List[int]] = None  # address (for OneWire devices)
-    n: Optional[int] = None  # child_id or pio
-    j: Optional[int] = None  # calibration adjust
-
-    # Runtime values that aren't part of the definition
-    w: Optional[int] = None  # write value for actuators
-    
-    class Config:
-        """Pydantic configuration."""
-        populate_by_name = True
-
-    @classmethod
-    def from_device(cls, device: Device) -> 'SerializedDevice':
-        """Convert Device to SerializedDevice in the compact format that matches C++ implementation."""
-        return cls(
-            i=device.index,
-            c=device.chamber,
-            b=device.beer,
-            f=device.deviceFunction,
-            h=device.deviceHardware,
-            p=device.pinNr,
-            x=device.invert,
-            d=device.deactivate,
-            a=device.address,
-            n=device.pio,
-            j=device.calibrationAdjust
-        )
-
-
 class FullConfig(BaseModel):
     """Full controller configuration in Fermentrack format."""
     
     cs: ControlSettings  # Control settings
     cc: ControlConstants  # Control constants
-    devices: List[SerializedDevice]  # Device list
+    devices: List[dict]  # Serialized device list
     deviceID: str  # Device ID from Fermentrack
     apiKey: str  # API key from Fermentrack
