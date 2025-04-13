@@ -438,6 +438,11 @@ class BrewPiController:
                 except json.JSONDecodeError as e:
                     logger.error(f"Invalid JSON in LCD response: {e}, response: {response}")
                     return False
+                    
+            # Handle device update response (starts with U:)
+            elif response.startswith('U:'):
+                logger.info(f"Device updated to: {response}")
+                return True
 
             # Handle settings response (starts with S:)
             elif response.startswith('S:'):
