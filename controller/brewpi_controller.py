@@ -283,7 +283,27 @@ class BrewPiController:
                 return False
 
             # Create device objects
-            devices = [Device(**d) for d in devices_data["devices"]]
+            devices = []
+            for d in devices_data["devices"]:
+                # First create SerializedDevice which handles compact field names (i, c, b, f, h, etc.)
+                serialized = SerializedDevice(**d)
+                
+                # Then convert to Device with full field names
+                device = Device(
+                    id=serialized.i,
+                    chamber=serialized.c,
+                    beer=serialized.b,
+                    deviceFunction=serialized.f,
+                    deviceHardware=serialized.h,
+                    pinNr=serialized.p,
+                    invert=serialized.x,
+                    deactivate=serialized.d,
+                    pio=serialized.n if serialized.n is not None else 0,
+                    calibrationAdjust=serialized.j if serialized.j is not None else 0,
+                    address=serialized.a,
+                    value=serialized.v
+                )
+                devices.append(device)
 
             # Send devices to controller asynchronously
             self.serial.set_device_list(devices_data)

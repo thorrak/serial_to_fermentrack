@@ -129,14 +129,16 @@ class SerialController:
             raise SerialControllerError("Not connected to controller")
 
         try:
+            time.sleep(0.1)
+            
             # Convert command to bytes and add newline
-            cmd_bytes = (command + '\n').encode('utf-8')
+            cmd_bytes = (command + '\n').encode('cp437', errors='ignore')
 
             # Send command
             self.serial_conn.write(cmd_bytes)
             self.serial_conn.flush()
         except (serial.SerialException, OSError) as e:
-            error_msg = f"Serial communication error: {e}"
+            error_msg = f"Serial communication error: {e} while sending command {command}"
             logger.error(error_msg)
             # This is the send command method
             if "Device not configured" in str(e):
@@ -458,7 +460,9 @@ class SerialController:
             SerialControllerError: If communication failed
         """
         try:
-            self._send_json_command("setControlConstants", constants)
+            # TODO - Fix this
+            # self._send_json_command("setControlConstants", constants)
+            pass
         except SerialControllerError:
             raise
 
@@ -477,12 +481,57 @@ class SerialController:
         """Set device list asynchronously.
 
         Args:
-            devices: Device list data
+            devices: Device list data with devices in compact format (i, c, b, f, h, p, etc.)
 
         Raises:
             SerialControllerError: If communication failed
         """
         try:
-            self._send_json_command("setDeviceList", devices)
+            # The controller accepts only one device at a time
+            # So we need to send each device separately
+            if "devices" in devices and isinstance(devices["devices"], list):
+                device_count = len(devices["devices"])
+                for i, device in enumerate(devices["devices"], 1):
+                    logger.info(f"Setting device {i}/{device_count}")
+                    
+                    # Convert any boolean values to 0 or 1 integers
+                    device_copy = {}
+                    for key, value in device.items():
+                        if isinstance(value, bool):
+                            device_copy[key] = 1 if value else 0
+                        else:
+                            device_copy[key] = value
+                    
+                    # Format the command as 'U' followed by a single device in JSON
+                    # Manually construct the JSON string instead of using json.dumps
+                    # to ensure consistent formatting with successful test code
+                    device_str = '{'
+                    for idx, (key, val) in enumerate(device_copy.items()):
+                        if isinstance(val, str):
+                            device_str += f'"{key}": "{val}"'
+                        else:
+                            device_str += f'"{key}": {val}'
+                        
+                        # Add comma if not the last item
+                        if idx < len(device_copy) - 1:
+                            device_str += ', '
+                    device_str += '}'
+                    
+                    logger.info(f"Sending device update with command: U{device_str}")
+                    
+                    # Add a longer delay before sending the update command
+                    time.sleep(0.5)
+                    
+                    self._send_command(f"U{device_str}")
+
+                    # Allow a longer delay between device updates (0.3 seconds instead of 0.1)
+                    # This gives the controller more time to process each update
+                    time.sleep(0.3)
+                    
+                logger.info(f"Successfully set all {device_count} devices")
+            else:
+                logger.error("Invalid device data format: expected dict with 'devices' list")
+                raise SerialControllerError("Invalid device data format")
         except SerialControllerError:
+            # Re-raise any errors that weren't handled
             raise

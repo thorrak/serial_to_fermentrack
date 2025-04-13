@@ -150,7 +150,8 @@ class BrewPiRest:
                 logger.critical("Device disconnected. Exiting application in 5 seconds...")
                 time.sleep(5)
                 sys.exit(1)
-                
+            time.sleep(5)
+
             return False
 
     def _process_status_response(self, response: Dict[str, Any]) -> None:
