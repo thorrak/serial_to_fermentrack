@@ -501,21 +501,17 @@ def test_set_device_list(mock_serial):
     controller = SerialController('/dev/ttyUSB0')
     controller.connect()
 
-    # Test data with compact field names as expected by the controller
-    devices_data = {
-        "devices": [
-            {"b": 0, "c": 1, "f": 3, "h": 1, "i": 0, "p": 5, "r": "Device -1", "x": 1},
-            {"b": 0, "c": 1, "f": 0, "h": 1, "i": -1, "p": 7, "r": "Device -1", "x": 0},
-            {"b": 0, "c": 1, "f": 0, "h": 1, "i": -1, "p": 11, "r": "Device -1", "x": 0}
-        ]
-    }
-
-    # Boolean value to test conversion
-    devices_data["devices"][1]["x"] = True
+    # Create a list of Device objects
+    from bpr.controller.models import Device
+    devices = [
+        Device(index=0, chamber=1, beer=0, deviceFunction=3, deviceHardware=1, pinNr=5, invert=1),
+        Device(index=-1, chamber=1, beer=0, deviceFunction=0, deviceHardware=1, pinNr=7, invert=True),  # Boolean invert
+        Device(index=-1, chamber=1, beer=0, deviceFunction=0, deviceHardware=1, pinNr=11, invert=0)
+    ]
 
     # Need to patch time.sleep to speed up test
     with patch('bpr.controller.serial_controller.time.sleep'):
-        controller.set_device_list(devices_data)
+        controller.set_device_list(devices)
 
     # Verify correct number of write calls (one per device)
     assert mock_serial.write.call_count == 3
@@ -530,7 +526,7 @@ def test_set_device_list(mock_serial):
     assert '"c": 1' in first_cmd  # chamber 1
     assert '"f": 3' in first_cmd  # function 3
     assert '"h": 1' in first_cmd  # hardware 1
-    assert '"i": 0' in first_cmd  # id 0
+    assert '"i": 0' in first_cmd  # id/index 0
     assert '"p": 5' in first_cmd  # pin 5
     assert '"x": 1' in first_cmd  # invert 1
 
@@ -545,10 +541,10 @@ def test_set_device_list_invalid_data(mock_serial):
     controller = SerialController('/dev/ttyUSB0')
     controller.connect()
 
-    # Test invalid data (missing "devices" key)
-    invalid_data = {"invalid_key": []}
+    # Test with non-device object in the list
+    invalid_data = ["not a device", "also not a device"]
 
-    with pytest.raises(SerialControllerError):
+    with pytest.raises(AttributeError):
         controller.set_device_list(invalid_data)
 
 

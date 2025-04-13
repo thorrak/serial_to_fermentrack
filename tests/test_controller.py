@@ -423,6 +423,13 @@ def test_brewpi_controller_parse_response(mock_serial_controller):
     short_response = 'T'
     result = controller.parse_response(short_response)
     assert result is False
+    
+    # Test device update response
+    device_update_response = 'U:{"c":1,"b":0,"f":2,"h":1,"p":7,"x":true,"d":false,"r":"Cool","I":1}'
+    with patch('bpr.controller.brewpi_controller.logger') as mock_logger:
+        result = controller.parse_response(device_update_response)
+        assert result is True
+        mock_logger.info.assert_called_once_with(f"Device updated to: {device_update_response}")
 
 
 def test_brewpi_controller_process_messages(mock_serial_controller):
