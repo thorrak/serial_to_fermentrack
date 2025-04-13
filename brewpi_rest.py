@@ -289,8 +289,8 @@ class BrewPiRest:
                 #     self.check_messages()
 
                 # Check if it's time to update full configuration
-                # if current_time - self.last_full_config_update >= FULL_CONFIG_UPDATE_INTERVAL:
-                #     self.controller.awaiting_config_push = True  # Trigger a full config update
+                if current_time - self.last_full_config_update >= FULL_CONFIG_UPDATE_INTERVAL:
+                    self.controller.awaiting_config_push = True  # Trigger a full config update
 
                 # Check if we need to fetch updated configuration
                 if self.controller.awaiting_settings_update or  self.controller.awaiting_constants_update or self.controller.awaiting_devices_update:
