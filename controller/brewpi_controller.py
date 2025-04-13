@@ -347,11 +347,12 @@ class BrewPiController:
             for d in devices_data["devices"]:
                 # Convert directly from controller dict format to Device object
                 device = Device.from_controller_dict(d)
+                device.fix_pin_nr(self.devices)
                 new_devices.append(device)
             
             # Identify devices that need to be sent (changed or new)
             changed_devices = []
-            
+
             # If we don't have existing devices, send all
             if self.devices is None:
                 logger.debug("No existing devices, sending all devices")
@@ -359,15 +360,23 @@ class BrewPiController:
             else:
                 for new_device in new_devices:
                     device_exists = False
+                    related_device = None
                     for old_device in self.devices:
                         if new_device == old_device:
                             # The equality check checks for everything other than index, beer, chamber, and value, so
                             # if the device function has changed, we will know
                             device_exists = True
                             break
+                        if new_device.unique_hw_identifier == old_device.unique_hw_identifier:
+                            # This is a device that we can see in the list of legacy devices, but which has changed.
+                            related_device = old_device
                     if not device_exists:
-                        # This is a new device, so add it
-                        logger.debug(f"New/Updated device found: {new_device}")
+                        # This is a new/updated device, so add it
+                        logger.debug(f"New/Updated device found: {json.dumps(new_device.to_controller_dict())}")
+                        if related_device is not None:
+                            logger.debug(f"Changed from: {json.dumps(related_device.to_controller_dict())}")
+                        else:
+                            logger.warning("No existing/related device found (which is strange, since we should have detected it before!)")
                         changed_devices.append(new_device)
             
             # Only send if there are changes

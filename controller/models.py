@@ -1,8 +1,11 @@
 """Data models for BrewPi controller."""
 
+import logging
 from enum import Enum
 from typing import Dict, Any, Optional, List, Union
 from pydantic import BaseModel, Field, validator
+
+logger = logging.getLogger(__name__)
 
 
 class ControllerMode(str, Enum):
@@ -140,6 +143,58 @@ class Device(BaseModel):
             value=controller_dict.get("v")
         )
         return device
+
+    @property
+    def unique_hw_identifier(self) -> str:
+        """String which can be used to uniquely identify this (hardware) device
+        """
+
+        # The unique identifier depends in part on what kind of hardware we're dealing with. For example, a relay pin
+        # is identified by its pin number, while a 1-wire device is identified by its address.
+        if self.deviceHardware == DeviceHardware.DEVICE_HARDWARE_ONEWIRE_TEMP:
+            return f"OW_Temp_{self.address}"
+        elif self.deviceHardware == DeviceHardware.DEVICE_HARDWARE_ONEWIRE_2413:
+            # I highly doubt anyone actually uses these, but if they do, we'll support them here.
+            return f"OW_2413_{self.address}"
+        elif self.deviceHardware == DeviceHardware.DEVICE_HARDWARE_PIN:
+            return f"HW_Pin_{self.pinNr}"
+        elif self.deviceHardware == DeviceHardware.DEVICE_HARDWARE_BLUETOOTH_INKBIRD:
+            # For Bluetooth devices, we can use the address as a unique identifier
+            return f"BT_Inkbird_{self.address}"
+        elif self.deviceHardware == DeviceHardware.DEVICE_HARDWARE_BLUETOOTH_TILT:
+            # For Bluetooth Tilt devices, we can use the address as a unique identifier
+            return f"BT_Tilt_{self.address}"
+        else:
+            return f"Unknown_HW{self.deviceHardware}_Addr_{self.address}_Pin_{self.pinNr}"
+
+
+    def fix_pin_nr(self, existing_device_list: List['Device']) -> None:
+        """Fix the pin number for this device if it is a OneWire device. Fermentrack does not send pins for OneWire
+        devices, but legacy BrewPi firmware requires it. This function searches a list of existing devices (as received
+        from the controller, rather than Fermentrack) for an appropriate matching hardware device, and sets the pin
+        number from that device.
+
+        If this is called on a non-OneWire device, it does nothing.
+
+        Args:
+            existing_device_list: List of existing devices to check against
+        """
+        if self.deviceHardware != DeviceHardware.DEVICE_HARDWARE_ONEWIRE_2413 and self.deviceHardware != DeviceHardware.DEVICE_HARDWARE_ONEWIRE_TEMP:
+            # Just return if this is not a OneWire device
+            return
+
+        if self.pinNr != 0:
+            # If the pin number is already set, don't change it
+            return
+
+        # Otherwise, find the device that matches this device's unique hardware identifier
+        for existing_device in existing_device_list:
+            if existing_device.unique_hw_identifier == self.unique_hw_identifier:
+                # Set this device's pin number to the existing device's pin number
+                self.pinNr = existing_device.pinNr
+                return
+        # If we didn't find a matching device, just leave the pin number as 0, but log an error
+        logger.error(f"Could not find pin number for OneWire device {self.unique_hw_identifier} in existing device list")
 
 
 class ControlSettings(BaseModel):

@@ -4,7 +4,10 @@ import pytest
 from unittest.mock import MagicMock, patch
 from bpr.controller.brewpi_controller import BrewPiController
 from bpr.controller.serial_controller import SerialControllerError
-from bpr.controller.models import ControllerMode, MessageStatus, Device, ControlSettings, ControlConstants
+from bpr.controller.models import (
+    ControllerMode, MessageStatus, Device, ControlSettings, ControlConstants,
+    DeviceHardware, DeviceFunction
+)
 
 
 @pytest.fixture
@@ -767,11 +770,18 @@ def test_brewpi_controller_apply_device_config_no_previous(mock_serial_controlle
         ]
     }
     
-    # Apply device config
-    result = controller.apply_device_config(devices_data)
-    
-    # Check result
-    assert result is True
+    # Mock fix_pin_nr to verify it gets called
+    with patch('bpr.controller.models.Device.fix_pin_nr') as mock_fix_pin_nr:
+        # Apply device config
+        result = controller.apply_device_config(devices_data)
+        
+        # Check result
+        assert result is True
+        
+        # Verify fix_pin_nr was called for each device, but with None since there are no previous devices
+        assert mock_fix_pin_nr.call_count == 2
+        for call in mock_fix_pin_nr.call_args_list:
+            assert call[0][0] is None
     
     # With no previous devices, should send all devices
     # Check that set_device_list was called with a list of Device objects
@@ -838,11 +848,18 @@ def test_brewpi_controller_apply_device_config_with_changes(mock_serial_controll
         ]
     }
     
-    # Apply device config
-    result = controller.apply_device_config(devices_data)
-    
-    # Check result
-    assert result is True
+    # Mock fix_pin_nr to verify it gets called
+    with patch('bpr.controller.models.Device.fix_pin_nr') as mock_fix_pin_nr:
+        # Apply device config
+        result = controller.apply_device_config(devices_data)
+        
+        # Check result
+        assert result is True
+        
+        # Verify fix_pin_nr was called for each device with the correct existing devices list
+        assert mock_fix_pin_nr.call_count == 2
+        for call in mock_fix_pin_nr.call_args_list:
+            assert call[0][0] == initial_devices
     
     # Verify set_device_list was called once with a list containing only the changed device
     mock_serial_controller.set_device_list.assert_called_once()
@@ -892,11 +909,18 @@ def test_brewpi_controller_apply_device_config_new_device(mock_serial_controller
         ]
     }
     
-    # Apply device config
-    result = controller.apply_device_config(devices_data)
-    
-    # Check result
-    assert result is True
+    # Mock fix_pin_nr to verify it gets called
+    with patch('bpr.controller.models.Device.fix_pin_nr') as mock_fix_pin_nr:
+        # Apply device config
+        result = controller.apply_device_config(devices_data)
+        
+        # Check result
+        assert result is True
+        
+        # Verify fix_pin_nr was called for each device with the correct existing devices list
+        assert mock_fix_pin_nr.call_count == 2
+        for call in mock_fix_pin_nr.call_args_list:
+            assert call[0][0] == initial_devices
     
     # Verify set_device_list was called once with a list containing only the new device
     mock_serial_controller.set_device_list.assert_called_once()
@@ -944,11 +968,18 @@ def test_brewpi_controller_apply_device_config_no_changes(mock_serial_controller
         ]
     }
     
-    # Apply device config
-    result = controller.apply_device_config(devices_data)
-    
-    # Check result
-    assert result is True
+    # Mock fix_pin_nr to verify it gets called
+    with patch('bpr.controller.models.Device.fix_pin_nr') as mock_fix_pin_nr:
+        # Apply device config
+        result = controller.apply_device_config(devices_data)
+        
+        # Check result
+        assert result is True
+        
+        # Verify fix_pin_nr was called for each device with the correct existing devices list
+        assert mock_fix_pin_nr.call_count == 2
+        for call in mock_fix_pin_nr.call_args_list:
+            assert call[0][0] == initial_devices
     
     # Should not call set_device_list since nothing changed
     mock_serial_controller.set_device_list.assert_not_called()
@@ -1059,15 +1090,98 @@ def test_brewpi_controller_apply_device_config_error(mock_serial_controller):
     controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
     controller.connected = True
     
-    # Test missing devices key
-    invalid_data = {"invalid_key": []}
-    result = controller.apply_device_config(invalid_data)
-    assert result is False
+    # Mock fix_pin_nr to ensure it's not called when there's an error
+    with patch('bpr.controller.models.Device.fix_pin_nr') as mock_fix_pin_nr:
+        # Test missing devices key
+        invalid_data = {"invalid_key": []}
+        result = controller.apply_device_config(invalid_data)
+        assert result is False
+        
+        # Verify fix_pin_nr was not called since the data is invalid
+        mock_fix_pin_nr.assert_not_called()
     
     # Test with not connected
     controller.connected = False
     with pytest.raises(SerialControllerError):
         controller.apply_device_config({"devices": []})
+
+
+def test_brewpi_controller_apply_device_config_with_onewire_pin_fix(mock_serial_controller):
+    """Test that apply_device_config fixes pin numbers for OneWire devices.
+    
+    This test demonstrates the integration between apply_device_config and fix_pin_nr,
+    by showing how a OneWire device with pin=0 gets its pin number set from existing devices.
+    """
+    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+    controller.connected = True
+    
+    # Set up existing devices including a OneWire temp sensor with pin 9
+    initial_devices = [
+        Device(
+            index=0, 
+            chamber=1, 
+            beer=0, 
+            deviceFunction=DeviceFunction.DEVICE_CHAMBER_TEMP,  # Chamber temp 
+            deviceHardware=DeviceHardware.DEVICE_HARDWARE_ONEWIRE_TEMP,  # OneWire temp
+            pinNr=9,  # This is the pin we want to adopt
+            address="28:A1:B2:C3:D4",
+            invert=0
+        ),
+        Device(
+            index=1,
+            chamber=1,
+            beer=0,
+            deviceFunction=DeviceFunction.DEVICE_CHAMBER_HEAT,  # Heater
+            deviceHardware=DeviceHardware.DEVICE_HARDWARE_PIN,  # Regular pin
+            pinNr=5,
+            invert=0
+        )
+    ]
+    controller.devices = initial_devices
+    
+    # Reset mock to clear any previous calls
+    mock_serial_controller.reset_mock()
+    
+    # New devices data from Fermentrack with pin=0 for the OneWire device (Fermentrack doesn't set pins)
+    devices_data = {
+        "devices": [
+            {
+                "b": 0, 
+                "c": 1, 
+                "f": DeviceFunction.DEVICE_CHAMBER_TEMP,  # Chamber temp
+                "h": DeviceHardware.DEVICE_HARDWARE_ONEWIRE_TEMP,  # OneWire temp
+                "i": 0, 
+                "p": 0,  # Pin number missing
+                "a": "28:A1:B2:C3:D4",  # Same address as existing device
+                "x": 0
+            },
+            {
+                "b": 0, 
+                "c": 1, 
+                "f": DeviceFunction.DEVICE_CHAMBER_HEAT,  # Heater
+                "h": DeviceHardware.DEVICE_HARDWARE_PIN,  # Regular pin
+                "i": 1, 
+                "p": 5,  # Pin present
+                "x": 0
+            }
+        ]
+    }
+    
+    # Don't patch fix_pin_nr - we want to test the actual implementation
+    result = controller.apply_device_config(devices_data)
+    
+    # Check result
+    assert result is True
+    
+    # Verify the OneWire device got its pin number fixed (should be 9 from existing device)
+    assert controller.devices[0].pinNr == 9, "OneWire device should have pin number 9 from existing device"
+    
+    # Regular pin device should have its original pin number
+    assert controller.devices[1].pinNr == 5, "Regular pin device should keep its original pin number"
+    
+    # Verify no devices were sent to the controller since nothing functional changed
+    mock_serial_controller.set_device_list.assert_not_called()
+    mock_serial_controller.parse_responses.assert_not_called()
 
 
 def test_device_to_controller_dict():
@@ -1401,3 +1515,131 @@ def test_device_round_trip_conversion():
     # Note: value won't be preserved in the round trip because to_controller_dict() doesn't include it
     # The value field is for runtime state, not device definition
     assert round_trip_device.value is None
+    
+    
+def test_device_unique_hw_identifier():
+    """Test the Device.unique_hw_identifier property."""
+    
+    # Test OneWire temperature sensor
+    device1 = Device(
+        deviceHardware=2,  # DEVICE_HARDWARE_ONEWIRE_TEMP
+        address="28:A1:B2:C3:D4"
+    )
+    assert device1.unique_hw_identifier == "OW_Temp_28:A1:B2:C3:D4"
+    
+    # Test OneWire 2413 device
+    device2 = Device(
+        deviceHardware=3,  # DEVICE_HARDWARE_ONEWIRE_2413
+        address="DS2413_01"
+    )
+    assert device2.unique_hw_identifier == "OW_2413_DS2413_01"
+    
+    # Test hardware pin
+    device3 = Device(
+        deviceHardware=1,  # DEVICE_HARDWARE_PIN
+        pinNr=10
+    )
+    assert device3.unique_hw_identifier == "HW_Pin_10"
+    
+    # Test Bluetooth Inkbird
+    device4 = Device(
+        deviceHardware=5,  # DEVICE_HARDWARE_BLUETOOTH_INKBIRD
+        address="00:11:22:33:44:55"
+    )
+    assert device4.unique_hw_identifier == "BT_Inkbird_00:11:22:33:44:55"
+    
+    # Test Bluetooth Tilt
+    device5 = Device(
+        deviceHardware=6,  # DEVICE_HARDWARE_BLUETOOTH_TILT
+        address="Tilt_Red"
+    )
+    assert device5.unique_hw_identifier == "BT_Tilt_Tilt_Red"
+    
+    # Test unknown hardware type
+    device6 = Device(
+        deviceHardware=999,  # Unknown hardware type
+        address="unknown_addr",
+        pinNr=42
+    )
+    assert device6.unique_hw_identifier == "Unknown_HW999_Addr_unknown_addr_Pin_42"
+    
+    # Test with missing address
+    device7 = Device(
+        deviceHardware=6,  # DEVICE_HARDWARE_BLUETOOTH_TILT
+        address=None
+    )
+    assert device7.unique_hw_identifier == "BT_Tilt_None"
+
+
+def test_device_fix_pin_nr():
+    """Test the Device.fix_pin_nr method."""
+    
+    # Create a list of existing devices
+    existing_devices = [
+        # OneWire temperature sensor with pin 9
+        Device(
+            deviceHardware=2,  # DEVICE_HARDWARE_ONEWIRE_TEMP
+            address="28:A1:B2:C3:D4",
+            pinNr=9
+        ),
+        # OneWire 2413 device with pin 10
+        Device(
+            deviceHardware=3,  # DEVICE_HARDWARE_ONEWIRE_2413
+            address="DS2413_01",
+            pinNr=10
+        ),
+        # Hardware pin device
+        Device(
+            deviceHardware=1,  # DEVICE_HARDWARE_PIN
+            pinNr=7
+        )
+    ]
+    
+    # Test Case 1: OneWire temperature sensor with missing pin
+    device1 = Device(
+        deviceHardware=2,  # DEVICE_HARDWARE_ONEWIRE_TEMP
+        address="28:A1:B2:C3:D4",
+        pinNr=0  # Missing pin number
+    )
+    device1.fix_pin_nr(existing_devices)
+    assert device1.pinNr == 9, "Pin number should be updated from existing device"
+    
+    # Test Case 2: OneWire 2413 device with missing pin
+    device2 = Device(
+        deviceHardware=3,  # DEVICE_HARDWARE_ONEWIRE_2413
+        address="DS2413_01",
+        pinNr=0  # Missing pin number
+    )
+    device2.fix_pin_nr(existing_devices)
+    assert device2.pinNr == 10, "Pin number should be updated from existing device"
+    
+    # Test Case 3: OneWire device with pin already set
+    device3 = Device(
+        deviceHardware=2,  # DEVICE_HARDWARE_ONEWIRE_TEMP
+        address="28:A1:B2:C3:D4",
+        pinNr=5  # Pin number already set
+    )
+    device3.fix_pin_nr(existing_devices)
+    assert device3.pinNr == 5, "Pin number should not change if already set"
+    
+    # Test Case 4: Non-OneWire device (pin should not change)
+    device4 = Device(
+        deviceHardware=1,  # DEVICE_HARDWARE_PIN
+        pinNr=0  # Even though pin is 0, it should not change as it's not a OneWire device
+    )
+    device4.fix_pin_nr(existing_devices)
+    assert device4.pinNr == 0, "Pin number should not change for non-OneWire devices"
+    
+    # Test Case 5: OneWire device not found in existing list
+    device5 = Device(
+        deviceHardware=2,  # DEVICE_HARDWARE_ONEWIRE_TEMP
+        address="28:FF:FF:FF:FF",  # Address not in existing devices
+        pinNr=0
+    )
+    with patch('bpr.controller.models.logger') as mock_logger:
+        device5.fix_pin_nr(existing_devices)
+        # Pin should remain 0
+        assert device5.pinNr == 0, "Pin number should remain 0 if device not found"
+        # Logger should have recorded an error
+        mock_logger.error.assert_called_once()
+        assert "Could not find pin number" in mock_logger.error.call_args[0][0]
