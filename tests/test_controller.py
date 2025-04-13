@@ -166,7 +166,7 @@ def test_brewpi_controller_apply_settings(mock_serial_controller):
     assert result is True
     
     # Check method calls - asynchronous with parse_responses
-    mock_serial_controller.set_control_settings.assert_called_once_with(settings)
+    mock_serial_controller.set_json_setting.assert_called_once_with(settings)
     mock_serial_controller.parse_responses.assert_called_once_with(controller)
 
 

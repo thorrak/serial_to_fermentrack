@@ -436,35 +436,27 @@ class SerialController:
         except SerialControllerError:
             raise
 
-    def set_control_settings(self, settings: Dict[str, Any]) -> None:
-        """Set control settings asynchronously.
+    def set_json_setting(self, data: Dict[str, Any]) -> None:
+        """Set JSON settings directly using the 'j' command format.
+        
+        This is the standard way to send settings to the controller.
+        It replaces the old set_control_settings and set_control_constants methods.
 
         Args:
-            settings: Control settings data
+            data: Dictionary of settings to send to the controller
 
         Raises:
             SerialControllerError: If communication failed
         """
         try:
-            self._send_json_command("setControlSettings", settings)
+            # Convert dict to JSON string and send with 'j' prefix
+            json_str = json.dumps(data)
+            self._send_command(f"j{json_str}")
         except SerialControllerError:
             raise
-
-    def set_control_constants(self, constants: Dict[str, Any]) -> None:
-        """Set control constants asynchronously.
-
-        Args:
-            constants: Control constants data
-
-        Raises:
-            SerialControllerError: If communication failed
-        """
-        try:
-            # TODO - Fix this
-            # self._send_json_command("setControlConstants", constants)
-            pass
-        except SerialControllerError:
-            raise
+        except Exception as e:
+            logger.error(f"Error setting JSON setting: {e}")
+            raise SerialControllerError(f"Error setting JSON setting: {e}")
 
     def request_device_list(self):
         """Request device list.

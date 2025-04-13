@@ -550,3 +550,36 @@ def test_set_device_list_invalid_data(mock_serial):
 
     with pytest.raises(SerialControllerError):
         controller.set_device_list(invalid_data)
+
+
+def test_set_json_setting(mock_serial):
+    """Test setting JSON settings directly."""
+    controller = SerialController('/dev/ttyUSB0')
+    controller.connect()
+    
+    # Test data for settings
+    settings_data = {
+        "mode": "b", 
+        "beerSet": 20.5, 
+        "fridgeSet": 18.5
+    }
+    
+    controller.set_json_setting(settings_data)
+    
+    # Check that the command was sent with the correct format
+    mock_serial.write.assert_called_once()
+    call_args = mock_serial.write.call_args[0][0].decode('utf-8')
+    assert call_args.startswith('j')
+    assert '"mode":"b"' in call_args.replace(' ', '')
+    assert '"beerSet":20.5' in call_args.replace(' ', '')
+    assert '"fridgeSet":18.5' in call_args.replace(' ', '')
+
+
+def test_set_json_setting_not_connected():
+    """Test setting JSON settings when not connected."""
+    controller = SerialController('/dev/ttyUSB0')
+    
+    settings_data = {"mode": "b", "beerSet": 20.5}
+    
+    with pytest.raises(SerialControllerError):
+        controller.set_json_setting(settings_data)

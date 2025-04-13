@@ -225,7 +225,7 @@ class BrewPiController:
             settings = ControlSettings(**settings_data)
 
             # Send settings to controller asynchronously
-            self.serial.set_control_settings(settings_data)
+            self.serial.set_json_setting(settings_data)
             self.serial.parse_responses(self)
 
             # Update local state immediately (will be confirmed by response)
@@ -253,7 +253,7 @@ class BrewPiController:
             constants = ControlConstants(**constants_data)
 
             # Send constants to controller asynchronously
-            self.serial.set_control_constants(constants_data)
+            self.serial.set_json_setting(constants_data)
             self.serial.parse_responses(self)
 
             # Update local state immediately (will be confirmed by response)
