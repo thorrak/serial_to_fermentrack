@@ -82,17 +82,17 @@ class BrewPiController:
         try:
             # Request all controller state data
             self.serial.request_settings()
-            self.serial.parse_responses(self)
-
+            self.serial.request_temperatures()
             self.serial.request_lcd()
-            self.serial.parse_responses(self)
-
-            self.serial.request_control_constants()
             time.sleep(0.2)
             self.serial.parse_responses(self)
 
-            self.serial.request_device_list()
+            self.serial.request_control_constants()
             time.sleep(0.3)
+            self.serial.parse_responses(self)
+
+            self.serial.request_device_list()
+            time.sleep(0.6)  # Enumerating the device list takes longer
             self.serial.parse_responses(self)
 
         except SerialControllerError as e:
@@ -110,20 +110,19 @@ class BrewPiController:
         # Request fresh LCD & temperature data
         self.serial.request_temperatures()
         self.serial.request_lcd()
-        time.sleep(0.1)  # Allow time for data to be received
+        time.sleep(0.5)  # Allow time for data to be received
         self.serial.parse_responses(self)
 
         # Build status object using latest temperature data stored in self.temperature_data
         # Use the simplified structure that matches the C++ implementation
-        temp_format = "C"  # Default to Celsius
-        if self.control_constants and hasattr(self.control_constants, "temp_format"):
-            temp_format = self.control_constants.temp_format
+        # TODO - If not self.control_constants or not self.control_settings, raise an error (we need to wait for control settings & constants to be retrieved)
+        temp_format = self.control_constants.tempFormat
 
         status = ControllerStatus(
             lcd=self.lcd_content,
             temps=self.temperature_data,
             temp_format=temp_format,
-            mode=self.control_settings.mode if self.control_settings else "o"
+            mode=self.control_settings.mode
         )
 
         return status

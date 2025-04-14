@@ -6,7 +6,7 @@ from bpr.controller.brewpi_controller import BrewPiController
 from bpr.controller.serial_controller import SerialControllerError
 from bpr.controller.models import (
     ControllerMode, MessageStatus, Device, ControlSettings, ControlConstants,
-    DeviceHardware, DeviceFunction
+    DeviceHardware, DeviceFunction, ControllerStatus
 )
 
 
@@ -90,6 +90,9 @@ def test_brewpi_controller_get_status(mock_serial_controller):
         controller.control_settings.fridgeSet = 18.0
         controller.control_settings.heat_estimator = 0.0
         controller.control_settings.cool_estimator = 0.5
+        # Add control constants (needed for tempFormat)
+        controller.control_constants = MagicMock()
+        controller.control_constants.tempFormat = "C"
         # Now using a list for lcd_content instead of a dictionary
         controller.lcd_content = [
             "Line 1",
@@ -355,6 +358,78 @@ def test_brewpi_controller_set_mode_and_temp_invalid_input(mock_serial_controlle
         controller.set_mode_and_temp('x', 20.0)
 
 
+def test_controller_status_with_special_temps():
+    """Test ControllerStatus model with special values in temps dictionary.
+    
+    This test verifies that:
+    - 'FridgeAnn' and 'BeerAnn' keys can have string values
+    - 'State' key can have an integer value
+    - Other keys have float or None values
+    """
+    # Create a ControllerStatus with valid values for special keys
+    status = ControllerStatus(
+        lcd=["Line 1", "Line 2", "Line 3", "Line 4"],
+        temps={
+            "beerTemp": 20.5,     # Float value
+            "beerSet": 20.0,      # Float value
+            "fridgeTemp": 18.2,   # Float value
+            "fridgeSet": 18.0,    # Float value
+            "RoomTemp": None,     # None value
+            "FridgeAnn": "Some fridge annotation",  # Valid string for FridgeAnn
+            "BeerAnn": "Some beer annotation",      # Valid string for BeerAnn
+            "State": 3                              # Valid integer for State
+        },
+        temp_format="C",
+        mode="b"
+    )
+    
+    # Verify all values are correctly stored
+    assert status.temps["beerTemp"] == 20.5
+    assert status.temps["beerSet"] == 20.0
+    assert status.temps["fridgeTemp"] == 18.2
+    assert status.temps["fridgeSet"] == 18.0
+    assert status.temps["RoomTemp"] is None
+    assert status.temps["FridgeAnn"] == "Some fridge annotation"
+    assert status.temps["BeerAnn"] == "Some beer annotation"
+    assert status.temps["State"] == 3
+    
+    
+def test_controller_status_invalid_values():
+    """Test ControllerStatus validation rejects invalid values for special keys."""
+    
+    # Test 1: String value for non-string key
+    with pytest.raises(ValueError) as exc_info:
+        status = ControllerStatus(
+            lcd=["Line 1", "Line 2", "Line 3", "Line 4"],
+            temps={
+                "beerTemp": "--.-",  # String value not allowed for this key
+                "beerSet": 20.0,
+                "fridgeTemp": 18.2
+            },
+            temp_format="C",
+            mode="b"
+        )
+    
+    # Verify the error message
+    assert "String values are only allowed for 'FridgeAnn' and 'BeerAnn' keys" in str(exc_info.value)
+    
+    # Test 2: Another invalid string key
+    with pytest.raises(ValueError) as exc_info:
+        status = ControllerStatus(
+            lcd=["Line 1", "Line 2", "Line 3", "Line 4"],
+            temps={
+                "beerTemp": 20.5,
+                "fridgeTemp": "not valid",  # String value not allowed for this key
+                "FridgeAnn": "This is valid"  # This one is valid
+            },
+            temp_format="C",
+            mode="b"
+        )
+    
+    # Verify the error message
+    assert "String values are only allowed for 'FridgeAnn' and 'BeerAnn' keys" in str(exc_info.value)
+
+
 def test_brewpi_controller_parse_response(mock_serial_controller):
     """Test parse_response method."""
     controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
@@ -375,6 +450,21 @@ def test_brewpi_controller_parse_response(mock_serial_controller):
         "fridgeTemp": 18.2,
         "fridgeSet": 18.0,
         "RoomTemp": 22.1
+    }
+    
+    # Test temperature response with string annotations and State integer (bugfix test)
+    temp_response_with_annotations = 'T:{"beerTemp":20.5,"beerSet":20.0,"fridgeTemp":18.2,"fridgeSet":18.0,"RoomTemp":22.1,"BeerAnn":"Fermenting","FridgeAnn":"Cooling","State":3}'
+    result = controller.parse_response(temp_response_with_annotations)
+    assert result is True
+    assert controller.temperature_data == {
+        "beerTemp": 20.5,
+        "beerSet": 20.0,
+        "fridgeTemp": 18.2,
+        "fridgeSet": 18.0,
+        "RoomTemp": 22.1,
+        "BeerAnn": "Fermenting",
+        "FridgeAnn": "Cooling",
+        "State": 3
     }
     
     # Test LCD response - now expecting a list instead of a dictionary

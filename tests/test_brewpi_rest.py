@@ -511,19 +511,21 @@ def test_brewpi_rest_run(app, mock_controller, mock_api_client):
     app.check_configuration()
     
     # Mock the Signal module to avoid actual signal registration
-    with patch('signal.signal'):
-        # Use a side effect to set running to False after first call to update_status
+    with patch('signal.signal'), patch('time.sleep'):
+        # Use a side effect to set running to False after first call to update_full_config
         def stop_after_update(*args, **kwargs):
             app.running = False
             return True
         
-        app.update_status = MagicMock(side_effect=stop_after_update)
-        
+        app.update_full_config = MagicMock(side_effect=stop_after_update)
+        app.get_updated_config = MagicMock(return_value=True)
+        app.update_status = MagicMock(return_value=True)
+
         # Run app (will stop after first update)
         app.run()
         
         # Check that update_status was called
-        app.update_status.assert_called_once()
+        app.update_full_config.assert_called_once()
 
 
 def test_brewpi_rest_run_with_config_updates(app, mock_controller, mock_api_client):
@@ -536,20 +538,20 @@ def test_brewpi_rest_run_with_config_updates(app, mock_controller, mock_api_clie
     mock_controller.awaiting_constants_update = True
     mock_controller.awaiting_devices_update = True
     mock_controller.awaiting_config_push = True
-    
+
+    # Use a side effect to set running to False after processing updates
+    def stop_after_processing(*args, **kwargs):
+        app.running = False
+        return True
+
     # Mock the methods that should be called
     app.get_updated_config = MagicMock(return_value=True)
-    app.update_full_config = MagicMock(return_value=True)
+    # Add side effect to update_full_config to stop after one loop (this is a terrible way of doing this)
+    app.update_full_config = MagicMock(return_value=True, side_effect=stop_after_processing)
+    app.update_status = MagicMock(return_value=True)
     
     # Mock the Signal module to avoid actual signal registration
     with patch('signal.signal'), patch('time.sleep'):
-        # Use a side effect to set running to False after processing updates
-        def stop_after_processing(*args, **kwargs):
-            app.running = False
-            return True
-        
-        # Mock update_status to trigger exit after one loop
-        app.update_status = MagicMock(side_effect=stop_after_processing)
         
         # Run app (will stop after processing updates)
         app.run()
@@ -582,13 +584,15 @@ def test_brewpi_rest_run_error_handling(app, mock_controller, mock_api_client):
             app.running = False
             return True
         
-        app.update_status = MagicMock(side_effect=update_with_error)
-        
+        app.update_full_config = MagicMock(side_effect=update_with_error)
+        app.get_updated_config = MagicMock(return_value=True)
+        app.update_status = MagicMock(return_value=True)
+
         # Run app (will continue after error and stop on second call)
         app.run()
         
-        # Check that update_status was called and sleep was called after error
-        assert app.update_status.call_count == 2
+        # Check that update_full_config was called and sleep was called after error
+        assert app.update_full_config.call_count == 2
         # Sleep should be called with 5 (seconds) after error
         mock_sleep.assert_any_call(5)
 

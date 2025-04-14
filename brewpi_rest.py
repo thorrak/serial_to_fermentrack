@@ -40,9 +40,9 @@ class BrewPiRest:
         self.running = False
         self.controller = None
         self.api_client = None
-        self.last_status_update = 0
+        self.last_status_update = time.time() - (STATUS_UPDATE_INTERVAL - 5)  # Trigger the initial update after 5 secs
         self.last_message_check = 0
-        self.last_full_config_update = 0
+        self.last_full_config_update = 0  # Trigger the initial config update immediately
 
     def setup(self) -> bool:
         """Set up controller and API client.
@@ -173,7 +173,7 @@ class BrewPiRest:
             new_setpoint = None
 
         if new_mode or new_setpoint:
-            logger.info(f"Mode update from Fermentrack: {new_mode}")
+            logger.info(f"Mode update from Fermentrack: mode {new_mode} at {new_setpoint}")
             self.controller.set_mode_and_temp(new_mode, new_setpoint)
 
 
@@ -317,8 +317,6 @@ class BrewPiRest:
                     if not config_update_success:
                         logger.info(f"Retrying full config push in {FULL_CONFIG_RETRY} seconds")
                         self.last_full_config_update = time.time() - FULL_CONFIG_UPDATE_INTERVAL + FULL_CONFIG_RETRY
-
-
 
                 # Sleep to avoid CPU hogging
                 time.sleep(1)

@@ -303,11 +303,40 @@ class ControllerStatus(BaseModel):
     
     Note: The lcd field is a list of strings, as it's received directly from the controller.
     Each string represents a line on the LCD display.
+    
+    The temps dictionary can contain:
+    - Regular temperature values as Optional[float]
+    - String values for "FridgeAnn" and "BeerAnn" keys only
+    - Integer value for "State" key
     """
     lcd: List[str]  # LCD content as a list of strings (one per line)
-    temps: Dict[str, Optional[float]]  # Temperature readings
+    temps: Dict[str, Optional[Union[float, str, int]]]  # Temperature readings
     temp_format: str  # Temperature format (C or F)
     mode: str  # Controller mode
+    
+    @validator('temps')
+    def validate_temps(cls, temps):
+        """
+        Validate temps dictionary values:
+        - "FridgeAnn" and "BeerAnn" keys can have string values
+        - "State" key can have an integer value
+        - All other keys must be either float or None
+        """
+        for key, value in temps.items():
+            # Skip None values
+            if value is None:
+                continue
+                
+            # If it's a string, ensure it's only for allowed keys
+            if isinstance(value, str):
+                if key not in ["FridgeAnn", "BeerAnn"]:
+                    raise ValueError(f"String values are only allowed for 'FridgeAnn' and 'BeerAnn' keys, not '{key}'")
+
+            # If it's not a string or None, it must be an int or float
+            elif not isinstance(value, int) and not isinstance(value, float):
+                raise ValueError(f"Value for key '{key}' must be float, string (for allowed keys), int (for State), or None")
+                
+        return temps
 
 
 class MessageStatus(BaseModel):
