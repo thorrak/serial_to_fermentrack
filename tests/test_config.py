@@ -104,14 +104,19 @@ def test_serial_port_no_match(mock_config_files, mock_comports):
         port.hwid = port.hwid.replace("LOCATION=1-1", "LOCATION=9-9")
         port.hwid = port.hwid.replace("LOCATION=1-2", "LOCATION=9-9")
 
-    with patch("serial.tools.list_ports.comports", return_value=mock_comports):
-        config = Config("1-1")
+    # Mock time.sleep to avoid actual waiting in tests
+    with patch("time.sleep") as mock_sleep:
+        with patch("serial.tools.list_ports.comports", return_value=mock_comports):
+            config = Config("1-1")
 
-        # Should raise ValueError because no ports match location 1-1
-        with pytest.raises(ValueError) as exc_info:
-            serial_port = config.SERIAL_PORT
+            # Should raise ValueError because no ports match location 1-1
+            with pytest.raises(ValueError) as exc_info:
+                serial_port = config.SERIAL_PORT
 
-        assert "No device found with exact location match" in str(exc_info.value)
+            assert "No device found with exact location match" in str(exc_info.value)
+            
+            # Verify that sleep was called with 5 seconds
+            mock_sleep.assert_called_once_with(5)
 
 
 def test_device_field_ignored(mock_comports):

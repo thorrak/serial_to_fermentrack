@@ -3,6 +3,7 @@
 import json
 import os
 import sys
+import time
 import logging
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -204,6 +205,11 @@ class Config:
         # If no matching device is found, log all available ports and raise an error
         available_ports = [f"{p.device} ({p.description}, {p.hwid})" for p in all_ports]
         logger.error(f"No device found with exact location match '{location}'. Available ports: {available_ports}")
+        
+        # Add a 5-second delay before exiting to give the user time to read the error message
+        logger.error(f"Waiting 5 seconds before exiting...")
+        time.sleep(5)
+        
         raise ValueError(f"No device found with exact location match '{location}'.")
 
     @property
