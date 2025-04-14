@@ -82,10 +82,17 @@ class BrewPiController:
         try:
             # Request all controller state data
             self.serial.request_settings()
+            self.serial.parse_responses(self)
+
             self.serial.request_lcd()
+            self.serial.parse_responses(self)
+
             self.serial.request_control_constants()
+            time.sleep(0.2)
+            self.serial.parse_responses(self)
+
             self.serial.request_device_list()
-            time.sleep(0.1)
+            time.sleep(0.3)
             self.serial.parse_responses(self)
 
         except SerialControllerError as e:

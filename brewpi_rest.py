@@ -22,6 +22,7 @@ logger = None  # Will be initialized in main() after config is loaded
 # Configuration Constants
 STATUS_UPDATE_INTERVAL = 30  # seconds, includes updating status & LCD
 FULL_CONFIG_UPDATE_INTERVAL = 300  # seconds
+FULL_CONFIG_RETRY = 30 # seconds, time to wait after a full config update failed to reattempt
 
 class BrewPiRest:
     """BrewPi REST application.
@@ -290,6 +291,7 @@ class BrewPiRest:
 
                 # Check if it's time to update full configuration
                 if current_time - self.last_full_config_update >= FULL_CONFIG_UPDATE_INTERVAL:
+                    logger.info("Triggering periodic send of full config to Fermentrack")
                     self.controller.awaiting_config_push = True  # Trigger a full config update
 
                 # Check if we need to fetch updated configuration
@@ -309,7 +311,14 @@ class BrewPiRest:
                 
                 # Check if we need to push full config to Fermentrack
                 if self.controller.awaiting_config_push:
-                    self.update_full_config()
+                    config_update_success = self.update_full_config()
+
+                    # If this failed, we need to reattempt in FULL_CONFIG_RETRY seconds. We'll hijack last_full_config_update to do this
+                    if not config_update_success:
+                        logger.info(f"Retrying full config push in {FULL_CONFIG_RETRY} seconds")
+                        self.last_full_config_update = time.time() - FULL_CONFIG_UPDATE_INTERVAL + FULL_CONFIG_RETRY
+
+
 
                 # Sleep to avoid CPU hogging
                 time.sleep(1)
