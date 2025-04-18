@@ -6,11 +6,12 @@ import sys
 import time
 import logging
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Tuple
 
 # Base directory
 BASE_DIR = Path(__file__).resolve().parent.parent
 CONFIG_DIR = BASE_DIR / "config"
+SYSTEM_CONFIG_DIR = Path("/etc/fermentrack/serial")
 DATA_DIR = BASE_DIR / "data"
 LOG_DIR = BASE_DIR / "log"
 
@@ -20,107 +21,154 @@ logger = logging.getLogger(__name__)
 class Config:
     """Configuration manager for Serial-to-Fermentrack."""
 
-    def __init__(self, location: Optional[str] = None):
+    def __init__(self, location: Optional[str] = None, use_system_config: bool = False, use_local_config: bool = False):
         """Initialize configuration.
 
         Args:
             location: Device location identifier (e.g. '1-1')
+            use_system_config: Only use system configuration directory
+            use_local_config: Only use local configuration directory
         """
         self.location = location
         self.app_config = {}
         self.device_config = {}
+        self.use_system_config = use_system_config
+        self.use_local_config = use_local_config
+        
+        # Set config_dirs based on flags
+        self.config_dirs = self._determine_config_dirs()
 
         # Load configuration
         self._load_app_config()
         if location:
             self._load_device_config(location)
+            
+    def _determine_config_dirs(self) -> List[Path]:
+        """Determine which configuration directories to use based on flags.
+        
+        Returns:
+            List of configuration directories to search, in order of preference
+        """
+        if self.use_system_config:
+            return [SYSTEM_CONFIG_DIR]
+        elif self.use_local_config:
+            return [CONFIG_DIR]
+        else:
+            # Default behavior: try local first, then system
+            return [CONFIG_DIR, SYSTEM_CONFIG_DIR]
 
     def _load_app_config(self) -> None:
-        """Load application-wide configuration.
+        """Load application-wide configuration from the first available location.
 
         Raises:
-            FileNotFoundError: If app_config.json is missing
+            FileNotFoundError: If app_config.json is missing from all locations
             ValueError: If app_config.json is invalid or incomplete
         """
-        app_config_path = CONFIG_DIR / "app_config.json"
-        if not app_config_path.exists():
-            logger.error(f"Application config file not found: {app_config_path}")
-            raise FileNotFoundError(f"Required configuration file not found: {app_config_path}")
+        app_config_found = False
+        config_location = None
+        
+        for config_dir in self.config_dirs:
+            app_config_path = config_dir / "app_config.json"
+            if app_config_path.exists():
+                try:
+                    with open(app_config_path, 'r') as f:
+                        self.app_config = json.load(f)
+                    app_config_found = True
+                    config_location = app_config_path
+                    break
+                except json.JSONDecodeError as e:
+                    logger.error(f"Invalid JSON in application config at {app_config_path}: {e}")
+                    # Continue trying other locations
+                except Exception as e:
+                    logger.error(f"Error loading application config from {app_config_path}: {e}")
+                    # Continue trying other locations
+        
+        if not app_config_found:
+            config_paths = [d / "app_config.json" for d in self.config_dirs]
+            logger.error(f"Application config file not found in any of: {config_paths}")
+            raise FileNotFoundError(f"Required configuration file not found: app_config.json. Searched: {config_paths}")
+        
+        # Verify required fields are present
+        if self.app_config.get("use_fermentrack_net", False):
+            required_fields = ["fermentrack_api_key"]
+        else:
+            required_fields = ["host", "port", "fermentrack_api_key"]
 
-        try:
-            with open(app_config_path, 'r') as f:
-                self.app_config = json.load(f)
+        missing_fields = [field for field in required_fields if field not in self.app_config]
+        if missing_fields:
+            logger.error(f"Missing required fields in app_config.json: {', '.join(missing_fields)}")
+            raise ValueError(f"Missing required fields in app_config.json: {', '.join(missing_fields)}")
 
-            # Verify required fields are present. If using Fermentrack.net, some fields are not required
-            if self.app_config.get("use_fermentrack_net", False):
-                required_fields = ["fermentrack_api_key"]
-            else:
-                required_fields = ["host", "port", "fermentrack_api_key"]
-
-            missing_fields = [field for field in required_fields if field not in self.app_config]
-            if missing_fields:
-                logger.error(f"Missing required fields in app_config.json: {', '.join(missing_fields)}")
-                raise ValueError(f"Missing required fields in app_config.json: {', '.join(missing_fields)}")
-
-            logger.info(f"Loaded application config from {app_config_path}")
-        except json.JSONDecodeError as e:
-            logger.error(f"Invalid JSON in application config: {e}")
-            raise ValueError(f"Invalid JSON in application config: {e}")
-        except Exception as e:
-            logger.error(f"Error loading application config: {e}")
-            raise
+        logger.info(f"Loaded application config from {config_location}")
 
     def _load_device_config(self, location: str) -> None:
-        """Load device-specific configuration.
+        """Load device-specific configuration from the first available location.
 
         Args:
             location: Device location identifier
 
         Raises:
-            FileNotFoundError: If the device config file is missing
+            FileNotFoundError: If the device config file is missing from all locations
             ValueError: If the device config file is invalid or incomplete
         """
-        device_config_path = CONFIG_DIR / f"{location}.json"
-        if not device_config_path.exists():
-            logger.error(f"Device config file not found: {device_config_path}")
-            raise FileNotFoundError(f"Required device configuration file not found: {device_config_path}")
+        device_config_found = False
+        config_location = None
+        
+        for config_dir in self.config_dirs:
+            device_config_path = config_dir / f"{location}.json"
+            if device_config_path.exists():
+                try:
+                    with open(device_config_path, 'r') as f:
+                        self.device_config = json.load(f)
+                    device_config_found = True
+                    config_location = device_config_path
+                    break
+                except json.JSONDecodeError as e:
+                    logger.error(f"Invalid JSON in device config at {device_config_path}: {e}")
+                    # Continue trying other locations
+                except Exception as e:
+                    logger.error(f"Error loading device config from {device_config_path}: {e}")
+                    # Continue trying other locations
+        
+        if not device_config_found:
+            config_paths = [d / f"{location}.json" for d in self.config_dirs]
+            logger.error(f"Device config file not found: {config_paths}")
+            raise FileNotFoundError(f"Required device configuration file not found: {location}.json. Searched: {config_paths}")
 
-        try:
-            with open(device_config_path, 'r') as f:
-                self.device_config = json.load(f)
+        # Verify required fields - 'device' is explicitly not required as it's not used
+        required_fields = ["location", "fermentrack_id"]
+        missing_fields = [field for field in required_fields if field not in self.device_config]
 
-            # Verify required fields - 'device' is explicitly not required as it's not used
-            required_fields = ["location", "fermentrack_id"]
-            missing_fields = [field for field in required_fields if field not in self.device_config]
+        if missing_fields:
+            logger.error(f"Missing required fields in {location}.json: {', '.join(missing_fields)}")
+            raise ValueError(f"Missing required fields in device config: {', '.join(missing_fields)}")
 
-            if missing_fields:
-                logger.error(f"Missing required fields in {location}.json: {', '.join(missing_fields)}")
-                raise ValueError(f"Missing required fields in device config: {', '.join(missing_fields)}")
+        # Log a warning if 'device' is present, as it's ignored
+        if "device" in self.device_config:
+            logger.warning(f"Note: 'device' field in {location}.json is ignored. Serial port is derived from location.")
 
-            # Log a warning if 'device' is present, as it's ignored
-            if "device" in self.device_config:
-                logger.warning(f"Note: 'device' field in {location}.json is ignored. Serial port is derived from location.")
+        # Verify location matches
+        if self.device_config.get("location") != location:
+            logger.error(f"Location mismatch in config file: expected '{location}', got '{self.device_config.get('location')}'")
+            raise ValueError(f"Location mismatch in config file: expected '{location}', got '{self.device_config.get('location')}'")
 
-            # Verify location matches
-            if self.device_config.get("location") != location:
-                logger.error(f"Location mismatch in config file: expected '{location}', got '{self.device_config.get('location')}'")
-                raise ValueError(f"Location mismatch in config file: expected '{location}', got '{self.device_config.get('location')}'")
-
-            logger.info(f"Loaded device config for location '{location}' from {device_config_path}")
-        except json.JSONDecodeError as e:
-            logger.error(f"Invalid JSON in device config: {e}")
-            raise ValueError(f"Invalid JSON in device config: {e}")
-        except Exception as e:
-            logger.error(f"Error loading device config: {e}")
-            raise
+        logger.info(f"Loaded device config for location '{location}' from {config_location}")
 
     def save_device_config(self) -> None:
-        """Save device configuration to file."""
+        """Save device configuration to file.
+        
+        Note: Device config is always saved to the local config directory.
+        """
         if not self.location:
             logger.error("Cannot save device config: No location specified")
             return
 
+        # Always save to the local config directory
         device_config_path = CONFIG_DIR / f"{self.location}.json"
+        
+        # Make sure the directory exists
+        CONFIG_DIR.mkdir(exist_ok=True)
+        
         try:
             with open(device_config_path, 'w') as f:
                 json.dump(self.device_config, f, indent=2, sort_keys=True)
@@ -252,3 +300,4 @@ def ensure_directories() -> None:
     """Create necessary directories if they don't exist."""
     DATA_DIR.mkdir(exist_ok=True)
     LOG_DIR.mkdir(exist_ok=True)
+    CONFIG_DIR.mkdir(exist_ok=True)

@@ -352,6 +352,14 @@ def parse_args():
     # parser.add_argument('--location', '-l', required=True, help="Device location identifier (e.g. '1-1')")
     parser.add_argument('--location', '-l', required=False, help="Device location identifier (e.g. '1-1')")
     parser.add_argument('--verbose', '-v', action='store_true', help="Enable verbose logging")
+    
+    # Configuration source options - mutually exclusive
+    config_group = parser.add_mutually_exclusive_group()
+    config_group.add_argument('--system-config', action='store_true', 
+                            help="Only use system configuration from /etc/fermentrack/serial")
+    config_group.add_argument('--local-config', action='store_true',
+                            help="Only use local configuration from ./config")
+    
     return parser.parse_args()
 
 
@@ -366,9 +374,13 @@ def main() -> int:
     # TODO - Disable this later
     args.location = args.location or "0-1"  # Default to '1-1' if not provided
 
-    # Initialize configuration with location
+    # Initialize configuration with location and config source options
     global logger
-    config = Config(args.location)
+    config = Config(
+        location=args.location, 
+        use_system_config=args.system_config,
+        use_local_config=args.local_config
+    )
 
     # Ensure necessary directories exist
     ensure_directories()

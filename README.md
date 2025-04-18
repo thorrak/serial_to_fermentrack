@@ -48,15 +48,18 @@ BrewPi-Script with a more modern and maintainable implementation that leverages 
    
    ```
 
-3. Configure the application by modifying the files in the `config` directory.
+3. Configure the application by creating configuration files in either the local `config` directory or the system-wide `/etc/fermentrack/serial` directory.
 
 ## Configuration
 
-Configuration is managed through JSON files in the `config` directory:
+Configuration is managed through JSON files that can be stored in two locations:
+
+- Local directory: `./config/` 
+- System-wide directory: `/etc/fermentrack/serial/`
+
+By default, the application first looks for configuration files in the local directory, and if not found, it checks the system-wide directory. Both configuration files (app_config.json and the device-specific JSON file) must be present with all required fields for the application to run.
 
 ### Application Config
-
-Both configuration files must be present with all required fields for the application to run.
 
 Create and edit `config/app_config.json` with the following settings:
 
@@ -110,7 +113,21 @@ uv run serial_to_fermentrack --location 1-1
 
 Optional arguments:
 - `--verbose` or `-v`: Enable verbose logging
+- `--system-config`: Only use system configuration from `/etc/fermentrack/serial`
+- `--local-config`: Only use local configuration from `./config`
 - `--help` or `-h`: Show help message
+
+Examples:
+```
+# Use only system-wide configuration files
+uv run serial_to_fermentrack --location 1-1 --system-config
+
+# Use only local configuration files 
+uv run serial_to_fermentrack --location 1-1 --local-config
+
+# Default behavior: try local config first, then system config
+uv run serial_to_fermentrack --location 1-1
+```
 
 ### Running Multiple Devices with the Daemon
 
@@ -149,12 +166,12 @@ sudo systemctl status brewpi-daemon.service
 
 The application consists of the following main components:
 
-1. **Configuration Manager (`utils/config.py`)**: Manages application and device configuration from JSON files.
+1. **Configuration Manager (`utils/config.py`)**: Manages application and device configuration from JSON files in either local or system-wide directories.
 2. **API Client (`api/client.py`)**: Handles communication with Fermentrack 2's REST API using the provided device ID and API key.
 3. **Serial Controller (`controller/serial_controller.py`)**: Manages serial communication with the BrewPi controller at a fixed 57600 baud rate.
 4. **BrewPi Controller (`controller/brewpi_controller.py`)**: Provides a high-level interface to the BrewPi controller.
 5. **Main Application (`brewpi_rest.py`)**: Integrates the API client and controller, handling a single device.
-6. **Daemon (`brewpi_daemon.py`)**: Monitors the config directory and manages multiple device instances.
+6. **Daemon (`brewpi_daemon.py`)**: Monitors configuration directories and manages multiple device instances.
 
 ## Development
 
