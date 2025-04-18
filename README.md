@@ -88,7 +88,8 @@ If you want to use the cloud-hosted Fermentrack.net service:
 
 ### Device Config
 
-Device-specific configuration must be stored in a file named after its location (e.g., `config/1-1.json`):
+Device-specific configurations can be created and managed using the included configuration manager. 
+Device-specific configuration must be stored in a file named after its location (the USB port it is plugged into) (e.g., `config/1-1.json`):
 
 ```json
 {
@@ -102,6 +103,27 @@ Note: Any "device" field in the config file will be ignored. The serial port is 
 See `config/README.md` for details on all available configuration options.
 
 ## Usage
+
+### Configuration Manager
+
+Before running the application, you need to configure the Fermentrack connection and register your devices:
+
+```
+# Use system-wide configuration (/etc/fermentrack/serial)
+serial_to_fermentrack_config --system-config
+
+# Use local configuration (./config)
+serial_to_fermentrack_config --local-config
+
+# Default: Use system-wide configuration
+serial_to_fermentrack_config
+```
+
+The configuration manager provides an interactive interface to:
+- Configure the Fermentrack connection (local or Fermentrack.net)
+- Register BrewPi controllers with Fermentrack
+- Manage device configurations
+- Clean up unused configurations
 
 ### Running a Single Device
 

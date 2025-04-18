@@ -20,6 +20,12 @@ uv sync
 
 ### Running
 ```bash
+# Run the configuration manager (defaults to system-wide config)
+serial_to_fermentrack_config
+
+# Use the configuration manager with local config
+serial_to_fermentrack_config --local-config
+
 # Run directly with location parameter (required)
 uv run serial_to_fermentrack --location 1-1
 
@@ -34,6 +40,9 @@ uv run serial_to_fermentrack --location 1-1 --system-config
 
 # Only use local configuration from ./config
 uv run serial_to_fermentrack --location 1-1 --local-config
+
+# Run the daemon (only uses system-wide config)
+serial_to_fermentrack_daemon
 ```
 
 ### Testing
@@ -99,15 +108,62 @@ To use the cloud-hosted Fermentrack.net service, set `use_fermentrack_net` to `t
 
 This automatically uses the correct host, port, and HTTPS settings for Fermentrack.net.
 
+### Configuration Manager
+
+The application includes a configuration manager (`config_manager.py`) that handles device identification, registration, and configuration management.
+
+#### Key Concepts
+
+##### Device Identification
+Devices are identified by:
+- **Location**: The USB port location (used for configuration filenames)
+- **GUID**: Unique identifier for Fermentrack registration (stored in config)
+
+##### Fermentrack Registration
+- Requires valid firmware info with 'v' (version) and 'b' (board type)
+- Supports both Fermentrack.net (cloud) and custom/local instances
+- Username is required for authentication
+- Upon successful registration, the API key from Fermentrack is stored in app_config.json with the key `fermentrack_api_key`
+
+##### Board Type Codes
+```
+l - Arduino Leonardo
+s - Arduino
+m - Arduino Mega
+e - ESP8266
+3 - ESP32
+c - ESP32-C3
+2 - ESP32-S2
+```
+
+#### Important Code Logic
+1. App configuration must be valid before device management
+2. Only BrewPi devices (responding to 'n' command) can be configured
+3. Firmware information is required for Fermentrack registration
+4. Configuration is stored in JSON files in the config directory
+
+#### Future Development Areas
+- Daemon mode for continuous operation
+- Multi-threading for parallel device communication
+- UI improvements for better user experience
+- Error logging and statistics
+
 ## Architecture
 
 ### Main Components
 - `utils/config.py`: Configuration management using JSON files
+- `config_manager.py`: Handles device identification, registration, and configuration management
 - `config/`: Directory containing JSON configuration files
 - `api/client.py`: REST API client for Fermentrack 2
 - `controller/serial_controller.py`: Serial communication with BrewPi hardware (fixed at 57600 baud)
 - `controller/brewpi_controller.py`: BrewPi controller logic
 - `brewpi_rest.py`: Main application integrating all components
+- `serial_to_fermentrack_daemon.py`: Daemon for managing multiple device instances
+
+### Console Commands
+- `serial_to_fermentrack`: Run a single device instance
+- `serial_to_fermentrack_daemon`: Run the multi-device daemon
+- `serial_to_fermentrack_config`: Interactive configuration manager for devices and Fermentrack connections
 
 ### Data Flow
 1. Application loads configuration based on specified location
@@ -156,6 +212,13 @@ The serial communication model is fully asynchronous:
 7. Runs main loop
 
 ## Recent Changes
+
+### Configuration Manager Integration
+- Added dedicated configuration manager (`config_manager.py`) for handling device identification and registration
+- Implemented support for device registration with Fermentrack
+- Added support for multiple board types (Arduino, ESP8266, ESP32, etc.)
+- Structured configuration validation and persistence
+- Improved device discovery and identification
 
 ### Fully Asynchronous Serial Communication
 - Refactored serial communication to use a fully asynchronous request/response model

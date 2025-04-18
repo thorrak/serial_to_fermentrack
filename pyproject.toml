@@ -16,6 +16,7 @@ dependencies = [
 [project.scripts]
 serial_to_fermentrack = "brewpi_rest:main"
 serial_to_fermentrack_daemon = "serial_to_fermentrack_daemon:main"
+serial_to_fermentrack_config = "config_manager:main"
 
 [tool.uv]
 package = true

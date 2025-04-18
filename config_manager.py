@@ -1,7 +1,15 @@
 #!/usr/bin/env python3
+"""
+Serial-to-Fermentrack Configuration Manager
+
+Provides a command-line interface for configuring Serial-to-Fermentrack devices
+and their connections to Fermentrack/Fermentrack.net.
+"""
 
 import os
 import json
+import sys
+
 import serial
 import serial.tools.list_ports
 import inquirer
@@ -10,6 +18,9 @@ import uuid
 import requests
 import argparse
 from pathlib import Path
+
+# Version information
+__version__ = "0.0.1"
 
 # Default configuration directories
 LOCAL_CONFIG_DIR = Path("config")
@@ -25,7 +36,14 @@ FERMENTRACK_NET_HTTPS = True  # Default to using HTTPS for Fermentrack.net
 
 def ensure_config_dir():
     """Ensure the configuration directory exists."""
-    os.makedirs(CONFIG_DIR, exist_ok=True)
+    try:
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+        return True
+    except PermissionError:
+        display_colored_error(f"Permission denied when creating directory: {CONFIG_DIR}")
+        print("You may need to run with sudo when using the system configuration directory.")
+        print("Alternatively, use --local-config to use the local configuration directory instead.")
+        return False
 
 
 def get_config_path(location):
@@ -92,16 +110,27 @@ def get_device_config(location):
 def save_device_config(location, config):
     """Save the configuration for a device."""
     config_path = get_config_path(location)
-    with open(config_path, 'w') as f:
-        json.dump(config, f, indent=2)
+    try:
+        with open(config_path, 'w') as f:
+            json.dump(config, f, indent=2)
+        return True
+    except PermissionError:
+        display_colored_error(f"Permission denied when saving to: {config_path}")
+        print("You may need to run with sudo when using the system configuration directory.")
+        return False
 
 
 def delete_device_config(location):
     """Delete the configuration for a device."""
     config_path = get_config_path(location)
     if config_path.exists():
-        os.remove(config_path)
-        return True
+        try:
+            os.remove(config_path)
+            return True
+        except PermissionError:
+            display_colored_error(f"Permission denied when deleting: {config_path}")
+            print("You may need to run with sudo when using the system configuration directory.")
+            return False
     return False
 
 
@@ -115,8 +144,14 @@ def get_app_config():
 
 def save_app_config(config):
     """Save the application-wide configuration."""
-    with open(APP_CONFIG_FILE, 'w') as f:
-        json.dump(config, f, indent=2)
+    try:
+        with open(APP_CONFIG_FILE, 'w') as f:
+            json.dump(config, f, indent=2)
+        return True
+    except PermissionError:
+        display_colored_error(f"Permission denied when saving to: {APP_CONFIG_FILE}")
+        print("You may need to run with sudo when using the system configuration directory.")
+        return False
 
 
 def is_app_configured():
@@ -126,8 +161,11 @@ def is_app_configured():
             with open(APP_CONFIG_FILE, 'r') as f:
                 config = json.load(f)
                 
-            # Check for username
-            if 'username' not in config or not config['username'].strip():
+            # Check for username or API key - at least one is required
+            has_username = 'username' in config and config['username'].strip()
+            has_api_key = 'fermentrack_api_key' in config and config['fermentrack_api_key'].strip()
+            
+            if not (has_username or has_api_key):
                 return False
                 
             # Check for connection settings based on type
@@ -220,13 +258,15 @@ def configure_fermentrack_connection():
             config['port'] = answers['port']
             config['use_https'] = answers['use_https']
         
-        save_app_config(config)
-        
-        if using_cloud:
-            print("Fermentrack.net connection configuration saved.")
+        if save_app_config(config):
+            if using_cloud:
+                print("Fermentrack.net connection configuration saved.")
+            else:
+                print("Custom Fermentrack connection configuration saved.")
+            return True
         else:
-            print("Custom Fermentrack connection configuration saved.")
-        return True
+            print("Failed to save configuration due to permission issues.")
+            return False
     
     print("Configuration cancelled")
     return False
@@ -518,12 +558,15 @@ def configure_device(port_info):
         if success:
             # Registration successful, save the device ID
             config['fermentrack_id'] = device_id
-            save_device_config(location, config)
-            
-            display_colored_success(
-                f"Device successfully registered with Fermentrack (Device ID: {device_id})."
-            )
-            print(f"Configuration saved for device at location: {location}")
+            if save_device_config(location, config):
+                display_colored_success(
+                    f"Device successfully registered with Fermentrack (Device ID: {device_id})."
+                )
+                print(f"Configuration saved for device at location: {location}")
+            else:
+                display_colored_error(
+                    f"Device was registered with Fermentrack (Device ID: {device_id}) but the configuration could not be saved."
+                )
             
             # Display appropriate warning based on number of configured devices
             device_count = get_configured_device_count()
@@ -565,9 +608,12 @@ def configure_device(port_info):
             ])
             
             if save_anyway.get('save', False):
-                save_device_config(location, config)
-                print(f"Configuration saved for device at location: {location} (without Fermentrack registration)")
-                return True
+                if save_device_config(location, config):
+                    print(f"Configuration saved for device at location: {location} (without Fermentrack registration)")
+                    return True
+                else:
+                    print("Failed to save configuration due to permission issues.")
+                    return False
             else:
                 print("Configuration cancelled.")
                 return False
@@ -995,12 +1041,18 @@ def main_menu():
 
 def parse_arguments():
     """Parse command line arguments."""
-    parser = argparse.ArgumentParser(description="BrewPi-Serial-REST Configuration Manager")
+    parser = argparse.ArgumentParser(
+        description="Serial-to-Fermentrack Configuration Manager",
+        epilog="Interactive tool for configuring Fermentrack connections and managing devices"
+    )
     
-    config_location = parser.add_mutually_exclusive_group(required=True)
-    config_location.add_argument("--system", action="store_true", 
+    parser.add_argument('--version', action='version',
+                      version=f'Serial-to-Fermentrack Configuration Manager v{__version__}')
+    
+    config_location = parser.add_mutually_exclusive_group()
+    config_location.add_argument("--system-config", action="store_true", 
                                 help="Use system-wide configuration directory (/etc/fermentrack/serial/)")
-    config_location.add_argument("--local", action="store_true", 
+    config_location.add_argument("--local-config", action="store_true", 
                                 help="Use local configuration directory (./config/)")
     
     return parser.parse_args()
@@ -1010,10 +1062,13 @@ def set_config_paths(args):
     """Set the global configuration paths based on command line arguments."""
     global CONFIG_DIR, APP_CONFIG_FILE
     
-    if args.system:
+    if args.system_config:
         CONFIG_DIR = SYSTEM_CONFIG_DIR
-    else:  # args.local must be True due to mutually exclusive required group
+    elif args.local_config:
         CONFIG_DIR = LOCAL_CONFIG_DIR
+    else:
+        # Default to system config
+        CONFIG_DIR = SYSTEM_CONFIG_DIR
     
     APP_CONFIG_FILE = CONFIG_DIR / "app_config.json"
 
@@ -1022,13 +1077,16 @@ def main():
     """Main entry point for the application."""
     args = parse_arguments()
     set_config_paths(args)
-    ensure_config_dir()
     
-    config_type = "System" if args.system else "Local"
+    config_type = "System" if args.system_config or (not args.local_config) else "Local"
     
-    print("BrewPi-Serial-REST Configuration Manager")
-    print("=========================================")
+    print("Serial-to-Fermentrack Configuration Manager")
+    print("==========================================")
     print(f"Using {config_type} Configuration: {CONFIG_DIR}")
+    
+    # Ensure the configuration directory exists
+    if not ensure_config_dir():
+        sys.exit(1)
     
     main_menu()
     
