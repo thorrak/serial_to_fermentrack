@@ -1,4 +1,4 @@
-"""Entry point for BrewPi-Serial-REST."""
+"""Entry point for Serial-to-Fermentrack."""
 
 import sys
 from .brewpi_rest import main

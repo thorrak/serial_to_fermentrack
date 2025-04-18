@@ -1,4 +1,4 @@
-"""Controller module for BrewPi-Serial-REST."""
+"""Controller module for Serial-to-Fermentrack."""
 
 from .brewpi_controller import BrewPiController
 from .serial_controller import SerialController, SerialControllerError

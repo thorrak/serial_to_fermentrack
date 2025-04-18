@@ -1,4 +1,4 @@
-"""Setup script for BrewPi-Serial-REST."""
+"""Setup script for Serial-to-Fermentrack."""
 
 from setuptools import setup, find_packages
 import re
@@ -13,17 +13,17 @@ with open("requirements.txt", "r") as f:
     requirements = f.read().splitlines()
 
 setup(
-    name="brewpi-serial-rest",
+    name="serial-to-fermentrack",
     version=version,
-    description="REST API client for BrewPi devices",
-    author="BrewPi Team",
+    description="Fermentrack REST API client for serial-connected BrewPi devices",
+    author="Thorrak",
     author_email="...",
-    url="https://github.com/thorrak/brewpi-serial-rest",
+    url="https://github.com/thorrak/brewpi_serial_rest",
     packages=find_packages(),
     install_requires=requirements,
     entry_points={
         "console_scripts": [
-            "brewpi-serial-rest=bpr.brewpi_rest:main",
+            "serial_to_fermentrack=bpr.brewpi_rest:main",
         ],
     },
     classifiers=[

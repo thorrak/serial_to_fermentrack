@@ -1,7 +1,8 @@
-# BrewPi-Serial-REST Information
+# Serial-to-Fermentrack Information
 
 ## Project Overview
-BrewPi-Serial-REST is a modern REST API-based implementation that replaces the legacy BrewPi-Script. It mediates communication between BrewPi temperature controllers and Fermentrack 2's REST API interface.
+Serial-to-Fermentrack is a modern REST API-based implementation that replaces the legacy BrewPi-Script for connecting
+serial-connected BrewPi temperature controllers to Fermentrack 2's REST API interface.
 
 ## Key Commands
 

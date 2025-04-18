@@ -1,10 +1,12 @@
-# BrewPi-Serial-REST
+# Serial-to-Fermentrack
 
-A modern implementation of BrewPi-Script for Fermentrack 2's REST API.
+Bridge your Serial BrewPi controller to Fermentrack 2's REST API
 
 ## Overview
 
-BrewPi-Serial-REST is a Python application that mediates communication between the BrewPi temperature controller and Fermentrack 2's REST API. It replaces the original BrewPi-Script with a more modern and maintainable implementation that leverages Fermentrack 2's REST API.
+Serial-to-Fermentrack is a Python application that mediates communication between a BrewPi temperature controller
+connected via Serial (typically to a Raspberry Pi) and the Fermentrack 2 REST API interface. It replaces the original 
+BrewPi-Script with a more modern and maintainable implementation that leverages Fermentrack 2's REST API.
 
 ## Features
 
@@ -17,10 +19,9 @@ BrewPi-Serial-REST is a Python application that mediates communication between t
 
 ## Requirements
 
-- Python 3.7+
-- Fermentrack 2 server
+- Python 3.9+
 - BrewPi controller (Arduino, ESP8266, or ESP32 based), connected via Serial
-- Watchdog package (for the daemon)
+- Fermentrack 2 server target (including Fermentrack.net)
 
 ## Installation
 
@@ -33,7 +34,7 @@ BrewPi-Serial-REST is a Python application that mediates communication between t
 2. Install dependencies:
    ```
    # Install uv (if not already installed)
-   # On Mac or Linux (including Raspberry Pi)
+   # On Mac or Linux (including Raspberry Pi):
    curl -LsSf https://astral.sh/uv/install.sh | sh
    
    # Create the virtual environment (by default, in .venv)

@@ -1,1 +1,1 @@
-"""Tests for BrewPi-Serial-REST."""
+"""Tests for Serial-to-Fermentrack."""

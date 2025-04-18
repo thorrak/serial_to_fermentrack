@@ -1,7 +1,7 @@
-"""BrewPi-Serial-REST main application.
+"""Serial-to-Fermentrack main application.
 
-This module is the main entry point for the BrewPi-Serial-REST application.
-It integrates the BrewPi controller with the Fermentrack REST API.
+This module is the main entry point for the Serial-to-Fermentrack application.
+It integrates the serial-connected BrewPi controller with the Fermentrack REST API.
 """
 
 import json
@@ -50,7 +50,7 @@ class BrewPiRest:
         Returns:
             True if setup was successful
         """
-        logger.info("Setting up BrewPi-Serial-REST")
+        logger.info("Setting up Serial-to-Fermentrack")
 
         # Initialize API client with configuration
         self.api_client = FermentrackClient(
@@ -275,7 +275,7 @@ class BrewPiRest:
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
 
-        logger.info("Starting BrewPi-Serial-REST main loop")
+        logger.info("Starting Serial-to-Fermentrack main loop")
 
         while self.running:
             try:
@@ -337,7 +337,7 @@ class BrewPiRest:
 
     def stop(self) -> None:
         """Stop the application."""
-        logger.info("Stopping BrewPi-Serial-REST")
+        logger.info("Stopping Serial-to-Fermentrack")
         self.running = False
 
         # Clean up resources
@@ -347,7 +347,7 @@ class BrewPiRest:
 
 def parse_args():
     """Parse command line arguments."""
-    parser = argparse.ArgumentParser(description="BrewPi-Serial-REST: REST API for BrewPi controllers")
+    parser = argparse.ArgumentParser(description="Serial-to-Fermentrack: Fermentrack REST API client for Serial BrewPi controllers")
     # todo - re-enable this later
     # parser.add_argument('--location', '-l', required=True, help="Device location identifier (e.g. '1-1')")
     parser.add_argument('--location', '-l', required=False, help="Device location identifier (e.g. '1-1')")
@@ -378,7 +378,7 @@ def main() -> int:
     logger = setup_logging(log_level=log_level, log_file=config.LOG_FILE)
 
     # Log startup information
-    logger.info(f"Starting BrewPi-Serial-REST with location: {args.location}")
+    logger.info(f"Starting Serial-to-Fermentrack with location: {args.location}")
     logger.info(f"Using serial port: {config.SERIAL_PORT}")
 
     # Log Fermentrack connection details
@@ -392,7 +392,7 @@ def main() -> int:
 
     # Set up controller and API
     if not app.setup():
-        logger.error("Failed to set up BrewPi-Serial-REST, exiting")
+        logger.error("Failed to set up Serial-to-Fermentrack, exiting")
         return 1
 
     # Check configuration

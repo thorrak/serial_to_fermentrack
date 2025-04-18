@@ -1,4 +1,4 @@
-"""Configuration settings for BrewPi-Serial-REST."""
+"""Configuration settings for Serial-to-Fermentrack."""
 
 import json
 import os
@@ -18,7 +18,7 @@ LOG_DIR = BASE_DIR / "log"
 logger = logging.getLogger(__name__)
 
 class Config:
-    """Configuration manager for BrewPi-Serial-REST."""
+    """Configuration manager for Serial-to-Fermentrack."""
 
     def __init__(self, location: Optional[str] = None):
         """Initialize configuration.
