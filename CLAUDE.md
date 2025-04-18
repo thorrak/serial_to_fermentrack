@@ -38,7 +38,7 @@ uv run serial_to_fermentrack --help
 # Only use system-wide configuration from /etc/fermentrack/serial
 uv run serial_to_fermentrack --location 1-1 --system-config
 
-# Only use local configuration from ./config
+# Only use local configuration from ./serial_config
 uv run serial_to_fermentrack --location 1-1 --local-config
 
 # Run the daemon (only uses system-wide config)
@@ -62,12 +62,12 @@ uv run pytest --cov=bpr
 
 ## Configuration
 
-The application uses JSON configuration files stored either in the local `config` directory or in the system-wide `/etc/fermentrack/serial` directory. Both app_config.json and the device-specific JSON file (e.g., 1-1.json) must be present with all required fields or the application will not start.
+The application uses JSON configuration files stored either in the local `serial_config` directory or in the system-wide `/etc/fermentrack/serial` directory. Both app_config.json and the device-specific JSON file (e.g., 1-1.json) must be present with all required fields or the application will not start.
 
-By default, the application will first look for configuration files in the local `config` directory, and if not found, it will then check the system-wide `/etc/fermentrack/serial` directory. This behavior can be modified with command-line flags:
+By default, the application will first look for configuration files in the local `serial_config` directory, and if not found, it will then check the system-wide `/etc/fermentrack/serial` directory. This behavior can be modified with command-line flags:
 
 - `--system-config`: Only check the system-wide directory (`/etc/fermentrack/serial`)
-- `--local-config`: Only check the local directory (`./config`)
+- `--local-config`: Only check the local directory (`./serial_config`)
 
 ### Application Config (app_config.json)
 ```json
@@ -140,7 +140,7 @@ c - ESP32-C3
 1. App configuration must be valid before device management
 2. Only BrewPi devices (responding to 'n' command) can be configured
 3. Firmware information is required for Fermentrack registration
-4. Configuration is stored in JSON files in the config directory
+4. Configuration is stored in JSON files in the serial_config directory
 
 #### Future Development Areas
 - Daemon mode for continuous operation
@@ -153,7 +153,7 @@ c - ESP32-C3
 ### Main Components
 - `utils/config.py`: Configuration management using JSON files
 - `config_manager.py`: Handles device identification, registration, and configuration management
-- `config/`: Directory containing JSON configuration files
+- `serial_config/`: Directory containing JSON configuration files
 - `api/client.py`: REST API client for Fermentrack 2
 - `controller/serial_controller.py`: Serial communication with BrewPi hardware (fixed at 57600 baud)
 - `controller/brewpi_controller.py`: BrewPi controller logic
@@ -200,7 +200,7 @@ The serial communication model is fully asynchronous:
 ### Directory Structure
 - `data/`: Fixed directory for application data
 - `log/`: Fixed directory for log files
-- `config/`: Contains only configuration files (JSON) and documentation
+- `serial_config/`: Contains only configuration files (JSON) and documentation
 
 ### Startup Process
 1. Application parses command line arguments to get location

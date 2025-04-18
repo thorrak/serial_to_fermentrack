@@ -358,7 +358,7 @@ def parse_args():
     config_group.add_argument('--system-config', action='store_true', 
                             help="Only use system configuration from /etc/fermentrack/serial")
     config_group.add_argument('--local-config', action='store_true',
-                            help="Only use local configuration from ./config")
+                            help="Only use local configuration from ./serial_config")
     
     return parser.parse_args()
 

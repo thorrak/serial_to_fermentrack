@@ -48,20 +48,20 @@ BrewPi-Script with a more modern and maintainable implementation that leverages 
    
    ```
 
-3. Configure the application by creating configuration files in either the local `config` directory or the system-wide `/etc/fermentrack/serial` directory.
+3. Configure the application by creating configuration files in either the local `serial_config` directory or the system-wide `/etc/fermentrack/serial` directory.
 
 ## Configuration
 
 Configuration is managed through JSON files that can be stored in two locations:
 
-- Local directory: `./config/` 
+- Local directory: `./serial_config/` 
 - System-wide directory: `/etc/fermentrack/serial/`
 
 By default, the application first looks for configuration files in the local directory, and if not found, it checks the system-wide directory. Both configuration files (app_config.json and the device-specific JSON file) must be present with all required fields for the application to run.
 
 ### Application Config
 
-Create and edit `config/app_config.json` with the following settings:
+Create and edit `serial_config/app_config.json` with the following settings:
 
 ```json
 {
@@ -89,7 +89,7 @@ If you want to use the cloud-hosted Fermentrack.net service:
 ### Device Config
 
 Device-specific configurations can be created and managed using the included configuration manager. 
-Device-specific configuration must be stored in a file named after its location (the USB port it is plugged into) (e.g., `config/1-1.json`):
+Device-specific configuration must be stored in a file named after its location (the USB port it is plugged into) (e.g., `serial_config/1-1.json`):
 
 ```json
 {
@@ -100,7 +100,7 @@ Device-specific configuration must be stored in a file named after its location 
 
 Note: Any "device" field in the config file will be ignored. The serial port is always determined by enumerating all connected USB devices and finding one with a location ID that exactly matches the location in the config file.
 
-See `config/README.md` for details on all available configuration options.
+See `serial_config/README.md` for details on all available configuration options.
 
 ## Usage
 
@@ -112,7 +112,7 @@ Before running the application, you need to configure the Fermentrack connection
 # Use system-wide configuration (/etc/fermentrack/serial)
 serial_to_fermentrack_config --system-config
 
-# Use local configuration (./config)
+# Use local configuration (./serial_config)
 serial_to_fermentrack_config --local-config
 
 # Default: Use system-wide configuration
@@ -136,7 +136,7 @@ uv run serial_to_fermentrack --location 1-1
 Optional arguments:
 - `--verbose` or `-v`: Enable verbose logging
 - `--system-config`: Only use system configuration from `/etc/fermentrack/serial`
-- `--local-config`: Only use local configuration from `./config`
+- `--local-config`: Only use local configuration from `./serial_config`
 - `--help` or `-h`: Show help message
 
 Examples:

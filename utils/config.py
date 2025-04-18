@@ -10,7 +10,7 @@ from typing import Dict, Any, Optional, List, Tuple
 
 # Base directory
 BASE_DIR = Path(__file__).resolve().parent.parent
-CONFIG_DIR = BASE_DIR / "config"
+CONFIG_DIR = BASE_DIR / "serial_config"
 SYSTEM_CONFIG_DIR = Path("/etc/fermentrack/serial")
 DATA_DIR = BASE_DIR / "data"
 LOG_DIR = BASE_DIR / "log"

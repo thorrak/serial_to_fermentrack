@@ -2,7 +2,7 @@
 """
 Serial-to-Fermentrack Daemon - A daemon to manage connecting multiple temperature controllers connected via Serial to Fermentrack 2.
 
-This daemon monitors the config directory for device configuration files,
+This daemon monitors the serial_config directory for device configuration files,
 launches serial_to_fermentrack instances for each device, and monitors those
 processes, restarting them if they die or if their configuration changes.
 

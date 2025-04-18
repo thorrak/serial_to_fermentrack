@@ -23,7 +23,7 @@ from pathlib import Path
 __version__ = "0.0.1"
 
 # Default configuration directories
-LOCAL_CONFIG_DIR = Path("config")
+LOCAL_CONFIG_DIR = Path("serial_config")
 SYSTEM_CONFIG_DIR = Path("/etc/fermentrack/serial")
 
 # Will be set based on command line arguments
@@ -1064,7 +1064,7 @@ def parse_arguments():
     config_location.add_argument("--system-config", action="store_true", 
                                 help="Use system-wide configuration directory (/etc/fermentrack/serial/)")
     config_location.add_argument("--local-config", action="store_true", 
-                                help="Use local configuration directory (./config/)")
+                                help="Use local configuration directory (./serial_config/)")
     
     return parser.parse_args()
 
