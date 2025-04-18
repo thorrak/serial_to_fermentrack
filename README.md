@@ -48,16 +48,15 @@ BrewPi-Script with a more modern and maintainable implementation that leverages 
    
    ```
 
-3. Configure the application by creating configuration files in either the local `serial_config` directory or the system-wide `/etc/fermentrack/serial` directory.
+3. Configure the application by creating configuration files in the `serial_config` directory.
 
 ## Configuration
 
-Configuration is managed through JSON files that can be stored in two locations:
+Configuration is managed through JSON files stored in the local `serial_config` directory:
 
-- Local directory: `./serial_config/` 
-- System-wide directory: `/etc/fermentrack/serial/`
+- Configuration directory: `./serial_config/`
 
-By default, the application first looks for configuration files in the local directory, and if not found, it checks the system-wide directory. Both configuration files (app_config.json and the device-specific JSON file) must be present with all required fields for the application to run.
+The configuration files (app_config.json and the device-specific JSON file) must be present with all required fields for the application to run.
 
 ### Application Config
 
@@ -109,13 +108,7 @@ See `serial_config/README.md` for details on all available configuration options
 Before running the application, you need to configure the Fermentrack connection and register your devices:
 
 ```
-# Use system-wide configuration (/etc/fermentrack/serial)
-serial_to_fermentrack_config --system-config
-
-# Use local configuration (./serial_config)
-serial_to_fermentrack_config --local-config
-
-# Default: Use system-wide configuration
+# Run the configuration manager 
 serial_to_fermentrack_config
 ```
 
@@ -135,28 +128,20 @@ uv run serial_to_fermentrack --location 1-1
 
 Optional arguments:
 - `--verbose` or `-v`: Enable verbose logging
-- `--system-config`: Only use system configuration from `/etc/fermentrack/serial`
-- `--local-config`: Only use local configuration from `./serial_config`
 - `--help` or `-h`: Show help message
 
-Examples:
+Example:
 ```
-# Use only system-wide configuration files
-uv run serial_to_fermentrack --location 1-1 --system-config
-
-# Use only local configuration files 
-uv run serial_to_fermentrack --location 1-1 --local-config
-
-# Default behavior: try local config first, then system config
+# Run with location parameter
 uv run serial_to_fermentrack --location 1-1
 ```
 
 ### Running Multiple Devices with the Daemon
 
-The daemon monitors the system-wide configuration directory (`/etc/fermentrack/serial`) for device configuration files and automatically manages all configured devices:
+The daemon monitors the configuration directory for device configuration files and automatically manages all configured devices:
 
 ```
-# Start the daemon (requires the system-wide config directory to exist)
+# Start the daemon
 serial_to_fermentrack_daemon
 
 # Start with verbose logging
@@ -172,7 +157,7 @@ serial_to_fermentrack_daemon --log-dir=/path/to/logs
 serial_to_fermentrack_daemon --help
 ```
 
-Note: By default, the daemon looks for configuration files in the system-wide directory (`/etc/fermentrack/serial`) and logs to `/var/log/fermentrack-serial`. You may need to create these directories with appropriate permissions before running the daemon.
+Note: By default, the daemon looks for configuration files in the `serial_config` directory and logs to the local `log` directory.
 
 ### Installing as a Systemd Service
 

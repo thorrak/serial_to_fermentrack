@@ -11,7 +11,7 @@ from typing import Dict, Any, Optional, List, Tuple
 # Base directory
 BASE_DIR = Path(__file__).resolve().parent.parent
 CONFIG_DIR = BASE_DIR / "serial_config"
-SYSTEM_CONFIG_DIR = Path("/etc/fermentrack/serial")
+# System-wide config directory no longer supported
 DATA_DIR = BASE_DIR / "data"
 LOG_DIR = BASE_DIR / "log"
 
@@ -21,41 +21,23 @@ logger = logging.getLogger(__name__)
 class Config:
     """Configuration manager for Serial-to-Fermentrack."""
 
-    def __init__(self, location: Optional[str] = None, use_system_config: bool = False, use_local_config: bool = False):
+    def __init__(self, location: Optional[str] = None):
         """Initialize configuration.
 
         Args:
             location: Device location identifier (e.g. '1-1')
-            use_system_config: Only use system configuration directory
-            use_local_config: Only use local configuration directory
         """
         self.location = location
         self.app_config = {}
         self.device_config = {}
-        self.use_system_config = use_system_config
-        self.use_local_config = use_local_config
-        
-        # Set config_dirs based on flags
-        self.config_dirs = self._determine_config_dirs()
+        self.config_dirs = [CONFIG_DIR]
 
         # Load configuration
         self._load_app_config()
         if location:
             self._load_device_config(location)
             
-    def _determine_config_dirs(self) -> List[Path]:
-        """Determine which configuration directories to use based on flags.
-        
-        Returns:
-            List of configuration directories to search, in order of preference
-        """
-        if self.use_system_config:
-            return [SYSTEM_CONFIG_DIR]
-        elif self.use_local_config:
-            return [CONFIG_DIR]
-        else:
-            # Default behavior: try local first, then system
-            return [CONFIG_DIR, SYSTEM_CONFIG_DIR]
+    # System-wide config support has been removed
 
     def _load_app_config(self) -> None:
         """Load application-wide configuration from the first available location.
@@ -78,10 +60,10 @@ class Config:
                     break
                 except json.JSONDecodeError as e:
                     logger.error(f"Invalid JSON in application config at {app_config_path}: {e}")
-                    # Continue trying other locations
+                    raise ValueError(f"Invalid JSON in application config at {app_config_path}: {e}")
                 except Exception as e:
                     logger.error(f"Error loading application config from {app_config_path}: {e}")
-                    # Continue trying other locations
+                    raise
         
         if not app_config_found:
             config_paths = [d / "app_config.json" for d in self.config_dirs]
@@ -125,10 +107,10 @@ class Config:
                     break
                 except json.JSONDecodeError as e:
                     logger.error(f"Invalid JSON in device config at {device_config_path}: {e}")
-                    # Continue trying other locations
+                    raise ValueError(f"Invalid JSON in device config at {device_config_path}: {e}")
                 except Exception as e:
                     logger.error(f"Error loading device config from {device_config_path}: {e}")
-                    # Continue trying other locations
+                    raise
         
         if not device_config_found:
             config_paths = [d / f"{location}.json" for d in self.config_dirs]

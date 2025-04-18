@@ -628,6 +628,7 @@ def test_main_function():
             args = argparse.Namespace()
             args.location = "1-1"
             args.verbose = False
+            # args no longer have system-config or local-config flags
             return args
     
     with patch("argparse.ArgumentParser", MockArgParser):
@@ -659,8 +660,8 @@ def test_main_function():
                         # Check result
                         assert result == 0
 
-                        # Verify initialization
-                        mock_config_class.assert_called_once_with("1-1")
+                        # Verify initialization - Config now only gets location
+                        mock_config_class.assert_called_once_with(location="1-1")
                         mock_setup_logging.assert_called_once()
                         mock_ensure_dirs.assert_called_once()
 

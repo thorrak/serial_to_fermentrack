@@ -279,16 +279,7 @@ def test_parse_arguments():
         assert args.local is True
 
 
-def test_set_config_paths():
-    """Test setting global configuration paths"""
-    # Test with system flag
-    args = argparse.Namespace(system=True, local=False)
-    config_manager.set_config_paths(args)
-    assert config_manager.CONFIG_DIR == config_manager.SYSTEM_CONFIG_DIR
-    assert config_manager.APP_CONFIG_FILE == config_manager.SYSTEM_CONFIG_DIR / "app_config.json"
-    
-    # Test with local flag
-    args = argparse.Namespace(system=False, local=True)
-    config_manager.set_config_paths(args)
-    assert config_manager.CONFIG_DIR == config_manager.LOCAL_CONFIG_DIR
-    assert config_manager.APP_CONFIG_FILE == config_manager.LOCAL_CONFIG_DIR / "app_config.json"
+# This test is removed as system/local config options are no longer supported
+# def test_set_config_paths():
+#     """Test setting global configuration paths"""
+#     pass

@@ -22,13 +22,11 @@ from pathlib import Path
 # Version information
 __version__ = "0.0.1"
 
-# Default configuration directories
-LOCAL_CONFIG_DIR = Path("serial_config")
-SYSTEM_CONFIG_DIR = Path("/etc/fermentrack/serial")
+# Configuration directory
+CONFIG_DIR = Path("serial_config")
 
-# Will be set based on command line arguments
-CONFIG_DIR = None
-APP_CONFIG_FILE = None
+# Set the path to the app config file
+APP_CONFIG_FILE = CONFIG_DIR / "app_config.json"
 
 FERMENTRACK_NET_HOST = "www.fermentrack.net"
 FERMENTRACK_NET_PORT = "443"  # Default port for HTTPS
@@ -41,8 +39,6 @@ def ensure_config_dir():
         return True
     except PermissionError:
         display_colored_error(f"Permission denied when creating directory: {CONFIG_DIR}")
-        print("You may need to run with sudo when using the system configuration directory.")
-        print("Alternatively, use --local-config to use the local configuration directory instead.")
         return False
 
 
@@ -116,7 +112,6 @@ def save_device_config(location, config):
         return True
     except PermissionError:
         display_colored_error(f"Permission denied when saving to: {config_path}")
-        print("You may need to run with sudo when using the system configuration directory.")
         return False
 
 
@@ -129,7 +124,6 @@ def delete_device_config(location):
             return True
         except PermissionError:
             display_colored_error(f"Permission denied when deleting: {config_path}")
-            print("You may need to run with sudo when using the system configuration directory.")
             return False
     return False
 
@@ -150,7 +144,6 @@ def save_app_config(config):
         return True
     except PermissionError:
         display_colored_error(f"Permission denied when saving to: {APP_CONFIG_FILE}")
-        print("You may need to run with sudo when using the system configuration directory.")
         return False
 
 
@@ -1060,54 +1053,22 @@ def parse_arguments():
     parser.add_argument('--version', action='version',
                       version=f'Serial-to-Fermentrack Configuration Manager v{__version__}')
     
-    config_location = parser.add_mutually_exclusive_group()
-    config_location.add_argument("--system-config", action="store_true", 
-                                help="Use system-wide configuration directory (/etc/fermentrack/serial/)")
-    config_location.add_argument("--local-config", action="store_true", 
-                                help="Use local configuration directory (./serial_config/)")
-    
     return parser.parse_args()
 
 
-def is_root():
-    """Check if the script is running with root privileges."""
-    return os.geteuid() == 0
-
-def set_config_paths(args):
-    """Set the global configuration paths based on command line arguments."""
-    global CONFIG_DIR, APP_CONFIG_FILE
-    
-    if args.system_config:
-        # When using system config, verify we're running as root
-        if not is_root():
-            display_colored_error("System-wide configuration requires root privileges")
-            print("Please run the script with sudo when using --system-config")
-            sys.exit(1)
-        CONFIG_DIR = SYSTEM_CONFIG_DIR
-    elif args.local_config:
-        CONFIG_DIR = LOCAL_CONFIG_DIR
-    else:
-        # Default to system config
-        CONFIG_DIR = SYSTEM_CONFIG_DIR
-        # When defaulting to system config, verify we're running as root
-        if not is_root():
-            display_colored_error("System-wide configuration requires root privileges")
-            print("Please run the script with sudo")
-            sys.exit(1)
-    
-    APP_CONFIG_FILE = CONFIG_DIR / "app_config.json"
+# No longer needed - all configuration is local
+# def is_root():
+#     """Check if the script is running with root privileges."""
+#     return os.geteuid() == 0
 
 
 def main():
     """Main entry point for the application."""
     args = parse_arguments()
-    set_config_paths(args)
-    
-    config_type = "System" if args.system_config or (not args.local_config) else "Local"
     
     print("Serial-to-Fermentrack Configuration Manager")
     print("==========================================")
-    print(f"Using {config_type} Configuration: {CONFIG_DIR}")
+    print(f"Using Configuration Directory: {CONFIG_DIR}")
     
     # Ensure the configuration directory exists
     if not ensure_config_dir():

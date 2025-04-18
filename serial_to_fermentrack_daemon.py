@@ -104,8 +104,8 @@ class DeviceProcess:
             if not self._read_config():
                 return False
 
-        # Use the new command structure with --system-config flag
-        cmd = ["serial_to_fermentrack", "--location", self.location, "--system-config"]
+        # Start the process with only location parameter
+        cmd = ["serial_to_fermentrack", "--location", self.location]
         logger.info(f"Starting Serial-to-Fermentrack process for {self.location} with command: {' '.join(cmd)}")
         
         try:
@@ -253,8 +253,8 @@ class SerialToFermentrackDaemon:
     """Main daemon class to manage Serial-to-Fermentrack instances."""
     
     def __init__(self, config_dir: Path = None, python_exec: str = sys.executable):
-        # Default to system-wide config directory
-        self.config_dir = config_dir or Path('/etc/fermentrack/serial')
+        # Default to local config directory
+        self.config_dir = config_dir or Path('serial_config')
         self.python_exec = python_exec
         self.running = False
         self.watcher = ConfigWatcher(self.config_dir, self.python_exec)
@@ -306,11 +306,11 @@ def parse_args():
     parser.add_argument('--version', action='version', 
                         version=f'Serial-to-Fermentrack Daemon v{__version__}')
     
-    parser.add_argument('--config-dir', type=str, default='/etc/fermentrack/serial',
-                        help='Directory containing device configuration files (default: /etc/fermentrack/serial)')
+    parser.add_argument('--config-dir', type=str, default='serial_config',
+                        help='Directory containing device configuration files (default: ./serial_config)')
     
-    parser.add_argument('--log-dir', type=str, default='/var/log/fermentrack-serial',
-                        help='Directory for log files (default: /var/log/fermentrack-serial)')
+    parser.add_argument('--log-dir', type=str, default='log',
+                        help='Directory for log files (default: ./log)')
     
     parser.add_argument('--python', type=str, default=sys.executable,
                         help='Python executable to use for launching processes (default: current Python interpreter)')

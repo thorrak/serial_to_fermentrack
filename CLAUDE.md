@@ -20,11 +20,8 @@ uv sync
 
 ### Running
 ```bash
-# Run the configuration manager (defaults to system-wide config)
+# Run the configuration manager
 serial_to_fermentrack_config
-
-# Use the configuration manager with local config
-serial_to_fermentrack_config --local-config
 
 # Run directly with location parameter (required)
 uv run serial_to_fermentrack --location 1-1
@@ -35,13 +32,10 @@ uv run serial_to_fermentrack --location 1-1 --verbose
 # Show help
 uv run serial_to_fermentrack --help
 
-# Only use system-wide configuration from /etc/fermentrack/serial
-uv run serial_to_fermentrack --location 1-1 --system-config
+# Run with a specific location parameter
+uv run serial_to_fermentrack --location 1-1
 
-# Only use local configuration from ./serial_config
-uv run serial_to_fermentrack --location 1-1 --local-config
-
-# Run the daemon (only uses system-wide config)
+# Run the daemon
 serial_to_fermentrack_daemon
 ```
 
@@ -62,12 +56,7 @@ uv run pytest --cov=bpr
 
 ## Configuration
 
-The application uses JSON configuration files stored either in the local `serial_config` directory or in the system-wide `/etc/fermentrack/serial` directory. Both app_config.json and the device-specific JSON file (e.g., 1-1.json) must be present with all required fields or the application will not start.
-
-By default, the application will first look for configuration files in the local `serial_config` directory, and if not found, it will then check the system-wide `/etc/fermentrack/serial` directory. This behavior can be modified with command-line flags:
-
-- `--system-config`: Only check the system-wide directory (`/etc/fermentrack/serial`)
-- `--local-config`: Only check the local directory (`./serial_config`)
+The application uses JSON configuration files stored in the `serial_config` directory. Both app_config.json and the device-specific JSON file (e.g., 1-1.json) must be present with all required fields or the application will not start.
 
 ### Application Config (app_config.json)
 ```json

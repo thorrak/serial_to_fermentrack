@@ -533,11 +533,11 @@ def test_config_missing_required_fields():
 
 def test_ensure_directories():
     """Test ensure_directories function."""
-    from ..utils.config import ensure_directories, DATA_DIR, LOG_DIR
+    from ..utils.config import ensure_directories, DATA_DIR, LOG_DIR, CONFIG_DIR
     
     with patch("pathlib.Path.mkdir") as mock_mkdir:
         ensure_directories()
         
-        # Should call mkdir twice (once for each directory)
-        assert mock_mkdir.call_count == 2
+        # Should call mkdir three times (once for each directory: DATA_DIR, LOG_DIR, CONFIG_DIR)
+        assert mock_mkdir.call_count == 3
         mock_mkdir.assert_any_call(exist_ok=True)
