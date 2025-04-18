@@ -5,9 +5,11 @@ description = "Fermentrack REST API client for serial-connected BrewPi devices"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "inquirer>=2.10.0",
     "pydantic==2.6.3",
-    "pyserial==3.5",
-    "requests==2.32.0",
+    "pyserial>=3.5",
+    "requests>=2.32.3",
+    "uuid>=1.30",
     "watchdog==6.0.0",
 ]
 
@@ -23,14 +25,10 @@ exclude = ["tests", "htmlcov"]
 
 [dependency-groups]
 dev = [
-    "pydantic==2.6.3",
-    "pyserial==3.5",
     "pytest==7.4.3",
     "pytest-cov==6.0.0",
     "pytest-mock==3.12.0",
-    "requests==2.32.0",
     "requests-mock==1.11.0",
-    "watchdog==6.0.0",
 ]
 
 [build-system]
