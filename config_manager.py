@@ -1069,17 +1069,31 @@ def parse_arguments():
     return parser.parse_args()
 
 
+def is_root():
+    """Check if the script is running with root privileges."""
+    return os.geteuid() == 0
+
 def set_config_paths(args):
     """Set the global configuration paths based on command line arguments."""
     global CONFIG_DIR, APP_CONFIG_FILE
     
     if args.system_config:
+        # When using system config, verify we're running as root
+        if not is_root():
+            display_colored_error("System-wide configuration requires root privileges")
+            print("Please run the script with sudo when using --system-config")
+            sys.exit(1)
         CONFIG_DIR = SYSTEM_CONFIG_DIR
     elif args.local_config:
         CONFIG_DIR = LOCAL_CONFIG_DIR
     else:
         # Default to system config
         CONFIG_DIR = SYSTEM_CONFIG_DIR
+        # When defaulting to system config, verify we're running as root
+        if not is_root():
+            display_colored_error("System-wide configuration requires root privileges")
+            print("Please run the script with sudo")
+            sys.exit(1)
     
     APP_CONFIG_FILE = CONFIG_DIR / "app_config.json"
 
