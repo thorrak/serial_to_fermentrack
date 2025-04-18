@@ -18,7 +18,7 @@ setup(
     description="Fermentrack REST API client for serial-connected BrewPi devices",
     author="Thorrak",
     author_email="...",
-    url="https://github.com/thorrak/brewpi_serial_rest",
+    url="https://github.com/thorrak/serial_to_fermentrack",
     packages=find_packages(),
     install_requires=requirements,
     entry_points={
@@ -31,10 +31,9 @@ setup(
         "Intended Audience :: Developers",
         "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
     ],
-    python_requires=">=3.7",
+    python_requires=">=3.9",
 )
