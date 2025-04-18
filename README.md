@@ -105,7 +105,7 @@ See `config/README.md` for details on all available configuration options.
 Run the application, specifying the device location:
 
 ```
-python -m bpr --location 1-1
+uv run serial_to_fermentrack --location 1-1
 ```
 
 Optional arguments:

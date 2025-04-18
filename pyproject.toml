@@ -1,7 +1,7 @@
 [project]
-name = "bpr"
-version = "0.1.0"
-description = "Add your description here"
+name = "serial-to-fermentrack"
+version = "0.0.1"
+description = "Fermentrack REST API client for serial-connected BrewPi devices"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -10,6 +10,16 @@ dependencies = [
     "requests==2.32.0",
     "watchdog==6.0.0",
 ]
+
+[project.scripts]
+serial_to_fermentrack = "brewpi_rest:main"
+
+[tool.uv]
+package = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+exclude = ["tests", "htmlcov"]
 
 [dependency-groups]
 dev = [
@@ -22,3 +32,7 @@ dev = [
     "requests-mock==1.11.0",
     "watchdog==6.0.0",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -12,49 +12,6 @@ wheels = [
 ]
 
 [[package]]
-name = "bpr"
-version = "0.1.0"
-source = { virtual = "." }
-dependencies = [
-    { name = "pydantic" },
-    { name = "pyserial" },
-    { name = "requests" },
-    { name = "watchdog" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pydantic" },
-    { name = "pyserial" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "pytest-mock" },
-    { name = "requests" },
-    { name = "requests-mock" },
-    { name = "watchdog" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "pydantic", specifier = "==2.6.3" },
-    { name = "pyserial", specifier = "==3.5" },
-    { name = "requests", specifier = "==2.32.0" },
-    { name = "watchdog", specifier = "==6.0.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pydantic", specifier = "==2.6.3" },
-    { name = "pyserial", specifier = "==3.5" },
-    { name = "pytest", specifier = "==7.4.3" },
-    { name = "pytest-cov", specifier = "==6.0.0" },
-    { name = "pytest-mock", specifier = "==3.12.0" },
-    { name = "requests", specifier = "==2.32.0" },
-    { name = "requests-mock", specifier = "==1.11.0" },
-    { name = "watchdog", specifier = "==6.0.0" },
-]
-
-[[package]]
 name = "certifi"
 version = "2025.1.31"
 source = { registry = "https://pypi.org/simple" }
@@ -337,6 +294,49 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c8/7a/fa102fafdc8547ebd744d69d09f4bc314ead1a858fe59d9c2d32591c5f4e/requests-mock-1.11.0.tar.gz", hash = "sha256:ef10b572b489a5f28e09b708697208c4a3b2b89ef80a9f01584340ea357ec3c4", size = 74377 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/29/e8/ce73e8d1c7ec127cb3af61df3fd04df9a34eef34e511dc03c069748f773d/requests_mock-1.11.0-py2.py3-none-any.whl", hash = "sha256:f7fae383f228633f6bececebdab236c478ace2284d6292c6e7e2867b9ab74d15", size = 28759 },
+]
+
+[[package]]
+name = "serial-to-fermentrack"
+version = "0.0.1"
+source = { editable = "." }
+dependencies = [
+    { name = "pydantic" },
+    { name = "pyserial" },
+    { name = "requests" },
+    { name = "watchdog" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pydantic" },
+    { name = "pyserial" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "pytest-mock" },
+    { name = "requests" },
+    { name = "requests-mock" },
+    { name = "watchdog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pydantic", specifier = "==2.6.3" },
+    { name = "pyserial", specifier = "==3.5" },
+    { name = "requests", specifier = "==2.32.0" },
+    { name = "watchdog", specifier = "==6.0.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pydantic", specifier = "==2.6.3" },
+    { name = "pyserial", specifier = "==3.5" },
+    { name = "pytest", specifier = "==7.4.3" },
+    { name = "pytest-cov", specifier = "==6.0.0" },
+    { name = "pytest-mock", specifier = "==3.12.0" },
+    { name = "requests", specifier = "==2.32.0" },
+    { name = "requests-mock", specifier = "==1.11.0" },
+    { name = "watchdog", specifier = "==6.0.0" },
 ]
 
 [[package]]
