@@ -7,7 +7,7 @@
 INSTALL_DIR="/home/brewpi/serial-to-fermentrack"
 USER="brewpi"
 SERVICE_NAME="serial-to-fermentrack-daemon"
-DAEMON_PATH="${INSTALL_DIR}/venv/bin/serial_to_fermentrack_daemon"
+DAEMON_PATH="${INSTALL_DIR}/.venv/bin/serial_to_fermentrack_daemon"
 
 # Process command line arguments
 while [[ $# -gt 0 ]]; do
@@ -55,8 +55,9 @@ After=network.target
 Type=simple
 User=${USER}
 WorkingDirectory=${INSTALL_DIR}
-ExecStart=${DAEMON_PATH}
+ExecStart=${DAEMON_PATH} --config-dir=/etc/fermentrack/serial --log-dir=/var/log/fermentrack-serial
 Restart=on-failure
+RestartSec=10
 StandardOutput=journal
 StandardError=journal
 
@@ -80,6 +81,16 @@ if [[ $EUID -eq 0 ]]; then
   read -p "Do you want to install the service now? (y/n) " -n 1 -r
   echo
   if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo "Creating required directories..."
+    mkdir -p /etc/fermentrack/serial
+    mkdir -p /var/log/fermentrack-serial
+    
+    # Set appropriate permissions
+    if [[ -n "$USER" && "$USER" != "root" ]]; then
+      chown -R ${USER}:${USER} /etc/fermentrack/serial
+      chown -R ${USER}:${USER} /var/log/fermentrack-serial
+    fi
+    
     echo "Installing service to /etc/systemd/system/${SERVICE_NAME}.service"
     echo "$SERVICE_CONTENT" > "/etc/systemd/system/${SERVICE_NAME}.service"
     

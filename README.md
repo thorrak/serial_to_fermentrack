@@ -131,35 +131,40 @@ uv run serial_to_fermentrack --location 1-1
 
 ### Running Multiple Devices with the Daemon
 
-The daemon monitors the `config` directory for device configuration files and automatically manages all configured devices:
+The daemon monitors the system-wide configuration directory (`/etc/fermentrack/serial`) for device configuration files and automatically manages all configured devices:
 
 ```
-# Start the daemon
-python brewpi_daemon.py
+# Start the daemon (requires the system-wide config directory to exist)
+serial_to_fermentrack_daemon
 
 # Start with verbose logging
-python brewpi_daemon.py --verbose
+serial_to_fermentrack_daemon --verbose
 
-# Generate a systemd service file template
-python brewpi_daemon.py --create-service
+# Specify a different config directory
+serial_to_fermentrack_daemon --config-dir=/path/to/config
+
+# Specify a different log directory
+serial_to_fermentrack_daemon --log-dir=/path/to/logs
+
+# Show help with all available options
+serial_to_fermentrack_daemon --help
 ```
+
+Note: By default, the daemon looks for configuration files in the system-wide directory (`/etc/fermentrack/serial`) and logs to `/var/log/fermentrack-serial`. You may need to create these directories with appropriate permissions before running the daemon.
 
 ### Installing as a Systemd Service
 
 To run as a system service on Linux:
 
 ```bash
-# Generate the service file
-python brewpi_daemon.py --create-service > /tmp/brewpi-daemon.service
+# Generate and install the service using the provided script
+sudo ./create_systemd_service.sh
 
-# Install the service (requires sudo)
-sudo mv /tmp/brewpi-daemon.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable brewpi-daemon.service
-sudo systemctl start brewpi-daemon.service
+# Or customize the installation
+sudo ./create_systemd_service.sh --user=myuser --install-dir=/opt/serial-to-fermentrack
 
 # Check status
-sudo systemctl status brewpi-daemon.service
+sudo systemctl status serial-to-fermentrack-daemon.service
 ```
 
 ## Architecture
@@ -171,7 +176,7 @@ The application consists of the following main components:
 3. **Serial Controller (`controller/serial_controller.py`)**: Manages serial communication with the BrewPi controller at a fixed 57600 baud rate.
 4. **BrewPi Controller (`controller/brewpi_controller.py`)**: Provides a high-level interface to the BrewPi controller.
 5. **Main Application (`brewpi_rest.py`)**: Integrates the API client and controller, handling a single device.
-6. **Daemon (`brewpi_daemon.py`)**: Monitors configuration directories and manages multiple device instances.
+6. **Daemon (`serial_to_fermentrack_daemon.py`)**: Monitors configuration directories and manages multiple device instances.
 
 ## Development
 

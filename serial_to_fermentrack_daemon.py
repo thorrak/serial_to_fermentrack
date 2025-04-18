@@ -5,6 +5,8 @@ Serial-to-Fermentrack Daemon - A daemon to manage connecting multiple temperatur
 This daemon monitors the config directory for device configuration files,
 launches serial_to_fermentrack instances for each device, and monitors those
 processes, restarting them if they die or if their configuration changes.
+
+Can be run directly as a script or as a console command once installed via pip/uv.
 """
 
 import argparse
@@ -18,6 +20,9 @@ import time
 from pathlib import Path
 from typing import Dict, Optional
 
+# Version information
+__version__ = "0.0.1"
+
 # Import watchdog for file system monitoring
 try:
     from watchdog.observers import Observer
@@ -26,16 +31,43 @@ except ImportError:
     print("Error: The watchdog package is required. Install with: pip install watchdog")
     sys.exit(1)
 
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(os.path.join('log', 'serial_to_fermentrack_daemon.log'))
-    ]
-)
+# Initialize logger - handlers will be set up in setup_logging()
 logger = logging.getLogger('serial_to_fermentrack_daemon')
+
+def setup_logging(log_dir: str = 'log', log_level: int = logging.INFO) -> None:
+    """Set up logging with file and console handlers.
+    
+    Args:
+        log_dir: Directory to store log files
+        log_level: Logging level
+    """
+    # Ensure log directory exists
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # Configure logging
+    log_file = os.path.join(log_dir, 'serial_to_fermentrack_daemon.log')
+    
+    # Reset handlers if they exist
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+    
+    # Configure handlers
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    
+    # Console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    
+    # File handler
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+    
+    # Set level
+    logger.setLevel(log_level)
+    
+    logger.info(f"Logging to {log_file}")
 
 
 class DeviceProcess:
@@ -72,8 +104,8 @@ class DeviceProcess:
             if not self._read_config():
                 return False
 
-        # Use the new command structure
-        cmd = ["serial_to_fermentrack", "--location", self.location]
+        # Use the new command structure with --system-config flag
+        cmd = ["serial_to_fermentrack", "--location", self.location, "--system-config"]
         logger.info(f"Starting Serial-to-Fermentrack process for {self.location} with command: {' '.join(cmd)}")
         
         try:
@@ -221,7 +253,8 @@ class SerialToFermentrackDaemon:
     """Main daemon class to manage Serial-to-Fermentrack instances."""
     
     def __init__(self, config_dir: Path = None, python_exec: str = sys.executable):
-        self.config_dir = config_dir or Path('config')
+        # Default to system-wide config directory
+        self.config_dir = config_dir or Path('/etc/fermentrack/serial')
         self.python_exec = python_exec
         self.running = False
         self.watcher = ConfigWatcher(self.config_dir, self.python_exec)
@@ -265,13 +298,26 @@ class SerialToFermentrackDaemon:
 
 def parse_args():
     """Parse command line arguments."""
-    parser = argparse.ArgumentParser(description='Serial-to-Fermentrack Multi-Device Daemon')
-    parser.add_argument('--config-dir', type=str, default='config',
-                        help='Directory containing device configuration files (default: config)')
+    parser = argparse.ArgumentParser(
+        description='Serial-to-Fermentrack Multi-Device Daemon',
+        epilog='This daemon monitors configured devices and manages their connections to Fermentrack.'
+    )
+    
+    parser.add_argument('--version', action='version', 
+                        version=f'Serial-to-Fermentrack Daemon v{__version__}')
+    
+    parser.add_argument('--config-dir', type=str, default='/etc/fermentrack/serial',
+                        help='Directory containing device configuration files (default: /etc/fermentrack/serial)')
+    
+    parser.add_argument('--log-dir', type=str, default='/var/log/fermentrack-serial',
+                        help='Directory for log files (default: /var/log/fermentrack-serial)')
+    
     parser.add_argument('--python', type=str, default=sys.executable,
-                        help='Python executable to use for launching processes')
+                        help='Python executable to use for launching processes (default: current Python interpreter)')
+    
     parser.add_argument('--verbose', action='store_true',
                         help='Enable verbose logging')
+    
     return parser.parse_args()
 
 
@@ -279,26 +325,44 @@ def main():
     """Main entry point for the daemon."""
     args = parse_args()
     
+    # Ensure config directory exists
+    config_dir = Path(args.config_dir)
+    
+    try:
+        # Try to create config directory if it doesn't exist (might require root)
+        if not config_dir.exists():
+            logger.warning(f"Config directory does not exist, attempting to create: {config_dir}")
+            os.makedirs(config_dir, exist_ok=True)
+    except PermissionError:
+        logger.error(f"Permission denied: Unable to create config directory: {config_dir}")
+        logger.error("Try running with sudo or specify a different config directory with --config-dir")
+        sys.exit(1)
+    
+    # Setup logging
+    log_level = logging.DEBUG if args.verbose else logging.INFO
+    try:
+        setup_logging(log_dir=args.log_dir, log_level=log_level)
+    except PermissionError:
+        logger.error(f"Permission denied: Unable to write to log directory: {args.log_dir}")
+        logger.error("Try running with sudo or specify a different log directory with --log-dir")
+        sys.exit(1)
+    
     if args.verbose:
-        logger.setLevel(logging.DEBUG)
         logger.debug("Verbose logging enabled")
-
-    # TODO - delete the below to stop forcing DEBUG level logging
-    logger.setLevel(logging.DEBUG)
-    logger.debug("Verbose logging enabled")
-
-    # Ensure log directory exists
-    log_dir = Path('log')
-    if not log_dir.exists():
-        log_dir.mkdir(exist_ok=True)
-        logger.info(f"Created log directory: {log_dir}")
     
     # Start the daemon
     daemon = SerialToFermentrackDaemon(
-        config_dir=Path(args.config_dir),
+        config_dir=config_dir,
         python_exec=args.python
     )
-    daemon.run()
+    
+    try:
+        daemon.run()
+    except KeyboardInterrupt:
+        logger.info("Received keyboard interrupt, shutting down...")
+    except Exception as e:
+        logger.exception(f"Unexpected error: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
