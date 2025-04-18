@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-BrewPi Daemon - A daemon to manage multiple BrewPi device instances.
+Serial-to-Fermentrack Daemon - A daemon to manage connecting multiple temperature controllers connected via Serial to Fermentrack 2.
 
 This daemon monitors the config directory for device configuration files,
-launches brewpi_rest.py instances for each device, and monitors those
+launches serial_to_fermentrack instances for each device, and monitors those
 processes, restarting them if they die or if their configuration changes.
 """
 
@@ -32,14 +32,14 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler(os.path.join('log', 'brewpi_daemon.log'))
+        logging.FileHandler(os.path.join('log', 'serial_to_fermentrack_daemon.log'))
     ]
 )
-logger = logging.getLogger('brewpi_daemon')
+logger = logging.getLogger('serial_to_fermentrack_daemon')
 
 
 class DeviceProcess:
-    """Manages a single brewpi_rest.py process for a specific device."""
+    """Manages a single serial_to_fermentrack process for a specific device."""
 
     def __init__(self, config_file: Path, python_exec: str = sys.executable):
         self.config_file = config_file
@@ -67,13 +67,14 @@ class DeviceProcess:
             return False
 
     def start(self) -> bool:
-        """Start the brewpi_rest.py process for this device."""
+        """Start the serial_to_fermentrack process for this device."""
         if not self.location:
             if not self._read_config():
                 return False
 
-        cmd = [self.python_exec, "-m", "bpr", "--location", self.location]
-        logger.info(f"Starting BrewPi process for {self.location} with command: {' '.join(cmd)}")
+        # Use the new command structure
+        cmd = ["serial_to_fermentrack", "--location", self.location]
+        logger.info(f"Starting Serial-to-Fermentrack process for {self.location} with command: {' '.join(cmd)}")
         
         try:
             # Use process groups to ensure child processes can be properly terminated
@@ -90,10 +91,10 @@ class DeviceProcess:
             return False
 
     def stop(self) -> None:
-        """Stop the brewpi_rest.py process."""
+        """Stop the serial_to_fermentrack process."""
         self.stopping = True
         if self.process and self.process.poll() is None:
-            logger.info(f"Stopping BrewPi process for {self.location}")
+            logger.info(f"Stopping Serial-to-Fermentrack process for {self.location}")
             try:
                 # Try to terminate the entire process group
                 os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)
@@ -163,13 +164,13 @@ class ConfigWatcher(FileSystemEventHandler):
         
     def stop(self) -> None:
         """Stop all device processes and the file system observer."""
-        logger.info("Stopping all BrewPi processes")
+        logger.info("Stopping all Serial-to-Fermentrack processes")
         for device in self.devices.values():
             device.stop()
         
         self.observer.stop()
         self.observer.join()
-        logger.info("BrewPi daemon stopped")
+        logger.info("Serial-to-Fermentrack daemon stopped")
     
     def _scan_config_directory(self) -> None:
         """Scan the config directory for device configuration files."""
@@ -216,8 +217,8 @@ class ConfigWatcher(FileSystemEventHandler):
                 del self.devices[event.src_path]
 
 
-class BrewPiDaemon:
-    """Main daemon class to manage BrewPi instances."""
+class SerialToFermentrackDaemon:
+    """Main daemon class to manage Serial-to-Fermentrack instances."""
     
     def __init__(self, config_dir: Path = None, python_exec: str = sys.executable):
         self.config_dir = config_dir or Path('config')
@@ -236,7 +237,7 @@ class BrewPiDaemon:
     
     def run(self) -> None:
         """Run the daemon main loop."""
-        logger.info("Starting BrewPi daemon")
+        logger.info("Starting Serial-to-Fermentrack daemon")
         self.running = True
         
         # Ensure config directory exists
@@ -257,46 +258,18 @@ class BrewPiDaemon:
         finally:
             # Clean shutdown
             self.watcher.stop()
-            logger.info("BrewPi daemon stopped")
+            logger.info("Serial-to-Fermentrack daemon stopped")
 
 
-def create_systemd_service() -> None:
-    """Create a systemd service file for the daemon."""
-    service_content = """[Unit]
-Description=BrewPi Multi-Device Daemon
-After=network.target
-
-[Service]
-Type=simple
-User=brewpi
-WorkingDirectory=/home/brewpi/brewpi-serial-rest
-ExecStart=/home/brewpi/brewpi-serial-rest/venv/bin/python brewpi_daemon.py
-Restart=on-failure
-StandardOutput=journal
-StandardError=journal
-
-[Install]
-WantedBy=multi-user.target
-"""
-    
-    print("Systemd service file content:")
-    print(service_content)
-    print("\nTo install this service:")
-    print("1. Save this content to /etc/systemd/system/brewpi-daemon.service")
-    print("2. Run: sudo systemctl daemon-reload")
-    print("3. Run: sudo systemctl enable brewpi-daemon.service")
-    print("4. Run: sudo systemctl start brewpi-daemon.service")
 
 
 def parse_args():
     """Parse command line arguments."""
-    parser = argparse.ArgumentParser(description='BrewPi Multi-Device Daemon')
+    parser = argparse.ArgumentParser(description='Serial-to-Fermentrack Multi-Device Daemon')
     parser.add_argument('--config-dir', type=str, default='config',
                         help='Directory containing device configuration files (default: config)')
     parser.add_argument('--python', type=str, default=sys.executable,
                         help='Python executable to use for launching processes')
-    parser.add_argument('--create-service', action='store_true',
-                        help='Print a systemd service file template and exit')
     parser.add_argument('--verbose', action='store_true',
                         help='Enable verbose logging')
     return parser.parse_args()
@@ -305,10 +278,6 @@ def parse_args():
 def main():
     """Main entry point for the daemon."""
     args = parse_args()
-    
-    if args.create_service:
-        create_systemd_service()
-        return
     
     if args.verbose:
         logger.setLevel(logging.DEBUG)
@@ -325,7 +294,7 @@ def main():
         logger.info(f"Created log directory: {log_dir}")
     
     # Start the daemon
-    daemon = BrewPiDaemon(
+    daemon = SerialToFermentrackDaemon(
         config_dir=Path(args.config_dir),
         python_exec=args.python
     )
