@@ -222,17 +222,28 @@ def configure_fermentrack_connection():
                          default=existing_config.get('username', ''))
         ]
     else:
-        # Need host, port, https flag, and username for custom
+        # Need host, https flag, port, and username for custom
+        # First, ask about HTTPS
+        https_question = [
+            inquirer.Confirm('use_https', 
+                            message="Use HTTPS?",
+                            default=existing_config.get('use_https', False))
+        ]
+        
+        https_answer = inquirer.prompt(https_question)
+        use_https = https_answer.get('use_https', False)
+        
+        # Set appropriate default port based on HTTPS selection
+        default_port = '443' if use_https else '80'
+        
+        # Now ask remaining questions
         questions = [
             inquirer.Text('host', 
                          message="Enter the Fermentrack host",
                          default=existing_config.get('host', 'localhost')),
             inquirer.Text('port', 
                          message="Enter the Fermentrack port",
-                         default=existing_config.get('port', '80')),
-            inquirer.Confirm('use_https', 
-                            message="Use HTTPS?",
-                            default=existing_config.get('use_https', False)),
+                         default=existing_config.get('port', default_port)),
             inquirer.Text('username', 
                          message="Enter your Fermentrack username",
                          default=existing_config.get('username', ''))
@@ -256,7 +267,7 @@ def configure_fermentrack_connection():
         if not using_cloud:
             config['host'] = answers['host']
             config['port'] = answers['port']
-            config['use_https'] = answers['use_https']
+            config['use_https'] = use_https  # Use the value we got earlier
         
         if save_app_config(config):
             if using_cloud:
