@@ -1,6 +1,6 @@
 # BrewPi-Serial-REST
 
-A modern REST API-based implementation of BrewPi-Script for Fermentrack 2.
+A modern implementation of BrewPi-Script for Fermentrack 2's REST API.
 
 ## Overview
 
@@ -32,15 +32,19 @@ BrewPi-Serial-REST is a Python application that mediates communication between t
 
 2. Install dependencies:
    ```
-   # Create a virtual environment
-   python -m venv venv
-   source venv/bin/activate
+   # Install uv (if not already installed)
+   # On Mac or Linux (including Raspberry Pi)
+   curl -LsSf https://astral.sh/uv/install.sh | sh
    
-   # For running the application
-   pip install -r requirements.txt
+   # Create the virtual environment (by default, in .venv)
+   uv venv
    
-   # For development and testing
-   pip install -r requirements_test.txt
+   # Sync dependencies for the virtual environment
+   uv sync
+
+   # Activate the virtual environment
+   source .venv/bin/activate
+   
    ```
 
 3. Configure the application by modifying the files in the `config` directory.
@@ -158,8 +162,7 @@ The application consists of the following main components:
 Install test dependencies and run tests with pytest:
 
 ```
-pip install -r requirements_test.txt
-pytest
+uv run pytest
 ```
 
 ### Contributing
@@ -176,5 +179,5 @@ Apache License 2.0
 
 ## Credits
 
-- Based on the original [BrewPi-Script](https://github.com/BrewPi/brewpi-script)
 - Developed for [Fermentrack 2](https://github.com/thorrak/fermentrack)
+- Inspired by the original [BrewPi-Script](https://github.com/BrewPi/brewpi-script)

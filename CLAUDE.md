@@ -7,47 +7,42 @@ BrewPi-Serial-REST is a modern REST API-based implementation that replaces the l
 
 ### Installation
 ```bash
-# Install runtime dependencies
-pip install -r requirements.txt
+# Install uv (only if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install development and test dependencies
-pip install -r requirements_test.txt
+# Create virtualenv
+uv venv
+
+# Install runtime dependencies (including development and test dependencies)
+uv sync
 ```
 
 ### Running
 ```bash
 # Run directly with location parameter (required)
-python -m bpr --location 1-1
+uv run python -m bpr --location 1-1
 
 # Run with verbose logging
-python -m bpr --location 1-1 --verbose
+uv run python -m bpr --location 1-1 --verbose
 
 # Show help
-python -m bpr --help
+uv run python -m bpr --help
 ```
 
 ### Testing
 ```bash
-# Activate the virtual environment first (important!)
-source venv/bin/activate   # Or whatever your virtual environment path is
-
-# Install test dependencies
-pip install -r requirements_test.txt
+# Install all dependencies
+uv sync
 
 # Run all tests
-pytest
+uv run pytest
 
 # Run specific test file
-pytest tests/test_api_client.py
+uv run pytest tests/test_api_client.py
 
 # Run with coverage
-pytest --cov=bpr
-
-# Run tests from the bpr directory
-cd bpr && pytest
+uv run pytest --cov=bpr
 ```
-
-NOTE: Always activate the virtual environment before running tests or any Python commands. The application and tests will not run correctly without the virtual environment activated.
 
 ## Configuration
 
@@ -186,10 +181,12 @@ The serial communication model is fully asynchronous:
 - Updated `mock_controller` fixture in test_brewpi_rest.py to use the new model structure
 - Fixed field mappings between response and model attributes
 
-### Requirements Organization
-- Split requirements into two files:
-  - `requirements.txt`: Runtime dependencies only
-  - `requirements_test.txt`: Test dependencies (includes runtime dependencies)
+### Package Management
+- Project uses uv for package management
+- Virtual environment located in `.venv` directory
+- Dependencies defined in pyproject.toml:
+  - Regular dependencies listed under `project.dependencies`
+  - Development dependencies in the `dev` dependency group
 
 ### Configuration Handling
 - Moved from environment variables to JSON configuration files
