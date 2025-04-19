@@ -8,12 +8,11 @@ import logging
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple
 
-# Base directory
-BASE_DIR = Path(__file__).resolve().parent.parent
-CONFIG_DIR = BASE_DIR / "serial_config"
+# Use only current working directory for config paths
+CURRENT_DIR = Path.cwd()
+CONFIG_DIR = CURRENT_DIR / "serial_config"
 # System-wide config directory no longer supported
-DATA_DIR = BASE_DIR / "data"
-LOG_DIR = BASE_DIR / "log"
+LOG_DIR = CURRENT_DIR / "logs"
 
 # Create a logger for this module
 logger = logging.getLogger(__name__)
@@ -67,8 +66,9 @@ class Config:
         
         if not app_config_found:
             config_paths = [d / "app_config.json" for d in self.config_dirs]
-            logger.error(f"Application config file not found in any of: {config_paths}")
-            raise FileNotFoundError(f"Required configuration file not found: app_config.json. Searched: {config_paths}")
+            logger.error(f"Application config file not found in: {config_paths}")
+            logger.error(f"Current working directory is: {CURRENT_DIR}")
+            raise FileNotFoundError(f"Required configuration file not found: app_config.json. Searched in current directory: {CURRENT_DIR}/serial_config")
         
         # Verify required fields are present
         if self.app_config.get("use_fermentrack_net", False):
@@ -115,7 +115,8 @@ class Config:
         if not device_config_found:
             config_paths = [d / f"{location}.json" for d in self.config_dirs]
             logger.error(f"Device config file not found: {config_paths}")
-            raise FileNotFoundError(f"Required device configuration file not found: {location}.json. Searched: {config_paths}")
+            logger.error(f"Current working directory is: {CURRENT_DIR}")
+            raise FileNotFoundError(f"Required device configuration file not found: {location}.json. Searched in current directory: {CURRENT_DIR}/serial_config")
 
         # Verify required fields - 'device' is explicitly not required as it's not used
         required_fields = ["location", "fermentrack_id"]
@@ -243,11 +244,6 @@ class Config:
         raise ValueError(f"No device found with exact location match '{location}'.")
 
     @property
-    def DATA_DIR(self) -> str:
-        """Get data directory."""
-        return str(DATA_DIR)
-
-    @property
     def LOG_DIR(self) -> str:
         """Get log directory."""
         return str(LOG_DIR)
@@ -279,7 +275,8 @@ class Config:
 
 # Create directories if they don't exist
 def ensure_directories() -> None:
-    """Create necessary directories if they don't exist."""
-    DATA_DIR.mkdir(exist_ok=True)
+    """Create necessary directories if they don't exist in the current working directory."""
+    logger.info(f"Creating necessary directories in current working directory: {CURRENT_DIR}")
     LOG_DIR.mkdir(exist_ok=True)
     CONFIG_DIR.mkdir(exist_ok=True)
+    logger.info(f"Configuration directory: {CONFIG_DIR}")

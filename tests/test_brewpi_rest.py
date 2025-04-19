@@ -28,7 +28,6 @@ def mock_config():
     mock_config.DEVICE_ID = "test123"
     mock_config.FERMENTRACK_API_KEY = "abc456"
     mock_config.SERIAL_PORT = "/dev/ttyUSB0"  # Mock the result of port detection
-    mock_config.DATA_DIR = "/tmp/brewpi-rest/data"
     mock_config.LOG_DIR = "/tmp/brewpi-rest/logs"
     mock_config.LOG_LEVEL = "INFO"
     mock_config.LOG_FILE = "/tmp/brewpi-rest/logs/brewpi_rest.log"

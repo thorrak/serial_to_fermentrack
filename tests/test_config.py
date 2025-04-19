@@ -82,7 +82,6 @@ def test_config_properties(mock_config_files):
     assert config.FERMENTRACK_API_KEY == "test-api-key"
     
     # Test directory properties
-    assert config.DATA_DIR is not None  # DATA_DIR
     assert config.LOG_FORMAT is not None  # LOG_FORMAT
     assert config.LOG_LEVEL == "INFO"  # Default LOG_LEVEL
 
@@ -533,11 +532,11 @@ def test_config_missing_required_fields():
 
 def test_ensure_directories():
     """Test ensure_directories function."""
-    from ..utils.config import ensure_directories, DATA_DIR, LOG_DIR, CONFIG_DIR
+    from ..utils.config import ensure_directories, LOG_DIR, CONFIG_DIR
     
     with patch("pathlib.Path.mkdir") as mock_mkdir:
         ensure_directories()
         
-        # Should call mkdir three times (once for each directory: DATA_DIR, LOG_DIR, CONFIG_DIR)
-        assert mock_mkdir.call_count == 3
+        # Should call mkdir three times (once for each directory: LOG_DIR, CONFIG_DIR)
+        assert mock_mkdir.call_count == 2
         mock_mkdir.assert_any_call(exist_ok=True)
