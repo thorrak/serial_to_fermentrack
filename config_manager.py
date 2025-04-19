@@ -1007,7 +1007,9 @@ def main_menu():
                 protocol = "HTTPS" if app_config.get('use_https', False) else "HTTP"
                 print(f"\nUsing Local/Custom Fermentrack: {host}:{port} ({protocol})")
                 
-            print(f"Username: {app_config.get('username', 'None')}")
+            # Only show username if no API key is configured
+            if not app_config.get('fermentrack_api_key'):
+                print(f"Username: {app_config.get('username', 'None')}")
             
             # Display API key status if available
             if app_config.get('fermentrack_api_key'):
