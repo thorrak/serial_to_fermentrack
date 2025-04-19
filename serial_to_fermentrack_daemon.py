@@ -34,7 +34,7 @@ except ImportError:
 # Initialize logger - handlers will be set up in setup_logging()
 logger = logging.getLogger('serial_to_fermentrack_daemon')
 
-def setup_logging(log_dir: str = 'log', log_level: int = logging.INFO) -> None:
+def setup_logging(log_dir: str = 'logs', log_level: int = logging.INFO) -> None:
     """Set up logging with file and console handlers.
     
     Args:
