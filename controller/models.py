@@ -98,8 +98,8 @@ class Device(BaseModel):
             "h": self.deviceHardware,
             "p": self.pinNr,
             "x": self.invert,
-            "d": self.deactivate,
             "n": self.pio,
+            "d": self.deactivate,
             "j": self.calibrationAdjust
         }
 
@@ -142,6 +142,16 @@ class Device(BaseModel):
             address=controller_dict.get("a"),
             value=controller_dict.get("v")
         )
+        if device.index == -1 and device.deviceFunction != 0:
+            # There's a bug in the BrewPiRemix Arduino firmware where pins are enumerated in a loop by reusing the same
+            # 'config' object to read them out. If a pin early in the loop has a function set, all subsequent pins will
+            # claim to have the same function (even though they don't/are undefined). This is a bug in the firmware, and
+            # while I could try to patch it there, there are way too many of these things in the wild to try to expect
+            # everyone will upgrade.
+            # For reference: https://github.com/brewpi-remix/brewpi-firmware-rmx/blob/8f1fa1213cbbfc1f987fada5168d01925e1a2ee8/src/DeviceManager.cpp#L784-L812
+            logger.debug(f"Device index is -1 but deviceFunction is {device.deviceFunction}. This is likely due to a bug in the Arduino BrewPi firmware. Defaulting function to 0")
+            device.deviceFunction = 0
+
         return device
 
     @property
