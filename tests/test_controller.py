@@ -13,44 +13,45 @@ from bpr.controller.models import (
 @pytest.fixture
 def mock_serial_controller():
     """Create a mock serial controller."""
-    with patch("bpr.controller.brewpi_controller.SerialController") as mock:
-        # Set up the mock controller
-        mock_instance = MagicMock()
-        # Mock the serial connection to always return True
-        mock_instance.connect.return_value = True
-        
-        # Instead of get_* methods, we now use request_* methods
-        # These don't return values directly but instead call parse_responses
-        
-        # Mock the parse_responses method to simply call the controller's parse_response
-        # with the appropriate messages later
-        def mock_parse_responses(controller):
-            pass  # The actual parsing is mocked separately in the tests
-            
-        mock_instance.parse_responses.side_effect = mock_parse_responses
-        
-        # Mock all the request_* methods to do nothing (they just trigger responses)
-        mock_instance.request_version = MagicMock()
-        mock_instance.request_settings = MagicMock()
-        mock_instance.request_lcd = MagicMock()
-        mock_instance.request_temperatures = MagicMock()
-        mock_instance.request_control_constants = MagicMock()
-        mock_instance.request_device_list = MagicMock()
-        
-        # Mock the setter methods 
-        mock_instance.set_mode_and_temp = MagicMock()
-        mock_instance.set_beer_temp = MagicMock()
-        mock_instance.set_fridge_temp = MagicMock()
-        mock_instance.set_control_settings = MagicMock()
-        mock_instance.set_control_constants = MagicMock()
-        mock_instance.set_device_list = MagicMock()
-        mock_instance.restart_device = MagicMock()
-        mock_instance.reset_eeprom = MagicMock()
-        mock_instance.default_control_settings = MagicMock()
-        mock_instance.default_control_constants = MagicMock()
-        
-        mock.return_value = mock_instance
-        yield mock_instance
+    with patch('time.sleep') as mock_sleep:
+        with patch("bpr.controller.brewpi_controller.SerialController") as mock:
+            # Set up the mock controller
+            mock_instance = MagicMock()
+            # Mock the serial connection to always return True
+            mock_instance.connect.return_value = True
+
+            # Instead of get_* methods, we now use request_* methods
+            # These don't return values directly but instead call parse_responses
+
+            # Mock the parse_responses method to simply call the controller's parse_response
+            # with the appropriate messages later
+            def mock_parse_responses(controller):
+                pass  # The actual parsing is mocked separately in the tests
+
+            mock_instance.parse_responses.side_effect = mock_parse_responses
+
+            # Mock all the request_* methods to do nothing (they just trigger responses)
+            mock_instance.request_version = MagicMock()
+            mock_instance.request_settings = MagicMock()
+            mock_instance.request_lcd = MagicMock()
+            mock_instance.request_temperatures = MagicMock()
+            mock_instance.request_control_constants = MagicMock()
+            mock_instance.request_device_list = MagicMock()
+
+            # Mock the setter methods
+            mock_instance.set_mode_and_temp = MagicMock()
+            mock_instance.set_beer_temp = MagicMock()
+            mock_instance.set_fridge_temp = MagicMock()
+            mock_instance.set_control_settings = MagicMock()
+            mock_instance.set_control_constants = MagicMock()
+            mock_instance.set_device_list = MagicMock()
+            mock_instance.restart_device = MagicMock()
+            mock_instance.reset_eeprom = MagicMock()
+            mock_instance.default_control_settings = MagicMock()
+            mock_instance.default_control_constants = MagicMock()
+
+            mock.return_value = mock_instance
+            yield mock_instance
 
 
 def test_brewpi_controller_init_connect(mock_serial_controller):
@@ -101,10 +102,10 @@ def test_brewpi_controller_get_status(mock_serial_controller):
             "Line 4"
         ]
         controller.temperature_data = {
-            "beerTemp": 20.5,
-            "beerSet": 20.0,
-            "fridgeTemp": 18.2,
-            "fridgeSet": 18.0,
+            "BeerTemp": 20.5,
+            "BeerSet": 20.0,
+            "FridgeTemp": 18.2,
+            "FridgeSet": 18.0,
             "RoomTemp": 22.1
         }
         
@@ -115,10 +116,10 @@ def test_brewpi_controller_get_status(mock_serial_controller):
         assert status.mode == "b"
         assert status.temp_format == "C"
         assert status.temps == {
-            "beerTemp": 20.5,
-            "beerSet": 20.0,
-            "fridgeTemp": 18.2,
-            "fridgeSet": 18.0,
+            "BeerTemp": 20.5,
+            "BeerSet": 20.0,
+            "FridgeTemp": 18.2,
+            "FridgeSet": 18.0,
             "RoomTemp": 22.1
         }
         assert status.lcd == [
@@ -370,10 +371,10 @@ def test_controller_status_with_special_temps():
     status = ControllerStatus(
         lcd=["Line 1", "Line 2", "Line 3", "Line 4"],
         temps={
-            "beerTemp": 20.5,     # Float value
-            "beerSet": 20.0,      # Float value
-            "fridgeTemp": 18.2,   # Float value
-            "fridgeSet": 18.0,    # Float value
+            "BeerTemp": 20.5,     # Float value
+            "BeerSet": 20.0,      # Float value
+            "FridgeTemp": 18.2,   # Float value
+            "FridgeSet": 18.0,    # Float value
             "RoomTemp": None,     # None value
             "FridgeAnn": "Some fridge annotation",  # Valid string for FridgeAnn
             "BeerAnn": "Some beer annotation",      # Valid string for BeerAnn
@@ -384,10 +385,10 @@ def test_controller_status_with_special_temps():
     )
     
     # Verify all values are correctly stored
-    assert status.temps["beerTemp"] == 20.5
-    assert status.temps["beerSet"] == 20.0
-    assert status.temps["fridgeTemp"] == 18.2
-    assert status.temps["fridgeSet"] == 18.0
+    assert status.temps["BeerTemp"] == 20.5
+    assert status.temps["BeerSet"] == 20.0
+    assert status.temps["FridgeTemp"] == 18.2
+    assert status.temps["FridgeSet"] == 18.0
     assert status.temps["RoomTemp"] is None
     assert status.temps["FridgeAnn"] == "Some fridge annotation"
     assert status.temps["BeerAnn"] == "Some beer annotation"
@@ -402,9 +403,9 @@ def test_controller_status_invalid_values():
         status = ControllerStatus(
             lcd=["Line 1", "Line 2", "Line 3", "Line 4"],
             temps={
-                "beerTemp": "--.-",  # String value not allowed for this key
-                "beerSet": 20.0,
-                "fridgeTemp": 18.2
+                "BeerTemp": "--.-",  # String value not allowed for this key
+                "BeerSet": 20.0,
+                "FridgeTemp": 18.2
             },
             temp_format="C",
             mode="b"
@@ -418,8 +419,8 @@ def test_controller_status_invalid_values():
         status = ControllerStatus(
             lcd=["Line 1", "Line 2", "Line 3", "Line 4"],
             temps={
-                "beerTemp": 20.5,
-                "fridgeTemp": "not valid",  # String value not allowed for this key
+                "BeerTemp": 20.5,
+                "FridgeTemp": "not valid",  # String value not allowed for this key
                 "FridgeAnn": "This is valid"  # This one is valid
             },
             temp_format="C",
@@ -440,33 +441,110 @@ def test_brewpi_controller_parse_response(mock_serial_controller):
     assert result is True
     assert controller.firmware_version == "0.15"
     
-    # Test temperature response - using RoomTemp (with exact casing)
-    temp_response = 'T:{"beerTemp":20.5,"beerSet":20.0,"fridgeTemp":18.2,"fridgeSet":18.0,"RoomTemp":22.1}'
+    # Test temperature response - using RoomTemp
+    temp_response = 'T:{"BeerTemp":20.5,"BeerSet":20.0,"FridgeTemp":18.2,"FridgeSet":18.0,"RoomTemp":22.1}'
     result = controller.parse_response(temp_response)
     assert result is True
     assert controller.temperature_data == {
-        "beerTemp": 20.5,
-        "beerSet": 20.0,
-        "fridgeTemp": 18.2,
-        "fridgeSet": 18.0,
-        "RoomTemp": 22.1
+        "BeerTemp": 20.5,
+        "BeerSet": 20.0,
+        "FridgeTemp": 18.2,
+        "FridgeSet": 18.0,
+        "RoomTemp": 22.1,
+        "BeerAnn": None,
+        "FridgeAnn": None,
+        "State": None
     }
     
     # Test temperature response with string annotations and State integer (bugfix test)
-    temp_response_with_annotations = 'T:{"beerTemp":20.5,"beerSet":20.0,"fridgeTemp":18.2,"fridgeSet":18.0,"RoomTemp":22.1,"BeerAnn":"Fermenting","FridgeAnn":"Cooling","State":3}'
+    temp_response_with_annotations = 'T:{"BeerTemp":20.5,"BeerSet":20.0,"FridgeTemp":18.2,"FridgeSet":18.0,"RoomTemp":22.1,"BeerAnn":"Fermenting","FridgeAnn":"Cooling","State":3}'
     result = controller.parse_response(temp_response_with_annotations)
     assert result is True
     assert controller.temperature_data == {
-        "beerTemp": 20.5,
-        "beerSet": 20.0,
-        "fridgeTemp": 18.2,
-        "fridgeSet": 18.0,
+        "BeerTemp": 20.5,
+        "BeerSet": 20.0,
+        "FridgeTemp": 18.2,
+        "FridgeSet": 18.0,
         "RoomTemp": 22.1,
         "BeerAnn": "Fermenting",
         "FridgeAnn": "Cooling",
         "State": 3
     }
     
+    # Test temperature response with null values for all temperature fields
+    temp_response_with_nulls = 'T:{"BeerTemp":null,"BeerSet":null,"BeerAnn":null,"FridgeTemp":null,"FridgeSet":null,"FridgeAnn":null,"State":0,"RoomTemp":null}'
+    result = controller.parse_response(temp_response_with_nulls)
+    assert result is True
+    assert controller.temperature_data == {
+        "BeerTemp": None,
+        "BeerSet": None,
+        "FridgeTemp": None,
+        "FridgeSet": None,
+        "RoomTemp": None,
+        "BeerAnn": None,
+        "FridgeAnn": None,
+        "State": 0,
+    }
+    
+    # Test arduino controller response with exact format specified (no RoomTemp field)
+    arduino_response_no_sensors = 'T:{"BeerTemp":null,"BeerSet":null,"BeerAnn":null,"FridgeTemp":null,"FridgeSet":null,"FridgeAnn":null,"State":0}'
+    result = controller.parse_response(arduino_response_no_sensors)
+    assert result is True
+    assert controller.temperature_data == {
+        "BeerTemp": None,
+        "BeerSet": None,
+        "FridgeTemp": None,
+        "FridgeSet": None,
+        "RoomTemp": None,
+        "BeerAnn": None,
+        "FridgeAnn": None,
+        "State": 0,
+    }
+    
+    # Test temperature response with empty string for RoomTemp
+    temp_response_with_empty_roomtemp = 'T:{"BeerTemp":20.5,"BeerSet":20.0,"FridgeTemp":18.2,"FridgeSet":18.0,"RoomTemp":""}'
+    result = controller.parse_response(temp_response_with_empty_roomtemp)
+    assert result is True
+    assert controller.temperature_data == {
+        "BeerTemp": 20.5,
+        "BeerSet": 20.0,
+        "FridgeTemp": 18.2,
+        "FridgeSet": 18.0,
+        "RoomTemp": None,  # Empty string should be converted to None
+        "BeerAnn": None,
+        "FridgeAnn": None,
+        "State": None,
+    }
+    
+    # Test temperature response with mixed values - some null, some with values
+    temp_response_mixed = 'T:{"BeerTemp":null,"BeerSet":20.0,"BeerAnn":"Fermenting","FridgeTemp":18.2,"FridgeSet":18.0,"FridgeAnn":null,"State":0,"RoomTemp":null}'
+    result = controller.parse_response(temp_response_mixed)
+    assert result is True
+    assert controller.temperature_data == {
+        "BeerTemp": None,
+        "BeerSet": 20.0,
+        "FridgeTemp": 18.2,
+        "FridgeSet": 18.0,
+        "RoomTemp": None,
+        "BeerAnn": "Fermenting",
+        "FridgeAnn": None,
+        "State": 0,
+    }
+    
+    # Test get_status with all null temperature values
+    controller.control_constants = ControlConstants(tempFormat="C")
+    controller.control_settings = ControlSettings(mode="o")
+    controller.temperature_data = {
+        "BeerTemp": None,
+        "BeerSet": None,
+        "FridgeTemp": None,
+        "FridgeSet": None,
+        "RoomTemp": None,
+        "BeerAnn": None,
+        "FridgeAnn": None,
+        "State": 0,
+    }
+
     # Test LCD response - now expecting a list instead of a dictionary
     lcd_response = 'L:["Mode   Off          ","Beer   --.-  20.0 °C","Fridge --.-  20.0 °C","Temp. control OFF   "]'
     result = controller.parse_response(lcd_response)

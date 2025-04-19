@@ -12,12 +12,13 @@ from bpr.controller.serial_controller import SerialController, SerialControllerE
 def mock_serial():
     """Mock the serial connection."""
     with patch('bpr.controller.serial_controller.serial.Serial') as mock_serial:
-        # Configure the mock
-        mock_instance = MagicMock()
-        mock_instance.in_waiting = 0
-        mock_instance.read.return_value = b''
-        mock_serial.return_value = mock_instance
-        yield mock_instance
+        with patch('time.sleep') as mock_sleep:
+            # Configure the mock
+            mock_instance = MagicMock()
+            mock_instance.in_waiting = 0
+            mock_instance.read.return_value = b''
+            mock_serial.return_value = mock_instance
+            yield mock_instance
 
 
 def test_serial_controller_init():
@@ -509,9 +510,7 @@ def test_set_device_list(mock_serial):
         Device(index=-1, chamber=1, beer=0, deviceFunction=0, deviceHardware=1, pinNr=11, invert=0)
     ]
 
-    # Need to patch time.sleep to speed up test
-    with patch('bpr.controller.serial_controller.time.sleep'):
-        controller.set_device_list(devices)
+    controller.set_device_list(devices)
 
     # Verify correct number of write calls (one per device)
     assert mock_serial.write.call_count == 3

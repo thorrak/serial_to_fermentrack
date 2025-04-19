@@ -60,7 +60,7 @@ def test_setup_logging_with_file():
             mock_stream_handler.assert_called_once()
             mock_file_handler.assert_called_once_with(
                 log_file,
-                maxBytes=1024 * 1024 * 10,  # 10 MB
+                maxBytes=1024 * 1024 * 2,  # 2 MB
                 backupCount=5
             )
             

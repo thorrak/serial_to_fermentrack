@@ -429,6 +429,44 @@ class BrewPiController:
             logger.error(f"Failed to apply device configuration: {e}")
             return False
 
+    @staticmethod
+    def parse_temps(raw_dict: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Parse temperature data from the controller. Broken out to allow for formatting
+        differences coming off the controller itself.
+
+        Args:
+            raw_dict: Raw temperature data from the controller
+
+        Returns:
+            Dict with parsed temperature data with appropriate keys and types
+        """
+        # map our desired output keys to the possible input keys
+        key_map = {
+            "BeerTemp":   ("beerTemp",   "BeerTemp"),
+            "BeerSet":    ("beerSet",    "BeerSet"),
+            "FridgeTemp": ("fridgeTemp", "FridgeTemp"),
+            "FridgeSet":  ("fridgeSet",  "FridgeSet"),
+            "RoomTemp":   ("roomTemp",   "RoomTemp"),
+            "BeerAnn":    ("beerAnn",    "BeerAnn"),
+            "FridgeAnn":  ("fridgeAnn",  "FridgeAnn"),
+            "State":      ("state",      "State"),
+        }
+
+        parsed: Dict[str, Any] = {}
+        for out_key, candidates in key_map.items():
+            # pick the first one that actually exists in raw_dict
+            parsed[out_key] = next(
+                (raw_dict[k] for k in candidates if k in raw_dict),
+                None
+            )
+
+        if parsed['RoomTemp'] == '':
+            # If the room temperature is empty, set it to None
+            parsed['RoomTemp'] = None
+
+        return parsed
+
     def parse_response(self, response: str) -> bool:
         """Parse response from the controller.
 
@@ -460,10 +498,7 @@ class BrewPiController:
             elif response.startswith('T:'):
                 json_str = response[2:]
                 try:
-                    temps = json.loads(json_str)
-                    if temps['RoomTemp'] == '':  # Force None if empty
-                        temps['RoomTemp'] = None
-                    self.temperature_data = temps
+                    self.temperature_data = self.parse_temps(json.loads(json_str))
                     logger.debug(f"Received temperature data: {self.temperature_data}")
                     return True
                 except json.JSONDecodeError as e:
