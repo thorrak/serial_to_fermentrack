@@ -61,8 +61,21 @@ class BrewPiController:
 
             if self.connected:
                 # Request firmware version
-                self.serial.request_version()
-                self.serial.parse_responses(self)
+                for _ in range(3):
+                    self.serial.request_version()
+                    time.sleep(0.3)
+                    self.serial.parse_responses(self)
+                    if self.firmware_version:
+                        break
+                    logger.info("Firmware version not received, retrying in 3 seconds...")
+                    time.sleep(3)
+
+                if not self.firmware_version:
+                    # If we can't retrieve the firmware version, something is wrong with the controller. Print an error,
+                    # wait 5 seconds, and quit the script.
+                    logger.error("Unable to retrieve firmware version from controller. Exiting...")
+                    time.sleep(5)
+                    exit(1)
 
                 # Get initial state
                 self._refresh_controller_state()
@@ -87,9 +100,23 @@ class BrewPiController:
             
             if self.connected:
                 # Request firmware version
-                self.serial.request_version()
-                self.serial.parse_responses(self)
-                
+                self.firmware_version = None  # Unset the firmware version if it was set at the initial connection
+                for _ in range(3):
+                    self.serial.request_version()
+                    time.sleep(0.3)
+                    self.serial.parse_responses(self)
+                    if self.firmware_version:
+                        break
+                    logger.info("Firmware version not received, retrying in 3 seconds...")
+                    time.sleep(3)
+
+                if not self.firmware_version:
+                    # If we can't retrieve the firmware version, something is wrong with the controller. Print an error,
+                    # wait 5 seconds, and quit the script.
+                    logger.error("Unable to retrieve firmware version from controller. Exiting...")
+                    time.sleep(5)
+                    exit(1)
+
                 # Refresh controller state
                 self._refresh_controller_state()
                 
@@ -552,12 +579,18 @@ class BrewPiController:
                     logger.error(f"Error processing constants data: {e}, response: {response}")
                     return False
 
+            # Handle debug message response
+            elif response.startswith('D:'):
+                # For debug messages, for now, just log the raw message. We can come back and choose to interpret it
+                # later if we want.
+                logger.info(f"Device debug message received: {response}")
+
             # Handle device list response (starts with h:)
             elif response.startswith('h:'):
                 json_str = response[2:]
                 try:
                     devices_list = json.loads(json_str)
-                    
+
                     # Convert device dicts directly to Device objects
                     self.devices = []
                     for device_dict in devices_list:

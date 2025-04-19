@@ -205,8 +205,8 @@ class ControlSettings(BaseModel):
     """
     
     mode: ControllerMode
-    beerSet: float = 0.0
-    fridgeSet: float = 0.0
+    beerSet: Optional[float] = 0.0
+    fridgeSet: Optional[float] = 0.0
     heatEst: float = 0.0  # Heat estimator
     coolEst: float = 0.0  # Cool estimator
     

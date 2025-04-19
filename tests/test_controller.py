@@ -56,17 +56,17 @@ def mock_serial_controller():
 
 def test_brewpi_controller_init_connect(mock_serial_controller):
     """Test BrewPi controller initialization and connection."""
-    # Set up controller to handle parse_response method
-    with patch.object(BrewPiController, 'parse_response', return_value=True):
-        controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=True)
+    # Patch the exit function to prevent test termination
+    with patch('sys.exit'):
+        # Patch the SerialController.parse_responses to set firmware_version
+        mock_serial_controller.parse_responses.side_effect = lambda controller: setattr(controller, 'firmware_version', '0.5.0')
         
-        # Set firmware version manually since we're patching the parse_response method
-        controller.firmware_version = "0.5.0"
+        # Create the controller with auto_connect=True
+        controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=True)
         
         # Check initialization
         assert controller.connected is True
-        
-        # Verify method calls
+        assert controller.firmware_version == "0.5.0"
         mock_serial_controller.connect.assert_called_once()
         mock_serial_controller.request_version.assert_called_once()
         # parse_responses is called multiple times (once for version, once for each component of the state)
