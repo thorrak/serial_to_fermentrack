@@ -184,6 +184,48 @@ def is_app_configured():
     return False
 
 
+def test_fermentrack_connection(host, port, use_https):
+    """
+    Test connection to Fermentrack by making a GET request to the API endpoint.
+    
+    Args:
+        host: Host to connect to
+        port: Port to connect to
+        use_https: Whether to use HTTPS
+        
+    Returns:
+        Tuple of (success, message): 
+        - success: True if connection was successful (received a 403 response)
+        - message: Description of what happened
+    """
+    protocol = "https" if use_https else "http"
+    url = f"{protocol}://{host}:{port}/api/users/me/"
+    
+    try:
+        print(f"Testing connection to {url}...")
+        response = requests.get(url, timeout=5)
+        
+        if response.status_code == 403:
+            # 403 Forbidden means the server is up but we're not authenticated,
+            # which is expected and indicates success
+            return True, "Connection successful! Fermentrack server is reachable."
+        elif response.status_code == 404:
+            # 404 Not Found might mean the API endpoint has changed
+            return False, "Connection failed: API endpoint not found (404). This may indicate the server is running but the API structure is different."
+        else:
+            # Any other response is unexpected
+            return False, f"Connection test returned unexpected status code: {response.status_code}"
+    
+    except requests.exceptions.SSLError:
+        return False, "Connection failed: SSL/TLS error. If using HTTPS, check that the server has a valid certificate."
+    except requests.exceptions.ConnectionError:
+        return False, "Connection failed: Could not connect to the server. Check host, port, and that the server is running."
+    except requests.exceptions.Timeout:
+        return False, "Connection failed: Request timed out. Server may be slow or unreachable."
+    except requests.exceptions.RequestException as e:
+        return False, f"Connection failed: {str(e)}"
+
+
 def configure_fermentrack_connection():
     """Configure the Fermentrack connection."""
     print("\nConfiguring Fermentrack Connection")
@@ -208,12 +250,71 @@ def configure_fermentrack_connection():
     
     # Setup config based on host type
     if using_cloud:
-        # Only need username for cloud
-        questions = [
-            inquirer.Text('username', 
-                         message="Enter your Fermentrack.net username",
-                         default=existing_config.get('username', ''))
-        ]
+        # For cloud, use pre-defined settings
+        host = FERMENTRACK_NET_HOST
+        port = FERMENTRACK_NET_PORT
+        use_https = FERMENTRACK_NET_HTTPS
+        
+        # Test connection to Fermentrack.net
+        connection_success, connection_message = test_fermentrack_connection(host, port, use_https)
+        
+        if connection_success:
+            display_colored_success(connection_message)
+            
+            # Ask for username
+            username_question = [
+                inquirer.Text('username', 
+                             message="Enter your Fermentrack.net username",
+                             default=existing_config.get('username', ''))
+            ]
+            username_answer = inquirer.prompt(username_question)
+            username = username_answer.get('username', '')
+            
+            # Ask for confirmation
+            confirm_question = [
+                inquirer.Confirm('confirm', 
+                               message="Save this configuration?", 
+                               default=True)
+            ]
+            confirm_answer = inquirer.prompt(confirm_question)
+            
+            if confirm_answer.get('confirm', False):
+                # Create config
+                config = {
+                    'username': username,
+                    'use_fermentrack_net': True
+                }
+                
+                if save_app_config(config):
+                    print("Fermentrack.net connection configuration saved.")
+                    return True
+                else:
+                    print("Failed to save configuration due to permission issues.")
+                    return False
+            else:
+                print("Configuration cancelled")
+                return False
+        else:
+            display_colored_error(connection_message)
+            
+            # Ask if user wants to continue despite connection failure
+            continue_question = [
+                inquirer.Confirm('continue', 
+                               message="Connection to Fermentrack.net failed. Do you want to continue anyway?", 
+                               default=False)
+            ]
+            
+            continue_answer = inquirer.prompt(continue_question)
+            if not continue_answer.get('continue', False):
+                print("Configuration cancelled")
+                return False
+        
+            # Only need username for cloud
+            questions = [
+                inquirer.Text('username', 
+                             message="Enter your Fermentrack.net username",
+                             default=existing_config.get('username', ''))
+            ]
     else:
         # Need host, https flag, port, and username for custom
         # First, ask about HTTPS
@@ -241,6 +342,77 @@ def configure_fermentrack_connection():
                          message="Enter your Fermentrack username",
                          default=existing_config.get('username', ''))
         ]
+        
+        # Get values for connection test
+        host_answers = inquirer.prompt(questions)
+        host = host_answers.get('host')
+        port = host_answers.get('port')
+        username = host_answers.get('username')
+        
+        # Test the connection before asking for confirmation
+        connection_success, connection_message = test_fermentrack_connection(host, port, use_https)
+        
+        if connection_success:
+            display_colored_success(connection_message)
+            # Skip the redundant questions if connection is successful
+            # and proceed directly to confirmation
+            confirm_question = [
+                inquirer.Confirm('confirm', 
+                               message="Save this configuration?", 
+                               default=True)
+            ]
+            confirm_answer = inquirer.prompt(confirm_question)
+            
+            if confirm_answer.get('confirm', False):
+                # Create config with connection details
+                config = {
+                    'username': username,
+                    'use_fermentrack_net': using_cloud,
+                    'host': host,
+                    'port': port,
+                    'use_https': use_https
+                }
+                
+                if save_app_config(config):
+                    print("Custom Fermentrack connection configuration saved.")
+                    return True
+                else:
+                    print("Failed to save configuration due to permission issues.")
+                    return False
+            else:
+                print("Configuration cancelled")
+                return False
+        else:
+            display_colored_error(connection_message)
+            
+            # Ask if user wants to continue despite connection failure
+            continue_question = [
+                inquirer.Confirm('continue', 
+                               message="Connection test failed. Do you want to save this configuration anyway?", 
+                               default=False)
+            ]
+            
+            continue_answer = inquirer.prompt(continue_question)
+            if not continue_answer.get('continue', False):
+                print("Configuration cancelled")
+                return False
+                
+            # If they want to continue despite failure, let them re-enter or confirm details
+            # Update questions with the values we already asked for
+            questions = [
+                inquirer.Text('host', 
+                             message="Enter the Fermentrack host",
+                             default=host),
+                inquirer.Text('port', 
+                             message="Enter the Fermentrack port",
+                             default=port),
+                inquirer.Text('username', 
+                             message="Enter your Fermentrack username",
+                             default=username)
+            ]
+    
+    # This section now only runs for failed cloud connections or custom connections with failed tests
+    # that the user chose to continue with
     
     # Add confirmation to questions
     questions.append(inquirer.Confirm('confirm', 
@@ -250,17 +422,21 @@ def configure_fermentrack_connection():
     answers = inquirer.prompt(questions)
     
     if answers.get('confirm', False):
-        # Base config with common fields
-        config = {
-            'username': answers['username'],
-            'use_fermentrack_net': using_cloud
-        }
-        
-        # Add custom host fields only if not using cloud
-        if not using_cloud:
-            config['host'] = answers['host']
-            config['port'] = answers['port']
-            config['use_https'] = use_https  # Use the value we got earlier
+        if using_cloud:
+            # Cloud config
+            config = {
+                'username': answers['username'],
+                'use_fermentrack_net': True
+            }
+        else:
+            # Custom config
+            config = {
+                'username': answers['username'],
+                'use_fermentrack_net': False,
+                'host': answers['host'],
+                'port': answers['port'],
+                'use_https': use_https
+            }
         
         if save_app_config(config):
             if using_cloud:
@@ -427,12 +603,19 @@ def register_with_fermentrack(config, firmware_info):
         # Using Fermentrack.net
         host = FERMENTRACK_NET_HOST
         port = FERMENTRACK_NET_PORT
-        protocol = "https" if FERMENTRACK_NET_HTTPS else "http"
+        use_https = FERMENTRACK_NET_HTTPS
+        protocol = "https" if use_https else "http"
     else:
         # Using custom/local Fermentrack
         host = app_config.get('host', 'localhost')
         port = app_config.get('port', '80')
-        protocol = "https" if app_config.get('use_https', False) else "http"
+        use_https = app_config.get('use_https', False)
+        protocol = "https" if use_https else "http"
+    
+    # Test connection first before attempting registration
+    connection_success, connection_message = test_fermentrack_connection(host, port, use_https)
+    if not connection_success:
+        return False, None, f"Connection test failed: {connection_message}"
 
     url = f"{protocol}://{host}:{port}/api/brewpi/device/register/"
     

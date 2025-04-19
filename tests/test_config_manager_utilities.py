@@ -4,6 +4,7 @@ Tests for utility functions in config_manager.py
 import os
 import json
 import pytest
+import requests
 from pathlib import Path
 from unittest.mock import patch, mock_open, MagicMock
 
@@ -139,3 +140,102 @@ def test_display_colored_functions():
         
         config_manager.display_colored_success("Test success")
         mock_print.assert_called()
+
+
+def test_test_fermentrack_connection_success():
+    """Test test_fermentrack_connection returns success for 403 response."""
+    with patch('requests.get') as mock_get:
+        # Configure mock to return a 403 status code
+        mock_response = MagicMock()
+        mock_response.status_code = 403
+        mock_get.return_value = mock_response
+        
+        success, message = config_manager.test_fermentrack_connection('localhost', '8000', False)
+        
+        assert success is True
+        assert "Connection successful" in message
+        
+        # Verify the mock was called correctly
+        mock_get.assert_called_once_with('http://localhost:8000/api/users/me/', timeout=5)
+
+
+def test_test_fermentrack_connection_not_found():
+    """Test test_fermentrack_connection handles 404 responses."""
+    with patch('requests.get') as mock_get:
+        # Configure mock to return a 404 status code
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_get.return_value = mock_response
+        
+        success, message = config_manager.test_fermentrack_connection('localhost', '8000', False)
+        
+        assert success is False
+        assert "404" in message
+        
+        # Verify the mock was called correctly
+        mock_get.assert_called_once_with('http://localhost:8000/api/users/me/', timeout=5)
+
+
+def test_test_fermentrack_connection_other_status():
+    """Test test_fermentrack_connection handles other status codes."""
+    with patch('requests.get') as mock_get:
+        # Configure mock to return a 500 status code
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_get.return_value = mock_response
+        
+        success, message = config_manager.test_fermentrack_connection('localhost', '8000', False)
+        
+        assert success is False
+        assert "500" in message
+        
+        # Verify the mock was called correctly
+        mock_get.assert_called_once_with('http://localhost:8000/api/users/me/', timeout=5)
+
+
+def test_test_fermentrack_connection_connection_error():
+    """Test test_fermentrack_connection handles ConnectionError."""
+    with patch('requests.get') as mock_get:
+        # Configure mock to raise ConnectionError
+        mock_get.side_effect = requests.exceptions.ConnectionError("Failed to establish a connection")
+        
+        success, message = config_manager.test_fermentrack_connection('localhost', '8000', False)
+        
+        assert success is False
+        assert "Could not connect to the server" in message
+
+
+def test_test_fermentrack_connection_timeout():
+    """Test test_fermentrack_connection handles Timeout."""
+    with patch('requests.get') as mock_get:
+        # Configure mock to raise Timeout
+        mock_get.side_effect = requests.exceptions.Timeout("Request timed out")
+        
+        success, message = config_manager.test_fermentrack_connection('localhost', '8000', False)
+        
+        assert success is False
+        assert "Request timed out" in message
+
+
+def test_test_fermentrack_connection_ssl_error():
+    """Test test_fermentrack_connection handles SSLError."""
+    with patch('requests.get') as mock_get:
+        # Configure mock to raise SSLError
+        mock_get.side_effect = requests.exceptions.SSLError("SSL certificate verification failed")
+        
+        success, message = config_manager.test_fermentrack_connection('localhost', '8000', True)
+        
+        assert success is False
+        assert "SSL/TLS error" in message
+
+
+def test_test_fermentrack_connection_generic_error():
+    """Test test_fermentrack_connection handles other RequestException."""
+    with patch('requests.get') as mock_get:
+        # Configure mock to raise a generic RequestException
+        mock_get.side_effect = requests.exceptions.RequestException("Generic error")
+        
+        success, message = config_manager.test_fermentrack_connection('localhost', '8000', False)
+        
+        assert success is False
+        assert "Generic error" in message

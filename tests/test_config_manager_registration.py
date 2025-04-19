@@ -81,12 +81,16 @@ def mock_device_config():
 
 @patch('inquirer.prompt')
 @patch('config_manager.get_app_config')
+@patch('config_manager.test_fermentrack_connection')
 @patch('requests.put')
-def test_register_with_fermentrack_success(mock_requests_put, mock_get_app_config, mock_prompt, 
+def test_register_with_fermentrack_success(mock_requests_put, mock_test_connection, mock_get_app_config, mock_prompt, 
                                           mock_app_config, mock_firmware_info, mock_device_config):
     """Test successful registration with Fermentrack"""
     # Set up mocks
     mock_get_app_config.return_value = mock_app_config['cloud']
+    
+    # Mock the connection test to return success
+    mock_test_connection.return_value = (True, "Connection successful")
     
     # Mock the inquirer prompt to return a device name
     mock_prompt.return_value = {'name': 'Test Device'}
@@ -129,12 +133,16 @@ def test_register_with_fermentrack_success(mock_requests_put, mock_get_app_confi
 
 @patch('inquirer.prompt')
 @patch('config_manager.get_app_config')
+@patch('config_manager.test_fermentrack_connection')
 @patch('requests.put')
-def test_register_with_fermentrack_custom_host(mock_requests_put, mock_get_app_config, mock_prompt, 
+def test_register_with_fermentrack_custom_host(mock_requests_put, mock_test_connection, mock_get_app_config, mock_prompt, 
                                              mock_app_config, mock_firmware_info, mock_device_config):
     """Test registration with custom Fermentrack host"""
     # Set up mocks
     mock_get_app_config.return_value = mock_app_config['custom']
+    
+    # Mock the connection test to return success
+    mock_test_connection.return_value = (True, "Connection successful")
     
     # Mock the inquirer prompt to return a device name
     mock_prompt.return_value = {'name': 'Test Device'}
@@ -163,12 +171,16 @@ def test_register_with_fermentrack_custom_host(mock_requests_put, mock_get_app_c
 
 @patch('inquirer.prompt')
 @patch('config_manager.get_app_config')
+@patch('config_manager.test_fermentrack_connection')
 @patch('requests.put')
-def test_register_with_fermentrack_server_error(mock_requests_put, mock_get_app_config, mock_prompt, 
+def test_register_with_fermentrack_server_error(mock_requests_put, mock_test_connection, mock_get_app_config, mock_prompt, 
                                               mock_app_config, mock_firmware_info, mock_device_config):
     """Test registration with server error response"""
     # Set up mocks
     mock_get_app_config.return_value = mock_app_config['cloud']
+    
+    # Mock the connection test to return success
+    mock_test_connection.return_value = (True, "Connection successful")
     
     # Mock the inquirer prompt to return a device name
     mock_prompt.return_value = {'name': 'Test Device'}
@@ -196,12 +208,16 @@ def test_register_with_fermentrack_server_error(mock_requests_put, mock_get_app_
 
 @patch('inquirer.prompt')
 @patch('config_manager.get_app_config')
+@patch('config_manager.test_fermentrack_connection')
 @patch('requests.put')
-def test_register_with_fermentrack_http_error(mock_requests_put, mock_get_app_config, mock_prompt, 
+def test_register_with_fermentrack_http_error(mock_requests_put, mock_test_connection, mock_get_app_config, mock_prompt, 
                                             mock_app_config, mock_firmware_info, mock_device_config):
     """Test registration with HTTP error"""
     # Set up mocks
     mock_get_app_config.return_value = mock_app_config['cloud']
+    
+    # Mock the connection test to return success
+    mock_test_connection.return_value = (True, "Connection successful")
     
     # Mock the inquirer prompt to return a device name
     mock_prompt.return_value = {'name': 'Test Device'}
@@ -224,12 +240,16 @@ def test_register_with_fermentrack_http_error(mock_requests_put, mock_get_app_co
 
 @patch('inquirer.prompt')
 @patch('config_manager.get_app_config')
+@patch('config_manager.test_fermentrack_connection')
 @patch('requests.put')
-def test_register_with_fermentrack_connection_error(mock_requests_put, mock_get_app_config, mock_prompt, 
+def test_register_with_fermentrack_connection_error(mock_requests_put, mock_test_connection, mock_get_app_config, mock_prompt, 
                                                   mock_app_config, mock_firmware_info, mock_device_config):
     """Test registration with connection error"""
     # Set up mocks
     mock_get_app_config.return_value = mock_app_config['cloud']
+    
+    # Mock the connection test to return success
+    mock_test_connection.return_value = (True, "Connection successful")
     
     # Mock the inquirer prompt to return a device name
     mock_prompt.return_value = {'name': 'Test Device'}
@@ -292,15 +312,19 @@ def test_register_with_fermentrack_missing_firmware_fields(mock_prompt, mock_dev
 
 @patch('inquirer.prompt')
 @patch('config_manager.get_app_config')
+@patch('config_manager.test_fermentrack_connection')
 @patch('config_manager.save_app_config')
 @patch('requests.put')
 def test_register_with_fermentrack_saves_api_key(mock_requests_put, mock_save_app_config, 
-                                               mock_get_app_config, mock_prompt, 
+                                               mock_test_connection, mock_get_app_config, mock_prompt, 
                                                mock_app_config, mock_firmware_info, mock_device_config):
     """Test that the API key is saved to app_config when received in the response"""
     # Set up mocks
     mock_app_config_data = mock_app_config['cloud'].copy()
     mock_get_app_config.return_value = mock_app_config_data
+    
+    # Mock the connection test to return success
+    mock_test_connection.return_value = (True, "Connection successful")
     
     # Mock the inquirer prompt to return a device name
     mock_prompt.return_value = {'name': 'Test Device'}
@@ -329,3 +353,30 @@ def test_register_with_fermentrack_saves_api_key(mock_requests_put, mock_save_ap
     expected_config = mock_app_config_data.copy()
     expected_config['fermentrack_api_key'] = 'test-api-key-12345'
     mock_save_app_config.assert_called_once_with(expected_config)
+
+
+@patch('inquirer.prompt')
+@patch('config_manager.get_app_config')
+@patch('config_manager.test_fermentrack_connection')
+def test_register_with_fermentrack_connection_test_failure(mock_test_connection, mock_get_app_config, mock_prompt, 
+                                                        mock_app_config, mock_firmware_info, mock_device_config):
+    """Test registration when the connection test fails"""
+    # Set up mocks
+    mock_get_app_config.return_value = mock_app_config['cloud']
+    
+    # Mock the connection test to return failure
+    mock_test_connection.return_value = (False, "Connection failed: Could not connect to the server")
+    
+    # Call the function
+    success, device_id, error_code = config_manager.register_with_fermentrack(
+        mock_device_config, mock_firmware_info
+    )
+    
+    # Verify the function returned failure with the connection error
+    assert success is False
+    assert device_id is None
+    assert "Connection test failed" in error_code
+    assert "Could not connect to the server" in error_code
+    
+    # Verify inquirer.prompt was not called (shouldn't ask for device name)
+    mock_prompt.assert_not_called()
