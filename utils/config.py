@@ -262,6 +262,18 @@ class Config:
             return str(LOG_DIR / f"{self.location}.log")
         # Fall back to default log file if no location
         return str(LOG_DIR / "brewpi_rest.log")
+    
+    @property
+    def LOG_MAX_BYTES(self) -> int:
+        """Get maximum log file size from config."""
+        # Default to 10 MB if not specified
+        return int(self.app_config.get("log_max_bytes", 2 * 1024 * 1024))
+    
+    @property
+    def LOG_BACKUP_COUNT(self) -> int:
+        """Get log backup count from config."""
+        # Default to 5 backups if not specified
+        return int(self.app_config.get("log_backup_count", 5))
 
     @property
     def LOG_FORMAT(self) -> str:

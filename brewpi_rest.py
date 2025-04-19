@@ -385,7 +385,12 @@ def main() -> int:
 
     # Set up logging
     log_level = "DEBUG" if args.verbose else config.LOG_LEVEL
-    logger = setup_logging(log_level=log_level, log_file=config.LOG_FILE)
+    logger = setup_logging(
+        log_level=log_level, 
+        log_file=config.LOG_FILE,
+        max_bytes=config.LOG_MAX_BYTES,
+        backup_count=config.LOG_BACKUP_COUNT
+    )
 
     # Log startup information
     logger.info(f"Starting Serial-to-Fermentrack with location: {args.location}")

@@ -6,12 +6,15 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-def setup_logging(log_level: Optional[str] = None, log_file: Optional[str] = None):
+def setup_logging(log_level: Optional[str] = None, log_file: Optional[str] = None,
+               max_bytes: int = 2 * 1024 * 1024, backup_count: int = 5):
     """Configure logging for the application.
     
     Args:
         log_level: Log level to use (DEBUG, INFO, WARNING, ERROR)
         log_file: Path to log file
+        max_bytes: Maximum size of each log file in bytes (default: 2 MB)
+        backup_count: Number of backup files to keep (default: 5)
     """
     # Set defaults
     log_level = log_level or "INFO"
@@ -41,8 +44,8 @@ def setup_logging(log_level: Optional[str] = None, log_file: Optional[str] = Non
         
         file_handler = logging.handlers.RotatingFileHandler(
             log_file,
-            maxBytes=1024 * 1024 * 10,  # 10 MB
-            backupCount=5
+            maxBytes=max_bytes,
+            backupCount=backup_count
         )
         file_handler.setFormatter(formatter)
         root_logger.addHandler(file_handler)

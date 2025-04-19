@@ -34,12 +34,15 @@ except ImportError:
 # Initialize logger - handlers will be set up in setup_logging()
 logger = logging.getLogger('serial_to_fermentrack_daemon')
 
-def setup_logging(log_dir: str = 'logs', log_level: int = logging.INFO) -> None:
+def setup_logging(log_dir: str = 'logs', log_level: int = logging.INFO, 
+                 max_bytes: int = 2 * 1024 * 1024, backup_count: int = 5) -> None:
     """Set up logging with file and console handlers.
     
     Args:
         log_dir: Directory to store log files
         log_level: Logging level
+        max_bytes: Maximum size of each log file in bytes (default: 2 MB)
+        backup_count: Number of backup files to keep (default: 5)
     """
     # Ensure log directory exists
     os.makedirs(log_dir, exist_ok=True)
@@ -59,15 +62,19 @@ def setup_logging(log_dir: str = 'logs', log_level: int = logging.INFO) -> None:
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
     
-    # File handler
-    file_handler = logging.FileHandler(log_file)
+    # File handler with rotation
+    file_handler = logging.handlers.RotatingFileHandler(
+        log_file,
+        maxBytes=max_bytes,
+        backupCount=backup_count
+    )
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
     
     # Set level
     logger.setLevel(log_level)
     
-    logger.info(f"Logging to {log_file}")
+    logger.info(f"Logging to {log_file} with {backup_count} rotated backups (max size: {max_bytes/1024/1024:.1f} MB)")
 
 
 class DeviceProcess:
@@ -317,6 +324,12 @@ def parse_args():
     
     parser.add_argument('--verbose', action='store_true',
                         help='Enable verbose logging')
+                        
+    parser.add_argument('--max-log-size', type=int, default=10,
+                        help='Maximum size of each log file in MB (default: 2)')
+                        
+    parser.add_argument('--log-backups', type=int, default=5,
+                        help='Number of backup log files to keep (default: 5)')
     
     return parser.parse_args()
 
@@ -338,10 +351,29 @@ def main():
         logger.error("Try running with sudo or specify a different config directory with --config-dir")
         sys.exit(1)
     
+    # Use command line args for log rotation, but check app_config.json as fallback
+    log_max_bytes = args.max_log_size * 1024 * 1024  # Convert MB to bytes
+    log_backup_count = args.log_backups
+    
+    # Try to read app_config.json for log rotation settings as fallback
+    app_config_path = config_dir / "app_config.json"
+    if app_config_path.exists():
+        try:
+            with open(app_config_path, 'r') as f:
+                app_config = json.load(f)
+                # Only use values from config file if command line args weren't specified
+                if args.max_log_size == 2:  # Default value
+                    log_max_bytes = app_config.get("log_max_bytes", log_max_bytes)
+                if args.log_backups == 5:  # Default value
+                    log_backup_count = app_config.get("log_backup_count", log_backup_count)
+        except (json.JSONDecodeError, FileNotFoundError):
+            pass
+    
     # Setup logging
     log_level = logging.DEBUG if args.verbose else logging.INFO
     try:
-        setup_logging(log_dir=args.log_dir, log_level=log_level)
+        setup_logging(log_dir=args.log_dir, log_level=log_level, 
+                     max_bytes=log_max_bytes, backup_count=log_backup_count)
     except PermissionError:
         logger.error(f"Permission denied: Unable to write to log directory: {args.log_dir}")
         logger.error("Try running with sudo or specify a different log directory with --log-dir")
