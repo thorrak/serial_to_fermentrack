@@ -336,49 +336,59 @@ def detect_brewpi_firmware(port):
     try:
         # Try to connect to the device at 57600 baud
         print("Connecting to device...")
-        ser = serial.Serial(port, 57600, timeout=0.25)
+        ser = serial.Serial(port, 57600, timeout=2)
         time.sleep(0.2)  # Give device a moment to initialize
-        
-        # Clear any buffered data
-        ser.reset_input_buffer()
-        
-        # Send 'n' command to request version info
-        print("Requesting firmware version...")
-        ser.write(b'n')
-        
-        # Read response (wait up to 0.25 seconds)
-        response = ser.readline().decode('utf-8', errors='replace').strip()
-        
+
+        # Loop over this three times
+        for i in range(3):
+
+            # Clear any buffered data
+            ser.reset_input_buffer()
+
+            # Send 'n' command to request version info
+            print("Requesting firmware version...")
+            ser.write(b'n')
+            time.sleep(0.3)
+
+            # Read response
+            response = ser.readline().decode('utf-8', errors='replace').strip()
+
+            # Check if response begins with 'N:'
+            if response.startswith('N:'):
+                # Close the connection
+                ser.close()
+
+                # Parse the JSON part of the response
+                json_str = response[2:]  # Remove 'N:' prefix
+                try:
+                    firmware_info = json.loads(json_str)
+
+                    # Make sure the firmware_info contains the required keys
+                    # Required keys are 'v' (version) and 'b' (board type)
+                    if 'v' not in firmware_info:
+                        print("Firmware info missing required 'v' (version) field.")
+                        return False, None
+
+                    if 'b' not in firmware_info:
+                        print("Firmware info missing required 'b' (board type) field.")
+                        return False, None
+
+                    # All required keys present
+                    return True, firmware_info
+
+                except json.JSONDecodeError:
+                    print("Could not parse firmware info JSON.")
+                    return False, None
+            else:
+                print(f"Device responded with: {response}")
+                if i < 2:
+                    print("Invalid response - retrying in 2 seconds...")
+                    time.sleep(2)  # Wait before retrying
+
         # Close the connection
         ser.close()
-        
-        # Check if response begins with 'N:'
-        if response.startswith('N:'):
-            # Parse the JSON part of the response
-            json_str = response[2:]  # Remove 'N:' prefix
-            try:
-                firmware_info = json.loads(json_str)
-                
-                # Make sure the firmware_info contains the required keys
-                # Required keys are 'v' (version) and 'b' (board type)
-                if 'v' not in firmware_info:
-                    print("Firmware info missing required 'v' (version) field.")
-                    return False, None
-                
-                if 'b' not in firmware_info:
-                    print("Firmware info missing required 'b' (board type) field.")
-                    return False, None
-                    
-                # All required keys present
-                return True, firmware_info
-                
-            except json.JSONDecodeError:
-                print("Could not parse firmware info JSON.")
-                return False, None
-        else:
-            print(f"Device responded with: {response}")
-            print("Response does not start with 'N:' - not a BrewPi device.")
-            return False, None
+        print("Response does not start with 'N:' - not a BrewPi device.")
+        return False, None
             
     except (serial.SerialException, OSError) as e:
         print(f"Serial connection error: {str(e)}")
