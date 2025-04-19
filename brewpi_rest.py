@@ -147,12 +147,19 @@ class BrewPiRest:
             logger.error(error_msg)
             
             # Check if this is a disconnected device error
-            if "Device not configured" in str(e):
-                logger.critical("Device disconnected. Exiting application in 5 seconds...")
-                time.sleep(5)
-                sys.exit(1)
+            if "Device not configured" in str(e) or "Input/output error" in str(e):
+                logger.warning("Device connection error detected. Attempting to reconnect...")
+                
+                # Try to reconnect to the controller
+                if self.controller and self.controller.reconnect(max_attempts=3):
+                    logger.info("Successfully reconnected to controller")
+                    return True
+                else:
+                    logger.critical("Failed to reconnect to controller. Exiting application in 5 seconds...")
+                    time.sleep(5)
+                    sys.exit(1)
+                    
             time.sleep(5)
-
             return False
 
     def _process_status_response(self, response: Dict[str, Any]) -> None:

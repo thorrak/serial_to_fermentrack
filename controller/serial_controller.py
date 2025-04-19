@@ -104,6 +104,46 @@ class SerialController:
             logger.error(f"Failed to connect to port {self.port}: {e}")
             self.connected = False
             raise SerialControllerError(f"Failed to connect to port {self.port}: {e}")
+            
+    def reconnect(self, max_attempts: int = 3) -> bool:
+        """Attempt to reconnect to the BrewPi controller.
+        
+        Args:
+            max_attempts: Maximum number of reconnection attempts
+            
+        Returns:
+            True if reconnected successfully
+        """
+        logger.info(f"Attempting to reconnect to BrewPi controller at {self.port}")
+        
+        # First make sure we're disconnected
+        self.disconnect()
+        
+        # Try to reconnect multiple times
+        for attempt in range(1, max_attempts + 1):
+            logger.info(f"Reconnection attempt {attempt}/{max_attempts}")
+            try:
+                self.serial_conn = serial.Serial(
+                    self.port,
+                    self.baud_rate,
+                    timeout=self.timeout
+                )
+                
+                # Clear any existing data
+                self.serial_conn.flushInput()
+                self.serial_conn.flushOutput()
+                
+                # Mark as connected
+                self.connected = True
+                logger.info("Successfully reconnected to BrewPi controller")
+                return True
+            except (serial.SerialException, OSError) as e:
+                logger.error(f"Reconnection attempt {attempt} failed: {e}")
+                time.sleep(1)  # Wait before next attempt
+                
+        logger.error("All reconnection attempts failed")
+        self.connected = False
+        return False
 
     def disconnect(self) -> None:
         """Disconnect from the BrewPi controller."""

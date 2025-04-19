@@ -71,6 +71,34 @@ class BrewPiController:
         except SerialControllerError as e:
             logger.error(f"Failed to connect to controller: {e}")
             return False
+            
+    def reconnect(self, max_attempts: int = 3) -> bool:
+        """Attempt to reconnect to the BrewPi controller.
+        
+        Args:
+            max_attempts: Maximum number of reconnection attempts
+            
+        Returns:
+            True if reconnected successfully
+        """
+        try:
+            # Try to reconnect at the serial level
+            self.connected = self.serial.reconnect(max_attempts)
+            
+            if self.connected:
+                # Request firmware version
+                self.serial.request_version()
+                self.serial.parse_responses(self)
+                
+                # Refresh controller state
+                self._refresh_controller_state()
+                
+                logger.info("Successfully reconnected and refreshed controller state")
+            
+            return self.connected
+        except SerialControllerError as e:
+            logger.error(f"Failed to reconnect to controller: {e}")
+            return False
 
     def disconnect(self) -> None:
         """Disconnect from the BrewPi controller."""
