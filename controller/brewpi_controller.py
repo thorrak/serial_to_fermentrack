@@ -34,6 +34,7 @@ class BrewPiController:
         self.serial = SerialController(port, baud_rate)
         self.connected = False
         self.firmware_version = None
+        self.board_type = "?"
 
         # Controller state
         self.control_settings = None
@@ -516,7 +517,8 @@ class BrewPiController:
                 try:
                     version_info = json.loads(json_str)
                     self.firmware_version = version_info.get("e", version_info.get("v"))
-                    logger.debug(f"Received firmware version: {self.firmware_version}")
+                    self.board_type = version_info.get("b", "?")
+                    logger.debug(f"Received firmware version: {self.firmware_version}, board type: {self.board_type}")
                     return True
                 except json.JSONDecodeError as e:
                     logger.error(f"Invalid JSON in version response: {e}, response: {response}")
@@ -681,7 +683,7 @@ class BrewPiController:
 
             if messages.reset_eeprom:
                 logger.info("Processing EEPROM reset - Waiting 7 seconds for the device to reset")
-                self.serial.reset_eeprom()
+                self.serial.reset_eeprom(self.board_type)
                 # Since the device is being reset, we need to reload everything
                 time.sleep(5.0)  # Give the reset command time to process
                 self._refresh_controller_state()

@@ -58,8 +58,12 @@ def test_brewpi_controller_init_connect(mock_serial_controller):
     """Test BrewPi controller initialization and connection."""
     # Patch the exit function to prevent test termination
     with patch('sys.exit'):
-        # Patch the SerialController.parse_responses to set firmware_version
-        mock_serial_controller.parse_responses.side_effect = lambda controller: setattr(controller, 'firmware_version', '0.5.0')
+        # Patch the SerialController.parse_responses to set firmware_version and board_type
+        def set_version_and_board(controller):
+            controller.firmware_version = '0.5.0'
+            controller.board_type = 's'
+        
+        mock_serial_controller.parse_responses.side_effect = set_version_and_board
         
         # Create the controller with auto_connect=True
         controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=True)
@@ -67,6 +71,7 @@ def test_brewpi_controller_init_connect(mock_serial_controller):
         # Check initialization
         assert controller.connected is True
         assert controller.firmware_version == "0.5.0"
+        assert controller.board_type == "s"
         mock_serial_controller.connect.assert_called_once()
         mock_serial_controller.request_version.assert_called_once()
         # parse_responses is called multiple times (once for version, once for each component of the state)
@@ -435,11 +440,26 @@ def test_brewpi_controller_parse_response(mock_serial_controller):
     """Test parse_response method."""
     controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
     
-    # Test version response
+    # Test version response with board_type as "2"
     version_response = 'N:{"v":"0.2.4","n":"6d422d6","c":"6d422d6","s":0,"y":0,"b":"2","l":3,"e":"0.15"}'
     result = controller.parse_response(version_response)
     assert result is True
     assert controller.firmware_version == "0.15"
+    assert controller.board_type == "2"
+    
+    # Test version response with board_type as "s" (Arduino)
+    version_response_arduino = 'N:{"v":"0.2.13","n":"da7e14a9","s":5,"y":0,"b":"s","l":"3"}'
+    result = controller.parse_response(version_response_arduino)
+    assert result is True
+    assert controller.firmware_version == "0.2.13"
+    assert controller.board_type == "s"
+    
+    # Test version response with missing board_type
+    version_response_no_board = 'N:{"v":"0.2.10","n":"da7e14a9","s":5,"y":0,"l":"3"}'
+    result = controller.parse_response(version_response_no_board)
+    assert result is True
+    assert controller.firmware_version == "0.2.10"
+    assert controller.board_type == "?"  # Should default to "?"
     
     # Test temperature response - using RoomTemp
     temp_response = 'T:{"BeerTemp":20.5,"BeerSet":20.0,"FridgeTemp":18.2,"FridgeSet":18.0,"RoomTemp":22.1}'
@@ -632,8 +652,8 @@ def test_brewpi_controller_process_messages(mock_serial_controller):
     assert controller.awaiting_devices_update is True
 
 
-def test_brewpi_controller_process_reset_eeprom_message(mock_serial_controller):
-    """Test processing reset_eeprom message."""
+def test_brewpi_controller_process_reset_eeprom_message_esp(mock_serial_controller):
+    """Test processing reset_eeprom message for ESP boards."""
     # Since this calls _refresh_controller_state and has a sleep,
     # we need to patch those
     with patch.object(BrewPiController, '_refresh_controller_state') as mock_refresh, \
@@ -641,6 +661,8 @@ def test_brewpi_controller_process_reset_eeprom_message(mock_serial_controller):
         
         controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
         controller.connected = True
+        # Board type "3" is an ESP32
+        controller.board_type = "3"
         
         # Create message with reset_eeprom flag
         messages = MessageStatus(reset_eeprom=True)
@@ -652,7 +674,33 @@ def test_brewpi_controller_process_reset_eeprom_message(mock_serial_controller):
         assert result is True
         
         # Check method calls
-        mock_serial_controller.reset_eeprom.assert_called_once()
+        mock_serial_controller.reset_eeprom.assert_called_once_with("3")
+        mock_sleep.assert_called_once_with(5.0)  # Verify sleep was called with correct time
+        mock_refresh.assert_called_once()  # Verify refresh was called
+
+def test_brewpi_controller_process_reset_eeprom_message_arduino(mock_serial_controller):
+    """Test processing reset_eeprom message for Arduino boards."""
+    # Since this calls _refresh_controller_state and has a sleep,
+    # we need to patch those
+    with patch.object(BrewPiController, '_refresh_controller_state') as mock_refresh, \
+         patch('bpr.controller.brewpi_controller.time.sleep') as mock_sleep:
+        
+        controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+        controller.connected = True
+        # Set Arduino board type
+        controller.board_type = "s"
+        
+        # Create message with reset_eeprom flag
+        messages = MessageStatus(reset_eeprom=True)
+        
+        # Process messages
+        result = controller.process_messages(messages)
+        
+        # Check result
+        assert result is True
+        
+        # Check method calls - should pass board_type "s"
+        mock_serial_controller.reset_eeprom.assert_called_once_with("s")
         mock_sleep.assert_called_once_with(5.0)  # Verify sleep was called with correct time
         mock_refresh.assert_called_once()  # Verify refresh was called
 

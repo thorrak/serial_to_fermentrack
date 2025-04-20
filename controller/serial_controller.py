@@ -446,12 +446,20 @@ class SerialController:
         except SerialControllerError:
             raise
 
-    def reset_eeprom(self) -> None:
+    def reset_eeprom(self, board_type: str) -> None:
         """Reset EEPROM settings. After resetting the settings, we will need to refresh everything, but that is left
         to the calling function.
+        
+        Args:
+            board_type: The controller board type ("l", "s", "m" for Arduino boards, other values for ESP-based boards)
         """
         try:
-            self._send_command("E{\"confirmReset\": true}")
+            # Arduino boards (Leonardo, Arduino, Mega) only need the "E" command
+            if board_type in ["l", "s", "m"]:
+                self._send_command("E")
+            else:
+                # ESP-based controllers need the confirmation parameter
+                self._send_command("E{\"confirmReset\": true}")
         except SerialControllerError:
             raise
 

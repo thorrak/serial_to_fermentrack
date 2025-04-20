@@ -435,17 +435,53 @@ def test_restart_device_not_connected():
         controller.restart_device()
 
 
-def test_reset_eeprom(mock_serial):
-    """Test resetting the EEPROM."""
+def test_reset_eeprom_esp(mock_serial):
+    """Test resetting the EEPROM for ESP-based controllers."""
     controller = SerialController('/dev/ttyUSB0')
     controller.connect()
 
-    controller.reset_eeprom()
+    # Board type 3 is ESP32
+    controller.reset_eeprom("3")
 
-    # Check that the command was sent with the correct format
+    # Check that the command was sent with the correct format for ESP
     mock_serial.write.assert_called_once()
     call_args = mock_serial.write.call_args[0][0].decode('utf-8')
     assert 'E{"confirmReset": true}' in call_args
+    mock_serial.flush.assert_called_once()
+
+def test_reset_eeprom_arduino(mock_serial):
+    """Test resetting the EEPROM for Arduino-based controllers."""
+    controller = SerialController('/dev/ttyUSB0')
+    controller.connect()
+    
+    # Clear previous calls
+    mock_serial.reset_mock()
+    
+    # Test with Arduino board type "s"
+    controller.reset_eeprom("s")
+    
+    # Check that the simple command was sent for Arduino
+    mock_serial.write.assert_called_once_with(b'E\n')
+    mock_serial.flush.assert_called_once()
+    
+    # Clear previous calls
+    mock_serial.reset_mock()
+    
+    # Test with Arduino board type "l" (Leonardo)
+    controller.reset_eeprom("l")
+    
+    # Check that the simple command was sent for Arduino
+    mock_serial.write.assert_called_once_with(b'E\n')
+    mock_serial.flush.assert_called_once()
+    
+    # Clear previous calls
+    mock_serial.reset_mock()
+    
+    # Test with Arduino board type "m" (Mega)
+    controller.reset_eeprom("m")
+    
+    # Check that the simple command was sent for Arduino
+    mock_serial.write.assert_called_once_with(b'E\n')
     mock_serial.flush.assert_called_once()
 
 
@@ -454,7 +490,7 @@ def test_reset_eeprom_not_connected():
     controller = SerialController('/dev/ttyUSB0')
 
     with pytest.raises(SerialControllerError):
-        controller.reset_eeprom()
+        controller.reset_eeprom("s")
 
 
 def test_default_control_settings(mock_serial):
