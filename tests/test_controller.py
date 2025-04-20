@@ -653,7 +653,7 @@ def test_brewpi_controller_process_reset_eeprom_message(mock_serial_controller):
         
         # Check method calls
         mock_serial_controller.reset_eeprom.assert_called_once()
-        mock_sleep.assert_called_once_with(0.2)  # Verify sleep was called with correct time
+        mock_sleep.assert_called_once_with(5.0)  # Verify sleep was called with correct time
         mock_refresh.assert_called_once()  # Verify refresh was called
 
 def test_brewpi_controller_process_reset_connection_message(mock_serial_controller):

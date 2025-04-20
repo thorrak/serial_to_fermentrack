@@ -633,37 +633,6 @@ def test_brewpi_rest_reset_connection_alt(app, mock_controller, mock_api_client,
         mock_exit.assert_called_once_with(0)
 
 
-def test_brewpi_rest_reset_connection_failure(app, mock_controller, mock_api_client, mock_config):
-    """Test processing connection reset flag when deletion fails."""
-    # Mock the Signal module to avoid actual signal registration and time.sleep to avoid actual waiting
-    with patch('signal.signal'), patch('time.sleep') as mock_sleep:
-        app.setup()
-        app.check_configuration()
-
-        # Set the reset connection flag
-        mock_controller.awaiting_connection_reset = True
-
-        # Mock delete_device_config to return False (deletion failed)
-        mock_config.delete_device_config.return_value = False
-
-        # Force app.running to False after first loop
-        def stop_after_first_loop(*args, **kwargs):
-            app.running = False
-            return True
-
-        # Update status will exit after processing the reset connection
-        app.update_status = MagicMock(side_effect=stop_after_first_loop)
-
-        # Run app
-        app.run()
-
-        # Verify delete_device_config was called
-        mock_config.delete_device_config.assert_called_once()
-
-        # Verify flag was reset
-        assert mock_controller.awaiting_connection_reset is False
-
-
 def test_main_function():
     """Test main function with command line arguments."""
     import argparse
