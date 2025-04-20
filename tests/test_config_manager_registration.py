@@ -127,7 +127,7 @@ def test_register_with_fermentrack_success(mock_requests_put, mock_test_connecti
     assert json_data['hardware'] == 'm'
     assert json_data['version'] == '0.15'  # Should use extended version
     assert json_data['name'] == 'Test Device'
-    assert json_data['connection_type'] == 'Serial (BSR)'
+    assert json_data['connection_type'] == 'Serial (S2F)'
     assert 'guid' in json_data  # Should have a guid
 
 

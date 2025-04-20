@@ -325,6 +325,10 @@ class BrewPiRest:
                         logger.info(f"Retrying full config push in {FULL_CONFIG_RETRY} seconds")
                         self.last_full_config_update = time.time() - FULL_CONFIG_UPDATE_INTERVAL + FULL_CONFIG_RETRY
 
+                # Process connection reset if flag is set
+                if self.controller.awaiting_connection_reset:
+                    self._handle_reset_connection()
+
                 # Sleep to avoid CPU hogging
                 time.sleep(1)
 
@@ -341,6 +345,18 @@ class BrewPiRest:
         """
         logger.info(f"Received signal {sig}, shutting down")
         self.stop()
+
+    def _handle_reset_connection(self):
+        """Handle connection reset request."""
+        logger.warning("Processing connection reset request from Fermentrack")
+        if self.config.delete_device_config():
+            logger.warning("Device configuration has been deleted by request from Fermentrack")
+            logger.warning("Exiting application...")
+            time.sleep(1)  # Brief pause before exit
+            sys.exit(0)
+        else:
+            logger.error("Failed to delete device configuration")
+            self.controller.awaiting_connection_reset = False
 
     def stop(self) -> None:
         """Stop the application."""

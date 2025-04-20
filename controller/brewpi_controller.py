@@ -46,6 +46,7 @@ class BrewPiController:
         self.awaiting_settings_update = False
         self.awaiting_constants_update = False
         self.awaiting_devices_update = False
+        self.awaiting_connection_reset = False
 
         if auto_connect:
             self.connect()
@@ -679,7 +680,7 @@ class BrewPiController:
                 exit(0)
 
             if messages.reset_eeprom:
-                logger.debug("Processing EEPROM reset")
+                logger.info("Processing EEPROM reset")
                 self.serial.reset_eeprom()
                 # Since the device is being reset, we need to reload everything
                 time.sleep(0.2)  # Give the reset command time to process
@@ -687,6 +688,11 @@ class BrewPiController:
                 self.awaiting_config_push = True  # Update the flag to trigger a refresh/send on the next loop in app()
                 # If we reset the eeprom, don't process any other messages.
                 return True
+
+            if messages.reset_connection:
+                logger.info("Processing connection reset - setting flag")
+                self.awaiting_connection_reset = True
+                processed = True
 
             # Device defaults message
             if messages.default_cc:

@@ -509,8 +509,8 @@ def test_brewpi_rest_run(app, mock_controller, mock_api_client):
     app.setup()
     app.check_configuration()
     
-    # Mock the Signal module to avoid actual signal registration
-    with patch('signal.signal'), patch('time.sleep'):
+    # Mock the Signal module to avoid actual signal registration and sys.exit to prevent actual exit
+    with patch('signal.signal'), patch('time.sleep'), patch('sys.exit'):
         # Use a side effect to set running to False after first call to update_full_config
         def stop_after_update(*args, **kwargs):
             app.running = False
@@ -549,8 +549,8 @@ def test_brewpi_rest_run_with_config_updates(app, mock_controller, mock_api_clie
     app.update_full_config = MagicMock(return_value=True, side_effect=stop_after_processing)
     app.update_status = MagicMock(return_value=True)
     
-    # Mock the Signal module to avoid actual signal registration
-    with patch('signal.signal'), patch('time.sleep'):
+    # Mock the Signal module to avoid actual signal registration and sys.exit to prevent actual exit
+    with patch('signal.signal'), patch('time.sleep'), patch('sys.exit'):
         
         # Run app (will stop after processing updates)
         app.run()
@@ -570,8 +570,8 @@ def test_brewpi_rest_run_error_handling(app, mock_controller, mock_api_client):
     app.setup()
     app.check_configuration()
     
-    # Mock the Signal module to avoid actual signal registration
-    with patch('signal.signal'), patch('time.sleep') as mock_sleep:
+    # Mock the Signal module to avoid actual signal registration and sys.exit to prevent actual exit
+    with patch('signal.signal'), patch('time.sleep') as mock_sleep, patch('sys.exit'):
         # Use a side effect to raise an exception then set running to False
         update_count = 0
         
@@ -608,6 +608,60 @@ def test_brewpi_rest_signal_handler(app, mock_controller, mock_api_client):
         
         # Verify stop was called
         mock_stop.assert_called_once()
+
+
+def test_brewpi_rest_reset_connection_alt(app, mock_controller, mock_api_client, mock_config):
+    """Test processing connection reset flag directly."""
+    app.setup()
+    app.check_configuration()
+    
+    # Set the reset connection flag
+    mock_controller.awaiting_connection_reset = True
+    
+    # Mock time.sleep to avoid actual waiting and sys.exit to prevent test exit
+    with patch('time.sleep') as mock_sleep, patch('sys.exit') as mock_exit, patch('signal.signal'):
+        # Mock delete_device_config to return True
+        mock_config.delete_device_config.return_value = True
+        
+        # Call the _handle_reset_connection method directly to avoid running the full loop
+        app._handle_reset_connection()
+        
+        # Check delete_device_config was called
+        mock_config.delete_device_config.assert_called_once()
+        
+        # Verify sys.exit was called
+        mock_exit.assert_called_once_with(0)
+
+
+def test_brewpi_rest_reset_connection_failure(app, mock_controller, mock_api_client, mock_config):
+    """Test processing connection reset flag when deletion fails."""
+    # Mock the Signal module to avoid actual signal registration and time.sleep to avoid actual waiting
+    with patch('signal.signal'), patch('time.sleep') as mock_sleep:
+        app.setup()
+        app.check_configuration()
+
+        # Set the reset connection flag
+        mock_controller.awaiting_connection_reset = True
+
+        # Mock delete_device_config to return False (deletion failed)
+        mock_config.delete_device_config.return_value = False
+
+        # Force app.running to False after first loop
+        def stop_after_first_loop(*args, **kwargs):
+            app.running = False
+            return True
+
+        # Update status will exit after processing the reset connection
+        app.update_status = MagicMock(side_effect=stop_after_first_loop)
+
+        # Run app
+        app.run()
+
+        # Verify delete_device_config was called
+        mock_config.delete_device_config.assert_called_once()
+
+        # Verify flag was reset
+        assert mock_controller.awaiting_connection_reset is False
 
 
 def test_main_function():

@@ -159,6 +159,30 @@ class Config:
         except Exception as e:
             logger.error(f"Error saving device config: {e}")
 
+    def delete_device_config(self) -> bool:
+        """Delete the device configuration file.
+        
+        Returns:
+            True if the device config file was deleted, False otherwise
+        """
+        if not self.location:
+            logger.error("Cannot delete device config: No location specified")
+            return False
+            
+        device_config_path = CONFIG_DIR / f"{self.location}.json"
+        
+        try:
+            if device_config_path.exists():
+                device_config_path.unlink()
+                logger.info(f"Deleted device config file: {device_config_path}")
+                return True
+            else:
+                logger.warning(f"Device config file not found: {device_config_path}")
+                return False
+        except Exception as e:
+            logger.error(f"Error deleting device config file: {e}")
+            return False
+
     @property
     def DEFAULT_API_URL(self) -> str:
         """Get API URL from config.

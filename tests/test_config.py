@@ -540,3 +540,112 @@ def test_ensure_directories():
         # Should call mkdir three times (once for each directory: LOG_DIR, CONFIG_DIR)
         assert mock_mkdir.call_count == 2
         mock_mkdir.assert_any_call(exist_ok=True)
+
+
+def test_delete_device_config():
+    """Test delete_device_config method."""
+    # Create test config file
+    app_config_data = {
+        "host": "localhost",
+        "port": "8000",
+        "fermentrack_api_key": "test-api-key"
+    }
+    
+    device_config = {
+        "location": "1-1",
+        "fermentrack_id": "test-device-id"
+    }
+    
+    # Mock the Path.exists and Path.unlink methods
+    with patch("pathlib.Path.exists", return_value=True):
+        with patch("pathlib.Path.unlink") as mock_unlink:
+            # Setup mock for open to return our test configs
+            with patch("builtins.open", mock_open()):
+                with patch("json.load", side_effect=[app_config_data, device_config]):
+                    config = Config("1-1")
+                    
+                    # Call delete_device_config
+                    result = config.delete_device_config()
+                    
+                    # Verify result and that unlink was called
+                    assert result is True
+                    mock_unlink.assert_called_once()
+
+
+def test_delete_device_config_no_file():
+    """Test delete_device_config when file doesn't exist."""
+    # Create a config instance with mocked app config loading
+    with patch("bpr.utils.config.Config._load_app_config"):
+        config = Config()
+        config.location = "1-1"  # Set location directly
+    
+    # Mock exists to return False for the device config
+    with patch("pathlib.Path.exists", return_value=False):
+        with patch("pathlib.Path.unlink") as mock_unlink:
+            with patch("logging.Logger.warning") as mock_warning:
+                # Call delete_device_config
+                result = config.delete_device_config()
+                
+                # Verify result and that unlink was not called
+                assert result is False
+                mock_unlink.assert_not_called()
+                mock_warning.assert_called_once()
+                assert "not found" in mock_warning.call_args[0][0]
+
+
+def test_delete_device_config_no_location():
+    """Test delete_device_config when no location is specified."""
+    app_config_data = {
+        "host": "localhost",
+        "port": "8000",
+        "fermentrack_api_key": "test-api-key"
+    }
+    
+    # Mock the Path.exists and Path.unlink methods
+    with patch("pathlib.Path.exists", return_value=True):
+        with patch("pathlib.Path.unlink") as mock_unlink:
+            # Setup mock for open to return our test configs
+            with patch("builtins.open", mock_open()):
+                with patch("json.load", return_value=app_config_data):
+                    with patch("logging.Logger.error") as mock_error:
+                        config = Config(location=None)
+                        
+                        # Call delete_device_config
+                        result = config.delete_device_config()
+                        
+                        # Verify result and that unlink was not called
+                        assert result is False
+                        mock_unlink.assert_not_called()
+                        mock_error.assert_called_once()
+                        assert "Cannot delete device config" in mock_error.call_args[0][0]
+
+
+def test_delete_device_config_error():
+    """Test delete_device_config handles errors during deletion."""
+    app_config_data = {
+        "host": "localhost",
+        "port": "8000",
+        "fermentrack_api_key": "test-api-key"
+    }
+    
+    device_config = {
+        "location": "1-1",
+        "fermentrack_id": "test-device-id"
+    }
+    
+    # Mock Path.exists to return True and Path.unlink to raise an exception
+    with patch("pathlib.Path.exists", return_value=True):
+        with patch("pathlib.Path.unlink", side_effect=PermissionError("Permission denied")):
+            # Setup mock for open to return our test configs
+            with patch("builtins.open", mock_open()):
+                with patch("json.load", side_effect=[app_config_data, device_config]):
+                    with patch("logging.Logger.error") as mock_error:
+                        config = Config("1-1")
+                        
+                        # Call delete_device_config
+                        result = config.delete_device_config()
+                        
+                        # Verify result and that error was logged
+                        assert result is False
+                        mock_error.assert_called_once()
+                        assert "Error deleting device config file" in mock_error.call_args[0][0]

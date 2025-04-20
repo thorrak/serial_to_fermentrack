@@ -656,6 +656,23 @@ def test_brewpi_controller_process_reset_eeprom_message(mock_serial_controller):
         mock_sleep.assert_called_once_with(0.2)  # Verify sleep was called with correct time
         mock_refresh.assert_called_once()  # Verify refresh was called
 
+def test_brewpi_controller_process_reset_connection_message(mock_serial_controller):
+    """Test processing reset_connection message."""
+    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+    controller.connected = True
+    
+    # Create message with reset_connection flag
+    messages = MessageStatus(reset_connection=True)
+    
+    # Process messages
+    result = controller.process_messages(messages)
+    
+    # Check result
+    assert result is True
+    
+    # Check that the flag is set
+    assert controller.awaiting_connection_reset is True
+
 
 def test_brewpi_controller_process_restart_device_message(mock_serial_controller):
     """Test processing restart_device message.
@@ -1001,7 +1018,7 @@ def test_brewpi_controller_apply_device_config_with_changes(mock_serial_controll
     # Create initial devices
     initial_devices = [
         Device(index=0, chamber=1, beer=0, deviceFunction=3, deviceHardware=1, pinNr=5, invert=1),
-        Device(index=-1, chamber=1, beer=0, deviceFunction=0, deviceHardware=1, pinNr=7, invert=0)
+        Device(index=1, chamber=1, beer=0, deviceFunction=0, deviceHardware=1, pinNr=7, invert=0)
     ]
     controller.devices = initial_devices
     
@@ -1012,7 +1029,7 @@ def test_brewpi_controller_apply_device_config_with_changes(mock_serial_controll
     devices_data = {
         "devices": [
             {"b": 0, "c": 1, "f": 3, "h": 1, "i": 0, "p": 5, "x": 1},  # Unchanged
-            {"b": 0, "c": 1, "f": 2, "h": 1, "i": -1, "p": 7, "x": 0}   # Changed f from 0 to 2
+            {"b": 0, "c": 1, "f": 2, "h": 1, "i": 1, "p": 7, "x": 0}   # Changed f from 0 to 2
         ]
     }
     
@@ -1040,7 +1057,7 @@ def test_brewpi_controller_apply_device_config_with_changes(mock_serial_controll
     # Verify it was the second device with the changed function
     changed_device = devices_list[0]
     assert isinstance(changed_device, Device)
-    assert changed_device.index == -1
+    assert changed_device.index == 1
     assert changed_device.deviceFunction == 2
     mock_serial_controller.parse_responses.assert_called_once_with(controller)
     
@@ -1051,7 +1068,7 @@ def test_brewpi_controller_apply_device_config_with_changes(mock_serial_controll
     assert controller.devices[0].index == 0
     assert controller.devices[0].deviceFunction == 3  # Unchanged
     
-    assert controller.devices[1].index == -1
+    assert controller.devices[1].index == 1
     assert controller.devices[1].deviceFunction == 2  # Changed
 
 
@@ -1068,7 +1085,7 @@ def test_brewpi_controller_apply_device_config_new_device(mock_serial_controller
     
     # Reset mock to clear any previous calls
     mock_serial_controller.reset_mock()
-    
+
     # Test data with one existing and one new device
     devices_data = {
         "devices": [
@@ -1621,6 +1638,7 @@ def test_device_from_controller_dict_missing_fields():
     
     # Controller dict with minimal fields
     controller_dict = {
+        "i": 1,  # Index - Must be set to something other than -1, or
         "f": 5,  # Only function defined
         "h": 2   # Only hardware defined
     }
@@ -1628,7 +1646,7 @@ def test_device_from_controller_dict_missing_fields():
     device = Device.from_controller_dict(controller_dict)
     
     # Verify defaults are used for missing fields
-    assert device.index == -1  # Default for index
+    assert device.index == 1  # Forced above
     assert device.chamber == 0  # Default for chamber
     assert device.beer == 0  # Default for beer
     assert device.deviceFunction == 5  # Provided value
@@ -1640,6 +1658,24 @@ def test_device_from_controller_dict_missing_fields():
     assert device.calibrationAdjust == 0  # Default for calibrationAdjust
     assert device.address is None  # Default for address
     assert device.value is None  # Default for value
+
+
+def test_device_from_controller_dict_defaults_function_invalid_index():
+    """Test the Device.from_controller_dict method with missing fields."""
+
+    # Controller dict with minimal fields
+    controller_dict = {
+        "i": -1,  # Index - If set to -1, then the function will be forced to 0
+        "f": 5,  # Only function defined
+        "h": 2  # Only hardware defined
+    }
+
+    device = Device.from_controller_dict(controller_dict)
+
+    # Verify defaults are used for missing fields
+    assert device.index == -1  # Default for index
+    assert device.deviceFunction == 0  # Forced to 0 if index is -1
+    assert device.deviceHardware == 2  # Provided value
 
 
 def test_device_round_trip_conversion():
