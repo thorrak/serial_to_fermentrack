@@ -646,7 +646,7 @@ def register_with_fermentrack(config, firmware_info):
         'version': version,
         'username': app_config.get('username', ''),
         'name': device_name,
-        'connection_type': 'Serial (BSR)'
+        'connection_type': 'Serial (S2F)'
     }
     
     try:
