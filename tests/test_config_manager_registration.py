@@ -105,9 +105,17 @@ def test_register_with_fermentrack_success(mock_requests_put, mock_test_connecti
     }
     mock_requests_put.return_value = mock_response
     
+    # Set up the mock device GUID
+    mock_device_config['guid'] = 'test-guid-12345'
+
     # Call the function
-    success, device_id, error_code = config_manager.register_with_fermentrack(
-        mock_device_config, mock_firmware_info
+    success, device_id, error_code, generated_guid = config_manager.register_with_fermentrack(
+        firmware_version=mock_firmware_info['v'],
+        board_type=mock_firmware_info['b'],
+        device_guid=mock_device_config['guid'],
+        device_name='Test Device',  # Use predefined name to avoid prompting
+        extended_version=mock_firmware_info.get('e'),
+        commit_hash=mock_firmware_info.get('c')
     )
     
     # Verify the function returned success
@@ -157,9 +165,17 @@ def test_register_with_fermentrack_custom_host(mock_requests_put, mock_test_conn
     }
     mock_requests_put.return_value = mock_response
     
+    # Set up the mock device GUID
+    mock_device_config['guid'] = 'test-guid-12345'
+
     # Call the function
-    success, device_id, error_code = config_manager.register_with_fermentrack(
-        mock_device_config, mock_firmware_info
+    success, device_id, error_code, generated_guid = config_manager.register_with_fermentrack(
+        firmware_version=mock_firmware_info['v'],
+        board_type=mock_firmware_info['b'],
+        device_guid=mock_device_config['guid'],
+        device_name='Test Device',  # Use predefined name to avoid prompting
+        extended_version=mock_firmware_info.get('e'),
+        commit_hash=mock_firmware_info.get('c')
     )
     
     # Verify the correct request URL for custom host
@@ -195,9 +211,17 @@ def test_register_with_fermentrack_server_error(mock_requests_put, mock_test_con
     }
     mock_requests_put.return_value = mock_response
     
+    # Set up the mock device GUID
+    mock_device_config['guid'] = 'test-guid-12345'
+
     # Call the function
-    success, device_id, error_code = config_manager.register_with_fermentrack(
-        mock_device_config, mock_firmware_info
+    success, device_id, error_code, generated_guid = config_manager.register_with_fermentrack(
+        firmware_version=mock_firmware_info['v'],
+        board_type=mock_firmware_info['b'],
+        device_guid=mock_device_config['guid'],
+        device_name='Test Device',  # Use predefined name to avoid prompting
+        extended_version=mock_firmware_info.get('e'),
+        commit_hash=mock_firmware_info.get('c')
     )
     
     # Verify the function returned failure
@@ -227,9 +251,17 @@ def test_register_with_fermentrack_http_error(mock_requests_put, mock_test_conne
     mock_response.status_code = 404
     mock_requests_put.return_value = mock_response
     
+    # Set up the mock device GUID
+    mock_device_config['guid'] = 'test-guid-12345'
+
     # Call the function
-    success, device_id, error_code = config_manager.register_with_fermentrack(
-        mock_device_config, mock_firmware_info
+    success, device_id, error_code, generated_guid = config_manager.register_with_fermentrack(
+        firmware_version=mock_firmware_info['v'],
+        board_type=mock_firmware_info['b'],
+        device_guid=mock_device_config['guid'],
+        device_name='Test Device',  # Use predefined name to avoid prompting
+        extended_version=mock_firmware_info.get('e'),
+        commit_hash=mock_firmware_info.get('c')
     )
     
     # Verify the function returned failure
@@ -258,9 +290,17 @@ def test_register_with_fermentrack_connection_error(mock_requests_put, mock_test
     from requests.exceptions import RequestException
     mock_requests_put.side_effect = RequestException("Connection error")
     
+    # Set up the mock device GUID
+    mock_device_config['guid'] = 'test-guid-12345'
+
     # Call the function
-    success, device_id, error_code = config_manager.register_with_fermentrack(
-        mock_device_config, mock_firmware_info
+    success, device_id, error_code, generated_guid = config_manager.register_with_fermentrack(
+        firmware_version=mock_firmware_info['v'],
+        board_type=mock_firmware_info['b'],
+        device_guid=mock_device_config['guid'],
+        device_name='Test Device',  # Use predefined name to avoid prompting
+        extended_version=mock_firmware_info.get('e'),
+        commit_hash=mock_firmware_info.get('c')
     )
     
     # Verify the function returned failure
@@ -269,45 +309,66 @@ def test_register_with_fermentrack_connection_error(mock_requests_put, mock_test
     assert error_code.startswith("Connection error")
 
 
-@patch('inquirer.prompt')
-def test_register_with_fermentrack_no_firmware_info(mock_prompt, mock_device_config):
+def test_register_with_fermentrack_no_firmware_info(mock_device_config):
     """Test registration with no firmware information"""
-    # Call the function with no firmware info
-    success, device_id, error_code = config_manager.register_with_fermentrack(
-        mock_device_config, None
+    # Call the function with no firmware version
+    success, device_id, error_code, generated_guid = config_manager.register_with_fermentrack(
+        firmware_version=None, 
+        board_type='m',
+        device_guid='test-guid-12345',
+        device_name='Test Device'
     )
     
     # Verify the function returned failure
     assert success is False
     assert device_id is None
-    assert error_code == "Firmware information is required for registration"
-    
-    # Verify inquirer.prompt was not called
-    mock_prompt.assert_not_called()
+    assert error_code == "Firmware version is required for registration"
+    assert generated_guid is None
 
 
-@patch('inquirer.prompt')
-def test_register_with_fermentrack_missing_firmware_fields(mock_prompt, mock_device_config):
+def test_register_with_fermentrack_missing_firmware_fields(mock_device_config):
     """Test registration with firmware info missing required fields"""
-    # Call the function with firmware info missing 'v'
-    success, device_id, error_code = config_manager.register_with_fermentrack(
-        mock_device_config, {'b': 'm'}
+    # Call the function with missing firmware_version
+    success, device_id, error_code, generated_guid = config_manager.register_with_fermentrack(
+        firmware_version=None,
+        board_type='m',
+        device_guid='test-guid-12345',
+        device_name='Test Device'
     )
     
     # Verify the function returned failure
     assert success is False
     assert device_id is None
-    assert error_code == "Firmware version (v) is missing"
+    assert error_code == "Firmware version is required for registration"
+    assert generated_guid is None
     
-    # Call the function with firmware info missing 'b'
-    success, device_id, error_code = config_manager.register_with_fermentrack(
-        mock_device_config, {'v': '0.2.4'}
+    # Call the function with missing board_type
+    success, device_id, error_code, generated_guid = config_manager.register_with_fermentrack(
+        firmware_version='0.2.4',
+        board_type=None,
+        device_guid='test-guid-12345',
+        device_name='Test Device'
     )
     
     # Verify the function returned failure
     assert success is False
     assert device_id is None
-    assert error_code == "Board type (b) is missing"
+    assert error_code == "Board type is required for registration"
+    assert generated_guid is None
+    
+    # Test missing device_name
+    success, device_id, error_code, generated_guid = config_manager.register_with_fermentrack(
+        firmware_version='0.2.4',
+        board_type='m',
+        device_guid='test-guid-12345',
+        device_name=None
+    )
+    
+    # Verify the function returned failure
+    assert success is False
+    assert device_id is None
+    assert error_code == "Device name is required for registration"
+    assert generated_guid is None
 
 
 @patch('inquirer.prompt')
@@ -339,15 +400,24 @@ def test_register_with_fermentrack_saves_api_key(mock_requests_put, mock_save_ap
     }
     mock_requests_put.return_value = mock_response
     
+    # Set up the mock device GUID
+    mock_device_config['guid'] = 'test-guid-12345'
+
     # Call the function
-    success, device_id, error_code = config_manager.register_with_fermentrack(
-        mock_device_config, mock_firmware_info
+    success, device_id, error_code, generated_guid = config_manager.register_with_fermentrack(
+        firmware_version=mock_firmware_info['v'],
+        board_type=mock_firmware_info['b'],
+        device_guid=mock_device_config['guid'],
+        device_name='Test Device',  # Use predefined name to avoid prompting
+        extended_version=mock_firmware_info.get('e'),
+        commit_hash=mock_firmware_info.get('c')
     )
     
     # Verify the function returned success
     assert success is True
     assert device_id == 123
     assert error_code is None
+    assert generated_guid is None  # No new GUID should be generated
     
     # Verify the API key was saved to app_config
     expected_config = mock_app_config_data.copy()
@@ -356,9 +426,94 @@ def test_register_with_fermentrack_saves_api_key(mock_requests_put, mock_save_ap
 
 
 @patch('inquirer.prompt')
+def test_prompt_for_device_name(mock_prompt):
+    """Test the prompt_for_device_name function"""
+    # Setup mock response
+    mock_prompt.return_value = {'name': 'Test Device Name'}
+    
+    # Call the function
+    result = config_manager.prompt_for_device_name('test-guid-12345')
+    
+    # Verify the prompt was called with correct parameters
+    mock_prompt.assert_called_once()
+    args = mock_prompt.call_args[0][0]
+    assert len(args) == 1
+    assert args[0].message == "Enter a name for this device in Fermentrack"
+    
+    # Check that the default name includes the GUID prefix
+    default_name = args[0].default
+    assert default_name.startswith("BrewPi ")
+    assert "test-" in default_name
+    
+    # Verify the result
+    assert result == 'Test Device Name'
+    
+    # Test default fallback
+    mock_prompt.reset_mock()
+    mock_prompt.return_value = {}  # Empty response
+    
+    result = config_manager.prompt_for_device_name('another-guid')
+    assert result.startswith("BrewPi ")  # Default is used
+    assert "another-" in result
+    
+    
+@patch('inquirer.prompt')
 @patch('config_manager.get_app_config')
 @patch('config_manager.test_fermentrack_connection')
-def test_register_with_fermentrack_connection_test_failure(mock_test_connection, mock_get_app_config, mock_prompt, 
+@patch('uuid.uuid4')
+@patch('requests.put')
+def test_register_with_fermentrack_generates_guid(mock_requests_put, mock_uuid4, 
+                                               mock_test_connection, mock_get_app_config, mock_prompt, 
+                                               mock_app_config, mock_firmware_info):
+    """Test that a GUID is generated when none is provided"""
+    # Set up mocks
+    mock_app_config_data = mock_app_config['cloud'].copy()
+    mock_get_app_config.return_value = mock_app_config_data
+    
+    # Mock the connection test to return success
+    mock_test_connection.return_value = (True, "Connection successful")
+    
+    # Mock UUID generation
+    generated_uuid = "generated-guid-67890"
+    mock_uuid4.return_value = generated_uuid
+    
+    # Mock the inquirer prompt to return a device name
+    mock_prompt.return_value = {'name': 'Test Device'}
+    
+    # Mock the HTTP response
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        'success': True,
+        'deviceID': 123,
+        'msg_code': 0
+    }
+    mock_requests_put.return_value = mock_response
+    
+    # Call the function without device_guid
+    success, device_id, error_code, generated_guid = config_manager.register_with_fermentrack(
+        firmware_version=mock_firmware_info['v'],
+        board_type=mock_firmware_info['b'],
+        device_name='Test Device',  # Use predefined name to avoid prompting
+        extended_version=mock_firmware_info.get('e'),
+        commit_hash=mock_firmware_info.get('c')
+    )
+    
+    # Verify the function returned success
+    assert success is True
+    assert device_id == 123
+    assert error_code is None
+    assert generated_guid == generated_uuid  # Should return the generated UUID
+    
+    # Verify the registration data included the generated UUID
+    call_args = mock_requests_put.call_args
+    json_data = call_args[1]['json']
+    assert json_data['guid'] == generated_uuid
+
+
+@patch('config_manager.get_app_config')
+@patch('config_manager.test_fermentrack_connection')
+def test_register_with_fermentrack_connection_test_failure(mock_test_connection, mock_get_app_config,
                                                         mock_app_config, mock_firmware_info, mock_device_config):
     """Test registration when the connection test fails"""
     # Set up mocks
@@ -367,9 +522,17 @@ def test_register_with_fermentrack_connection_test_failure(mock_test_connection,
     # Mock the connection test to return failure
     mock_test_connection.return_value = (False, "Connection failed: Could not connect to the server")
     
+    # Set up the mock device GUID
+    mock_device_config['guid'] = 'test-guid-12345'
+
     # Call the function
-    success, device_id, error_code = config_manager.register_with_fermentrack(
-        mock_device_config, mock_firmware_info
+    success, device_id, error_code, generated_guid = config_manager.register_with_fermentrack(
+        firmware_version=mock_firmware_info['v'],
+        board_type=mock_firmware_info['b'],
+        device_guid=mock_device_config['guid'],
+        device_name='Test Device',  # Now we need to provide the name
+        extended_version=mock_firmware_info.get('e'),
+        commit_hash=mock_firmware_info.get('c')
     )
     
     # Verify the function returned failure with the connection error
@@ -377,6 +540,4 @@ def test_register_with_fermentrack_connection_test_failure(mock_test_connection,
     assert device_id is None
     assert "Connection test failed" in error_code
     assert "Could not connect to the server" in error_code
-    
-    # Verify inquirer.prompt was not called (shouldn't ask for device name)
-    mock_prompt.assert_not_called()
+    assert generated_guid is None  # No new GUID should be generated

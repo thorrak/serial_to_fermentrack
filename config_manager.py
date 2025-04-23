@@ -571,32 +571,76 @@ def detect_brewpi_firmware(port):
         return False, None
 
 
-def register_with_fermentrack(config, firmware_info):
+def get_default_device_name(device_guid):
+    """
+    Get a default device name based on the GUID.
+    
+    Args:
+        device_guid: The device GUID
+        
+    Returns:
+        A default name for the device (BrewPi + first 8 chars of GUID)
+    """
+    return f"BrewPi {device_guid[:8]}"
+
+
+def prompt_for_device_name(device_guid):
+    """
+    Prompt the user for a device name with a default based on the GUID.
+    
+    Args:
+        device_guid: The device GUID
+        
+    Returns:
+        The device name entered by the user or the default
+    """
+    default_name = get_default_device_name(device_guid)
+    
+    # Ask user for a name for this device in Fermentrack
+    questions = [
+        inquirer.Text('name', 
+                    message="Enter a name for this device in Fermentrack",
+                    default=default_name)
+    ]
+    
+    answers = inquirer.prompt(questions)
+    return answers.get('name', default_name)
+
+
+def register_with_fermentrack(firmware_version, board_type, device_guid=None, device_name=None, 
+                       extended_version=None, commit_hash=None):
     """
     Register the device with Fermentrack.
     
     Args:
-        config: Device configuration dictionary
-        firmware_info: Firmware information from the device (required)
+        firmware_version: Version of the firmware (required)
+        board_type: Hardware board type code (required)
+        device_guid: Globally unique identifier for the device (optional, will generate if not provided)
+        device_name: Name for the device in Fermentrack (required)
+        extended_version: Extended version information (optional)
+        commit_hash: Commit hash of the firmware (optional)
         
     Returns:
-        Tuple of (success, device_id, error_code)
+        Tuple of (success, device_id, error_code, generated_guid)
+        - success: Whether registration was successful
+        - device_id: ID assigned by Fermentrack (if successful)
+        - error_code: Error code or message (if failed)
+        - generated_guid: If a new GUID was generated, this will contain it, otherwise None
     """
     # Validate required parameters
-    if not firmware_info:
-        return False, None, "Firmware information is required for registration"
+    if not firmware_version:
+        return False, None, "Firmware version is required for registration", None
     
-    # Ensure required firmware fields are present
-    if 'v' not in firmware_info:
-        return False, None, "Firmware version (v) is missing"
+    if not board_type:
+        return False, None, "Board type is required for registration", None
     
-    if 'b' not in firmware_info:
-        return False, None, "Board type (b) is missing"
+    if not device_name:
+        return False, None, "Device name is required for registration", None
     
     # Get Fermentrack app configuration
     app_config = get_app_config()
     if not app_config:
-        return False, None, "No Fermentrack configuration found"
+        return False, None, "No Fermentrack configuration found", None
     
     # Build the API endpoint URL
     if app_config.get('use_fermentrack_net', False):
@@ -615,34 +659,23 @@ def register_with_fermentrack(config, firmware_info):
     # Test connection first before attempting registration
     connection_success, connection_message = test_fermentrack_connection(host, port, use_https)
     if not connection_success:
-        return False, None, f"Connection test failed: {connection_message}"
+        return False, None, f"Connection test failed: {connection_message}", None
 
     url = f"{protocol}://{host}:{port}/api/brewpi/device/register/"
     
     # Generate a new UUID if one doesn't exist
-    if 'guid' not in config:
-        config['guid'] = str(uuid.uuid4())
-    
-    # Get hardware type and version from firmware info
-    hardware = firmware_info['b']
+    generated_guid = None
+    if not device_guid:
+        device_guid = str(uuid.uuid4())
+        generated_guid = device_guid
     
     # Prefer extended version if available, otherwise use major version
-    version = firmware_info.get('e', firmware_info['v'])
-    
-    # Ask user for a name for this device in Fermentrack
-    questions = [
-        inquirer.Text('name', 
-                    message="Enter a name for this device in Fermentrack",
-                    default=f"BrewPi {config['guid'][:8]}")
-    ]
-    
-    answers = inquirer.prompt(questions)
-    device_name = answers.get('name', f"BrewPi {config['guid'][:8]}")
+    version = extended_version if extended_version else firmware_version
     
     # Prepare registration data
     registration_data = {
-        'guid': config['guid'],
-        'hardware': hardware,
+        'guid': device_guid,
+        'hardware': board_type,
         'version': version,
         'username': app_config.get('username', ''),
         'name': device_name,
@@ -663,17 +696,17 @@ def register_with_fermentrack(config, firmware_info):
                     app_config['fermentrack_api_key'] = data['apiKey']
                     save_app_config(app_config)
                     print("Fermentrack API key saved to app_config.json")
-                return True, data.get('deviceID'), None
+                return True, data.get('deviceID'), None, generated_guid
             else:
                 # Registration failed with error from server
-                return False, None, data.get('msg_code', 999)
+                return False, None, data.get('msg_code', 999), generated_guid
         else:
             # HTTP error
-            return False, None, f"HTTP {response.status_code}"
+            return False, None, f"HTTP {response.status_code}", generated_guid
             
     except requests.RequestException as e:
         # Network or connection error
-        return False, None, f"Connection error: {str(e)}"
+        return False, None, f"Connection error: {str(e)}", generated_guid
 
 
 def get_error_message_for_code(code):
@@ -750,7 +783,30 @@ def configure_device(port_info):
         
         # Try to register with Fermentrack
         # We should always have firmware_info here since we require is_brewpi to be True
-        success, device_id, error_code = register_with_fermentrack(config, firmware_info)
+        guid = config.get('guid', None)
+        
+        # Generate device name or get from config if already exists
+        device_name = None
+        if guid:
+            # If there's a GUID, prompt for name
+            device_name = prompt_for_device_name(guid)
+        else:
+            # Generate a temporary GUID just for the name
+            temp_guid = str(uuid.uuid4())
+            device_name = prompt_for_device_name(temp_guid)
+            
+        success, device_id, error_code, generated_guid = register_with_fermentrack(
+            firmware_version=firmware_info['v'],
+            board_type=firmware_info['b'],
+            device_guid=guid,
+            device_name=device_name,
+            extended_version=firmware_info.get('e'),
+            commit_hash=firmware_info.get('c')
+        )
+        
+        # If a GUID was generated, add it to the config
+        if generated_guid:
+            config['guid'] = generated_guid
         
         if success:
             # Registration successful, save the device ID
@@ -937,7 +993,30 @@ def manage_device(port_info):
             })
             
             # Try to register with Fermentrack
-            success, device_id, error_code = register_with_fermentrack(config, firmware_info)
+            guid = config.get('guid', None)
+            
+            # Generate device name or get from config if already exists
+            device_name = None
+            if guid:
+                # If there's a GUID, prompt for name
+                device_name = prompt_for_device_name(guid)
+            else:
+                # Generate a temporary GUID just for the name
+                temp_guid = str(uuid.uuid4())
+                device_name = prompt_for_device_name(temp_guid)
+                
+            success, device_id, error_code, generated_guid = register_with_fermentrack(
+                firmware_version=firmware_info['v'],
+                board_type=firmware_info['b'],
+                device_guid=guid,
+                device_name=device_name,
+                extended_version=firmware_info.get('e'),
+                commit_hash=firmware_info.get('c')
+            )
+            
+            # If a GUID was generated, add it to the config
+            if generated_guid:
+                config['guid'] = generated_guid
             
             if success:
                 # Registration successful, save the device ID
