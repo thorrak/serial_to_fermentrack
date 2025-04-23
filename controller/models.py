@@ -64,7 +64,7 @@ class Device(BaseModel):
     invert: int = 0
     pio: int = 0
     deactivate: int = 0
-    calibrationAdjust: int = 0
+    calibrationAdjust: float = 0
     address: Optional[str] = None
     value: Optional[float] = None  # Not in the C++ struct
 
