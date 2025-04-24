@@ -12,6 +12,7 @@ Can be run directly as a script or as a console command once installed via pip/u
 import argparse
 import json
 import logging
+import logging.handlers
 import os
 import signal
 import subprocess
