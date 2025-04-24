@@ -10,7 +10,8 @@ import time
 import signal
 import sys
 import argparse
-from typing import Dict, Any, Optional
+import uuid
+from typing import Dict, Any, Optional, Tuple
 from utils.config import Config, ensure_directories
 from utils import setup_logging
 from controller import BrewPiController, ControllerMode, MessageStatus
@@ -146,8 +147,19 @@ class BrewPiRest:
             error_msg = f"Failed to update status: {e}"
             logger.error(error_msg)
             
+            # Check if this is a device not found error (device unregistered in Fermentrack)
+            if "Device ID associated with that API key not found" in str(e) or "msg_code" in str(e) and "3" in str(e):
+                logger.warning("Device appears to be unregistered from Fermentrack. Attempting to re-register...")
+                if self._attempt_reregistration():
+                    logger.info("Successfully re-registered with Fermentrack")
+                    return True
+                else:
+                    logger.error("Failed to re-register with Fermentrack. Initiating connection reset...")
+                    self.controller.awaiting_connection_reset = True
+                    self._handle_reset_connection()
+            
             # Check if this is a disconnected device error
-            if "Device not configured" in str(e) or "Input/output error" in str(e):
+            elif "Device not configured" in str(e) or "Input/output error" in str(e):
                 logger.warning("Device connection error detected. Attempting to reconnect...")
                 
                 # Try to reconnect to the controller
@@ -357,6 +369,113 @@ class BrewPiRest:
         else:
             logger.error("Failed to delete device configuration")
             self.controller.awaiting_connection_reset = False
+            
+    def _attempt_reregistration(self) -> bool:
+        """Attempt to re-register the device with Fermentrack.
+        
+        This method is called when we detect that our device has been unregistered
+        from Fermentrack (API key no longer associated with device ID).
+        
+        Returns:
+            True if re-registration was successful
+        """
+        try:
+            logger.info("Starting device re-registration with Fermentrack")
+            
+            # Get device information from the controller
+            if not self.controller or not self.controller.firmware_version or not self.controller.board_type:
+                logger.error("Unable to re-register: missing firmware information")
+                return False
+            
+            # Use existing device ID from config
+            device_id = self.config.DEVICE_ID
+            
+            # Use existing GUID from device config if it exists, or generate a new one
+            if "guid" in self.config.device_config:
+                device_guid = self.config.device_config["guid"]
+                logger.info(f"Reusing existing device GUID: {device_guid}")
+            else:
+                device_guid = str(uuid.uuid4())
+                logger.info(f"Generated new device GUID: {device_guid}")
+            
+            # Device name based on the first 8 chars of GUID
+            device_name = f"BrewPi {device_guid[:8]}"
+            
+            # Get firmware information
+            firmware_version = self.controller.firmware_version
+            board_type = self.controller.board_type
+            
+            # Register with Fermentrack using same technique as config_manager
+            # Use Fermentrack.net if configured, otherwise use local instance
+            if self.config.app_config.get('use_fermentrack_net', False):
+                # Using Fermentrack.net
+                host = "www.fermentrack.net"
+                port = "443"
+                use_https = True
+            else:
+                # Using custom/local Fermentrack
+                host = self.config.app_config.get('host', 'localhost')
+                port = self.config.app_config.get('port', '80')
+                use_https = self.config.app_config.get('use_https', False)
+            
+            protocol = "https" if use_https else "http"
+            url = f"{protocol}://{host}:{port}/api/brewpi/device/register/"
+            
+            # Prepare registration data
+            registration_data = {
+                'guid': device_guid,
+                'hardware': board_type,
+                'version': firmware_version,
+                'username': self.config.app_config.get('username', ''),
+                'name': device_name,
+                'connection_type': 'Serial (S2F)'
+            }
+            
+            logger.info(f"Sending re-registration request to {url}")
+            
+            # Make the registration request
+            import requests
+            response = requests.put(url, json=registration_data, timeout=10)
+            
+            if response.status_code != 200:
+                logger.error(f"Re-registration failed with status code: {response.status_code}")
+                return False
+            
+            data = response.json()
+            if not data.get('success', False):
+                logger.error(f"Re-registration failed: {data.get('message', 'unknown error')}")
+                return False
+            
+            # Get the new device ID and API key
+            new_device_id = data.get('deviceID')
+            new_api_key = data.get('apiKey')
+            
+            if not new_device_id or not new_api_key:
+                logger.error("Re-registration response missing deviceID or apiKey")
+                return False
+            
+            # Update the configuration
+            self.config.app_config['fermentrack_api_key'] = new_api_key
+            self.config.save_app_config()
+            
+            # Update device config
+            device_config = self.config.device_config.copy()
+            device_config['fermentrack_id'] = new_device_id
+            device_config['guid'] = device_guid
+            self.config.save_device_config(device_config)
+            
+            # Update the API client
+            self.api_client.device_id = new_device_id
+            self.api_client.fermentrack_api_key = new_api_key
+            self.config.DEVICE_ID = new_device_id
+            self.config.FERMENTRACK_API_KEY = new_api_key
+            
+            logger.info(f"Device successfully re-registered with Fermentrack (ID: {new_device_id})")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Re-registration failed with error: {e}")
+            return False
 
     def stop(self) -> None:
         """Stop the application."""
