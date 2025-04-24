@@ -14,6 +14,11 @@ CONFIG_DIR = CURRENT_DIR / "serial_config"
 # System-wide config directory no longer supported
 LOG_DIR = CURRENT_DIR / "logs"
 
+# Fermentrack.net constants
+FERMENTRACK_NET_HOST = "www.fermentrack.net"
+FERMENTRACK_NET_PORT = "443"  # Default port for HTTPS
+FERMENTRACK_NET_HTTPS = True  # Always use HTTPS for Fermentrack.net
+
 # Create a logger for this module
 logger = logging.getLogger(__name__)
 
@@ -194,10 +199,10 @@ class Config:
         use_fermentrack_net = self.app_config.get("use_fermentrack_net", False)
 
         if use_fermentrack_net:
-            # When using Fermentrack.net, override host, port and protocol
-            host = "www.fermentrack.net"
-            port = "443"  # HTTPS port
-            use_https = True
+            # When using Fermentrack.net, use the constants defined at module level
+            host = FERMENTRACK_NET_HOST
+            port = FERMENTRACK_NET_PORT
+            use_https = FERMENTRACK_NET_HTTPS
         else:
             # Use configured values - these are required fields verified during loading
             host = self.app_config["host"]

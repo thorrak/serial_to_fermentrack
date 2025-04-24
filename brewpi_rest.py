@@ -12,7 +12,7 @@ import sys
 import argparse
 import uuid
 from typing import Dict, Any, Optional, Tuple
-from utils.config import Config, ensure_directories
+from utils.config import Config, ensure_directories, FERMENTRACK_NET_HOST, FERMENTRACK_NET_PORT, FERMENTRACK_NET_HTTPS
 from utils import setup_logging
 from controller import BrewPiController, ControllerMode, MessageStatus
 from api import FermentrackClient, APIError
@@ -408,10 +408,10 @@ class BrewPiRest:
             # Register with Fermentrack using same technique as config_manager
             # Use Fermentrack.net if configured, otherwise use local instance
             if self.config.app_config.get('use_fermentrack_net', False):
-                # Using Fermentrack.net
-                host = "www.fermentrack.net"
-                port = "443"
-                use_https = True
+                # Using Fermentrack.net - match the connection parameters in utils/config.py
+                host = FERMENTRACK_NET_HOST
+                port = FERMENTRACK_NET_PORT
+                use_https = FERMENTRACK_NET_HTTPS
             else:
                 # Using custom/local Fermentrack
                 host = self.config.app_config.get('host', 'localhost')
