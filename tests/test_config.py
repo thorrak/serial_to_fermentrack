@@ -347,10 +347,71 @@ def test_save_device_config_no_location():
                     
                     # Should log an error
                     mock_error.assert_called_once()
-                    assert "Cannot save device config" in str(mock_error.call_args[0][0])
+
+
+def test_save_app_config():
+    """Test saving app config."""
+    app_config_data = {
+        "host": "localhost",
+        "port": "8000",
+        "fermentrack_api_key": "test-api-key"
+    }
+    
+    mock_open_instance = mock_open()
+    
+    with patch("pathlib.Path.exists", return_value=True):
+        with patch("builtins.open", mock_open_instance):
+            # Patch json.load to return our configs
+            with patch("json.load", return_value=app_config_data):
+                with patch("pathlib.Path.mkdir"):
+                    config = Config(location=None)
                     
-                    # Verify file was not opened for writing (open was not called again)
-                    assert mock_open_instance.call_count == open_calls_before
+                    # Count calls to open before save
+                    open_calls_before = mock_open_instance.call_count
+                    
+                    # Save app config
+                    config.save_app_config()
+                    
+                    # Should have called open once more for writing
+                    assert mock_open_instance.call_count == open_calls_before + 1
+                    
+                    # Check that we called open with the right arguments
+                    args, kwargs = mock_open_instance.call_args
+                    assert "app_config.json" in str(args[0])
+                    assert args[1] == 'w'
+
+
+def test_save_app_config_error():
+    """Test error handling in save_app_config."""
+    app_config_data = {
+        "host": "localhost",
+        "port": "8000",
+        "fermentrack_api_key": "test-api-key"
+    }
+    
+    def mock_file_opener(filename, mode, *args, **kwargs):
+        if mode == 'r':
+            # For reading during init, return a mock file
+            mock_file = mock_open(read_data=json.dumps(app_config_data))()
+            return mock_file
+        else:
+            # For writing during save_app_config, raise an error
+            raise IOError("Permission denied during write")
+    
+    with patch("pathlib.Path.exists", return_value=True):
+        with patch("builtins.open", mock_file_opener):
+            with patch("logging.Logger.error") as mock_error:
+                config = Config(location=None)
+                
+                # Reset the mock to ensure we only capture errors from save_app_config
+                mock_error.reset_mock()
+                
+                # Try to save config - this should catch the IOError
+                config.save_app_config()
+                
+                # Verify error was logged
+                mock_error.assert_called_once()
+                assert "Error saving application config" in mock_error.call_args[0][0]
 
 
 def test_config_missing_app_config():

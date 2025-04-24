@@ -4,6 +4,9 @@ import pytest
 import time
 import os
 import signal
+import uuid
+import requests
+import json
 from unittest.mock import MagicMock, patch, ANY
 import sys
 import os
@@ -129,6 +132,86 @@ def app(mock_controller, mock_api_client, mock_config):
             app._attempt_reregistration = MagicMock(return_value=False)
             
             yield app
+            
+            
+# Add tests for device reregistration functionality
+def test_attempt_reregistration_success(app, mock_controller, mock_config):
+    """Test successful device reregistration."""
+    # Setup
+    mock_controller.firmware_version = "0.2.10"
+    mock_controller.board_type = "l"
+    
+    # Add GUID to device config
+    app.config.device_config["guid"] = "test-guid"
+    
+    # Mock the requests.put call
+    with patch("requests.put") as mock_put:
+        # Setup mock response
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "success": True,
+            "deviceID": "new-device-id",
+            "apiKey": "new-api-key"
+        }
+        mock_put.return_value = mock_response
+        
+        # Restore the original method (remove our mock)
+        delattr(app, "_attempt_reregistration")
+        
+        # Run reregistration
+        result = app._attempt_reregistration()
+        
+        # Check result
+        assert result is True
+        
+        # Check API client was updated
+        assert app.api_client.device_id == "new-device-id"
+        assert app.api_client.fermentrack_api_key == "new-api-key"
+
+
+def test_update_status_device_not_found(app, mock_controller, mock_api_client):
+    """Test handling of device not found errors."""
+    # Setup application
+    app.setup()  # This sets up the API client from our mock
+    
+    # Setup error message indicating device not found
+    error_msg = "Device ID associated with that API key not found"
+    
+    # Make status update fail with device not found error
+    app.api_client.send_status_raw.side_effect = Exception(error_msg)
+    
+    # Mock the reregistration method
+    with patch.object(app, "_attempt_reregistration") as mock_reregister:
+        mock_reregister.return_value = True
+        
+        # Run update
+        app.update_status()
+        
+        # Check if reregistration was attempted
+        mock_reregister.assert_called_once()
+
+
+def test_update_status_device_not_found_msg_code(app, mock_controller, mock_api_client):
+    """Test handling of device not found errors with msg_code."""
+    # Setup application
+    app.setup()  # This sets up the API client from our mock
+    
+    # Setup error message with msg_code=3 (device not found)
+    error_msg = '{"msg_code": "3", "message": "Device not found"}'
+    
+    # Make status update fail with device not found error
+    app.api_client.send_status_raw.side_effect = Exception(error_msg)
+    
+    # Mock the reregistration method
+    with patch.object(app, "_attempt_reregistration") as mock_reregister:
+        mock_reregister.return_value = True
+        
+        # Run update
+        app.update_status()
+        
+        # Check if reregistration was attempted
+        mock_reregister.assert_called_once()
 
 
 def test_brewpi_rest_setup(app, mock_controller, mock_api_client, mock_config):

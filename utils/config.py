@@ -142,8 +142,12 @@ class Config:
 
         logger.info(f"Loaded device config for location '{location}' from {config_location}")
 
-    def save_device_config(self) -> None:
+    def save_device_config(self, device_config=None) -> None:
         """Save device configuration to file.
+        
+        Args:
+            device_config: Optional device configuration to save. If not provided,
+                           the current self.device_config will be used.
         
         Note: Device config is always saved to the local config directory.
         """
@@ -157,12 +161,33 @@ class Config:
         # Make sure the directory exists
         CONFIG_DIR.mkdir(exist_ok=True)
         
+        # Use provided device_config or fall back to self.device_config
+        config_to_save = device_config if device_config is not None else self.device_config
+        
         try:
             with open(device_config_path, 'w') as f:
-                json.dump(self.device_config, f, indent=2, sort_keys=True)
+                json.dump(config_to_save, f, indent=2, sort_keys=True)
             logger.info(f"Saved device config to {device_config_path}")
         except Exception as e:
             logger.error(f"Error saving device config: {e}")
+            
+    def save_app_config(self) -> None:
+        """Save application configuration to file.
+        
+        Note: App config is always saved to the local config directory.
+        """
+        # Always save to the local config directory
+        app_config_path = CONFIG_DIR / "app_config.json"
+        
+        # Make sure the directory exists
+        CONFIG_DIR.mkdir(exist_ok=True)
+        
+        try:
+            with open(app_config_path, 'w') as f:
+                json.dump(self.app_config, f, indent=2, sort_keys=True)
+            logger.info(f"Saved application config to {app_config_path}")
+        except Exception as e:
+            logger.error(f"Error saving application config: {e}")
 
     def delete_device_config(self) -> bool:
         """Delete the device configuration file.
