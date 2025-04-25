@@ -473,7 +473,7 @@ class BrewPiRest:
             self.config.device_config = device_config  # Directly update the internal dict first
             self.config._load_device_config(self.config.location)  # Reload to ensure properties are updated
             
-            logger.info(f"Device successfully re-registered with Fermentrack (ID: {new_device_id})")
+            logger.info(f"Device successfully re-registered with Fermentrack (Name: {device_name}, ID: {new_device_id})")
             return True
             
         except Exception as e:
