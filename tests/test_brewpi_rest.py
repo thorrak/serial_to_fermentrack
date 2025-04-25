@@ -168,6 +168,10 @@ def test_attempt_reregistration_success(app, mock_controller, mock_config):
         # Check API client was updated
         assert app.api_client.device_id == "new-device-id"
         assert app.api_client.fermentrack_api_key == "new-api-key"
+        
+        # Make sure we updated the config file correctly
+        assert app.config.device_config['fermentrack_id'] == "new-device-id"
+        assert app.config.device_config['guid'] == "test-guid"
 
 
 def test_update_status_device_not_found(app, mock_controller, mock_api_client):

@@ -467,8 +467,11 @@ class BrewPiRest:
             # Update the API client
             self.api_client.device_id = new_device_id
             self.api_client.fermentrack_api_key = new_api_key
-            self.config.DEVICE_ID = new_device_id
-            self.config.FERMENTRACK_API_KEY = new_api_key
+            
+            # Don't try to set the properties directly, they're read-only properties
+            # Reload the config to update the properties
+            self.config.device_config = device_config  # Directly update the internal dict first
+            self.config._load_device_config(self.config.location)  # Reload to ensure properties are updated
             
             logger.info(f"Device successfully re-registered with Fermentrack (ID: {new_device_id})")
             return True
