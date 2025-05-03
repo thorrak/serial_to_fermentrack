@@ -208,6 +208,49 @@ def test_send_full_config():
         # Now it should be formatted with cs/cc keys
         assert request_data["cs"]["mode"] == "o"
         assert request_data["cc"]["Kp"] == 20.0
+        # S2F version should not be included when not provided
+        assert "s2f" not in request_data
+
+
+def test_send_full_config_with_version():
+    """Test sending full configuration with S2F version."""
+    with requests_mock.Mocker() as m:
+        # Mock successful response
+        m.put(
+            "http://localhost:8000/api/brewpi/device/fullconfig/",
+            json={"status": "success"}
+        )
+
+        client = FermentrackClient(
+            base_url="http://localhost:8000",
+            device_id="test123",
+            fermentrack_api_key="abc456"
+        )
+
+        # Config data with cs/cc/devices format
+        config_data = {
+            "cs": {"mode": "o", "beerSet": 20.0},
+            "cc": {"Kp": 20.0, "Ki": 0.5},
+            "devices": []
+        }
+        
+        # Version string
+        version = "0.1.0"
+
+        result = client.send_full_config(config_data, s2f_version=version)
+
+        # Check result
+        assert result["status"] == "success"
+
+        # Check request data
+        request = m.request_history[0]
+        request_data = json.loads(request.text)
+        assert request_data["deviceID"] == "test123"
+        assert request_data["apiKey"] == "abc456"
+        assert request_data["cs"]["mode"] == "o"
+        assert request_data["cc"]["Kp"] == 20.0
+        # S2F version should be included
+        assert request_data["s2f"] == "0.1.0"
 
 
 def test_send_full_config_missing_keys():

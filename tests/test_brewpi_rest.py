@@ -543,16 +543,23 @@ def test_brewpi_rest_update_full_config(app, mock_controller, mock_api_client):
     """Test update_full_config method."""
     app.setup()
     app.check_configuration()
-
-    # Update full config
-    result = app.update_full_config()
+    
+    # We need to patch the __version__ to ensure consistent testing
+    with patch('brewpi_rest.__version__', '0.1.0'):
+        # Update full config
+        result = app.update_full_config()
 
     # Check result
     assert result is True
 
-    # Verify method calls
+    # Verify method calls with version parameter
     mock_controller.get_full_config.assert_called_once()
     mock_api_client.send_full_config.assert_called_once()
+    
+    # Check that s2f_version was passed correctly
+    args, kwargs = mock_api_client.send_full_config.call_args
+    assert 's2f_version' in kwargs
+    assert kwargs['s2f_version'] == '0.1.0'
 
 
 def test_brewpi_rest_get_updated_config(app, mock_controller, mock_api_client):

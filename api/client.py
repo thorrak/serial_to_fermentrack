@@ -153,12 +153,13 @@ class FermentrackClient:
 
         return self._handle_response(response)
 
-    def send_full_config(self, config_data: Dict[str, Any]) -> Dict[str, Any]:
+    def send_full_config(self, config_data: Dict[str, Any], s2f_version: Optional[str] = None) -> Dict[str, Any]:
         """Send full device configuration to Fermentrack.
 
         Args:
             config_data: Complete configuration data with 'cs', 'cc',
                          and 'devices' keys.
+            s2f_version: Optional Serial-to-Fermentrack version to include in the configuration.
 
         Returns:
             Configuration response
@@ -176,6 +177,10 @@ class FermentrackClient:
         formatted_data["cs"] = config_data["cs"]  # Add control settings (cs)
         formatted_data["cc"] = config_data["cc"]  # Add control constants (cc)
         formatted_data["devices"] = config_data["devices"]  # Add devices array
+        
+        # Add S2F version if provided
+        if s2f_version:
+            formatted_data["s2f"] = s2f_version
         
         # Add auth params
         formatted_data["deviceID"] = auth_params["deviceID"]

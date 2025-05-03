@@ -17,6 +17,9 @@ from utils import setup_logging
 from controller import BrewPiController, ControllerMode, MessageStatus
 from api import FermentrackClient, APIError
 
+# Version information
+__version__ = "0.1.0"
+
 # Setup logging
 logger = None  # Will be initialized in main() after config is loaded
 
@@ -234,8 +237,8 @@ class BrewPiRest:
             # Get full configuration from controller
             config_data = self.controller.get_full_config()
 
-            # Send to Fermentrack
-            self.api_client.send_full_config(config_data)
+            # Send to Fermentrack with our version number
+            self.api_client.send_full_config(config_data, s2f_version=__version__)
 
             self.controller.awaiting_config_push = False
             self.last_full_config_update = time.time()
