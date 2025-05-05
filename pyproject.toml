@@ -3,7 +3,7 @@ name = "serial-to-fermentrack"
 version = "0.0.1"
 description = "Fermentrack REST API client for serial-connected BrewPi devices"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.9"
 dependencies = [
     "inquirer>=2.10.0",
     "pydantic==2.6.3",
