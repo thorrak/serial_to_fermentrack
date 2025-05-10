@@ -301,15 +301,19 @@ class SerialController:
     def parse_responses(self, brewpi):
         """Parse all incoming responses from the BrewPi controller.
 
-        Continues reading responses until no more are available.
+        Continues reading responses until no more are available or maximum timeout is reached.
         Handles errors for individual responses without stopping the entire process.
 
         Args:
             brewpi: BrewPiController instance
         """
-        # Continue reading responses until no more are available
+        # Set a maximum timeout for the whole response parsing session (15 seconds)
+        max_timeout = 15  # seconds
+        start_time = time.time()
+
+        # Continue reading responses until no more are available or timeout
         # TODO - Sleep and repeat if we don't end on a newline
-        while True:
+        while time.time() - start_time < max_timeout:
             try:
                 # Read response
                 response = self._read_response()
@@ -335,6 +339,11 @@ class SerialController:
                 logger.error(f"Unexpected error in parse_responses: {e}")
                 # Break the loop on unexpected errors
                 break
+
+        # Check if we hit the timeout
+        if time.time() - start_time >= max_timeout:
+            logger.warning(f"Maximum timeout ({max_timeout}s) reached while parsing responses")
+            # We are exiting due to timeout, not because we're done
 
     def request_lcd(self):
         """Request LCD content.

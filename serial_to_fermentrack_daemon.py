@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Dict, Optional
 
 # Version information
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 
 # Import watchdog for file system monitoring
 try:
@@ -89,6 +89,9 @@ class DeviceProcess:
         self.restart_delay: int = 5  # seconds to wait before restarting a crashed process
         self.location: str = ""
         self.stopping: bool = False
+        self.last_check_time: float = time.time()  # For limiting log checks
+        self.log_check_interval: int = 60  # Check logs once per minute at most
+        self.max_log_age: int = 12 * 60  # Max log age in minutes (12 minutes)
         self._read_config()
 
     def _read_config(self) -> bool:
@@ -155,18 +158,98 @@ class DeviceProcess:
                 logger.error(f"Error stopping process for {self.location}: {e}")
         self.stopping = False
 
+    def _get_log_file_path(self) -> Optional[Path]:
+        """Get the log file path for this device process.
+
+        Returns:
+            Path to the log file or None if location is not set
+        """
+        if not self.location:
+            return None
+
+        # Uses the same log file pattern as in utils/config.py
+        log_dir = Path('logs')
+        return log_dir / f"{self.location}.log"
+
+    def _check_log_activity(self) -> bool:
+        """Check if the log file has been updated recently.
+
+        Returns:
+            True if log is active, False if it's stale or doesn't exist
+        """
+        log_file = self._get_log_file_path()
+        if not log_file or not log_file.exists():
+            logger.warning(f"Log file for {self.location} not found at {log_file}")
+            return False
+
+        try:
+            # Get the last modification time of the log file
+            log_mtime = os.path.getmtime(log_file)
+            current_time = time.time()
+
+            # Check if log file is too old (hasn't been written to in max_log_age minutes)
+            log_age_minutes = (current_time - log_mtime) / 60
+
+            if log_age_minutes > self.max_log_age:
+                logger.warning(f"Log file for {self.location} is stale ({log_age_minutes:.1f} minutes old, max allowed: {self.max_log_age} minutes)")
+                return False
+
+            return True
+        except (FileNotFoundError, PermissionError, OSError) as e:
+            logger.error(f"Error checking log file for {self.location}: {e}")
+            return False
+
+    def _force_kill_process(self) -> None:
+        """Force kill the process using SIGKILL."""
+        if not self.process or self.process.poll() is not None:
+            return
+
+        logger.warning(f"Force killing stale process for {self.location}")
+        try:
+            # Kill the entire process group with SIGKILL
+            os.killpg(os.getpgid(self.process.pid), signal.SIGKILL)
+
+            # Wait briefly for the process to exit
+            for _ in range(3):
+                if self.process.poll() is not None:
+                    break
+                time.sleep(1.5)
+
+            if self.process.poll() is None:
+                logger.error(f"Failed to kill process for {self.location}, PID: {self.process.pid}")
+        except ProcessLookupError:
+            # Process already terminated
+            pass
+        except Exception as e:
+            logger.error(f"Error killing process for {self.location}: {e}")
+
     def check_and_restart(self) -> None:
         """Check if the process is running and restart it if necessary."""
         if self.stopping:
             return
-            
+
+        current_time = time.time()
+
         # Check if process has died
         if self.process and self.process.poll() is not None:
             exit_code = self.process.poll()
             logger.warning(f"Process for {self.location} exited with code {exit_code}, restarting in {self.restart_delay} seconds")
             time.sleep(self.restart_delay)
             self.start()
-            
+            return
+
+        # Limit how often we check the log file to reduce system load
+        if self.process and self.process.poll() is None and current_time - self.last_check_time >= self.log_check_interval:
+            self.last_check_time = current_time
+
+            # Check if log file has been updated recently
+            if not self._check_log_activity():
+                logger.warning(f"Process for {self.location} appears to be stale (no log activity for {self.max_log_age} minutes)")
+                self._force_kill_process()
+                logger.info(f"Restarting process for {self.location} after forced kill")
+                self.start()
+                return
+
         # Check if config file has changed
         try:
             current_mtime = os.path.getmtime(self.config_file)
@@ -317,8 +400,8 @@ def parse_args():
     parser.add_argument('--config-dir', type=str, default='serial_config',
                         help='Directory containing device configuration files (default: ./serial_config)')
     
-    parser.add_argument('--log-dir', type=str, default='log',
-                        help='Directory for log files (default: ./log)')
+    parser.add_argument('--log-dir', type=str, default='logs',
+                        help='Directory for log files (default: ./logs)')
     
     parser.add_argument('--python', type=str, default=sys.executable,
                         help='Python executable to use for launching processes (default: current Python interpreter)')
