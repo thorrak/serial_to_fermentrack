@@ -303,3 +303,5 @@ data/
 serial_config/*.json
 
 .venv/
+
+**/.claude/settings.local.json
