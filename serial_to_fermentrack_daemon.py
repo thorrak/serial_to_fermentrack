@@ -400,8 +400,8 @@ def parse_args():
     parser.add_argument('--config-dir', type=str, default='serial_config',
                         help='Directory containing device configuration files (default: ./serial_config)')
     
-    parser.add_argument('--log-dir', type=str, default='log',
-                        help='Directory for log files (default: ./log)')
+    parser.add_argument('--log-dir', type=str, default='logs',
+                        help='Directory for log files (default: ./logs)')
     
     parser.add_argument('--python', type=str, default=sys.executable,
                         help='Python executable to use for launching processes (default: current Python interpreter)')
