@@ -45,54 +45,66 @@ class TestLogActivityMonitoring:
         
         assert log_path is None
 
-    @patch('os.path.exists')
+    @patch('pathlib.Path.exists')
     @patch('os.path.getmtime')
     def test_check_log_activity_fresh_log(self, mock_getmtime, mock_exists, valid_config_file):
         """Test checking a log file that's been recently updated."""
+        # Reset the mock before we start
+        mock_getmtime.reset_mock()
+
         device = DeviceProcess(valid_config_file)
-        
+        # Reset the mock again after initialization which calls getmtime
+        mock_getmtime.reset_mock()
+
         # Mock log file existence
         mock_exists.return_value = True
-        
+
         # Set up mock to return current time - 5 minutes (log is fresh)
         current_time = time.time()
         mock_getmtime.return_value = current_time - (5 * 60)
-        
+
         result = device._check_log_activity()
-        
+
         assert result is True
         mock_exists.assert_called_once()
         mock_getmtime.assert_called_once()
 
-    @patch('os.path.exists')
+    @patch('pathlib.Path.exists')
     @patch('os.path.getmtime')
     def test_check_log_activity_stale_log(self, mock_getmtime, mock_exists, valid_config_file):
         """Test checking a log file that's too old."""
+        # Reset the mock before we start
+        mock_getmtime.reset_mock()
+
         device = DeviceProcess(valid_config_file)
-        
+        # Make sure the max_log_age is set to 12 minutes as expected
+        device.max_log_age = 12
+        # Reset the mock again after initialization which calls getmtime
+        mock_getmtime.reset_mock()
+
         # Mock log file existence
         mock_exists.return_value = True
-        
+
         # Set up mock to return current time - 20 minutes (log is stale, beyond 12 minute default)
         current_time = time.time()
         mock_getmtime.return_value = current_time - (20 * 60)
-        
+
         result = device._check_log_activity()
-        
+
         assert result is False
         mock_exists.assert_called_once()
         mock_getmtime.assert_called_once()
 
-    @patch('os.path.exists')
+    @patch('pathlib.Path.exists')
     def test_check_log_activity_no_log(self, mock_exists, valid_config_file):
         """Test checking when log file doesn't exist."""
         device = DeviceProcess(valid_config_file)
-        
+
         # Mock log file not existing
         mock_exists.return_value = False
-        
+
         result = device._check_log_activity()
-        
+
         assert result is False
         mock_exists.assert_called_once()
 

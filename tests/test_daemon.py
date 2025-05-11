@@ -229,7 +229,7 @@ class TestMainFunctions:
             args = parse_args()
             
             assert args.config_dir == 'serial_config'
-            assert args.log_dir == 'log'
+            assert args.log_dir == 'logs'
             assert args.verbose is False
 
     @patch('sys.exit')
