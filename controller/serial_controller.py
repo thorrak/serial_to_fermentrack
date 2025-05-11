@@ -199,40 +199,28 @@ class SerialController:
             raise SerialControllerError("Not connected to controller")
 
         try:
-            # Check for available data immediately before starting the wait loop
+            # Return immediately if no data is available
             if self.serial_conn.in_waiting == 0:
-                # Return immediately if no data is available
                 return None
 
             response = ""
+            end_time = time.time() + self.timeout
 
-            # Wait for complete response
-            start_time = time.time()
-            while time.time() - start_time < self.timeout:
+            while time.time() < end_time:
                 if self.serial_conn.in_waiting:
                     # Read all available bytes
                     data = self.serial_conn.read(self.serial_conn.in_waiting)
-                    if data:
-                        response += data.decode('utf-8', errors='ignore')
+                    response += data.decode('utf-8', errors='ignore')
 
-                # Check if response is complete (ends with new line)
-                if response and response.endswith('\n'):
-                    break
+                    # Break if response is complete (ends with new line)
+                    if response.endswith('\n'):
+                        break
 
-                # If we have some data but not a complete response, wait a short time for more
-                if response:
-                    time.sleep(0.1)
-                else:
-                    # If no data after initial check, check one more time with shorter delay
-                    time.sleep(0.01)
-                    if self.serial_conn.in_waiting == 0:
-                        # Exit early if still no data
-                        return None
+                # Wait for complete response
+                time.sleep(0.1)
 
-            if not response:
-                return None
+            return response.strip() if response else None
 
-            return response.strip()
         except (serial.SerialException, OSError) as e:
             error_msg = f"Serial communication error: {e}"
             logger.error(error_msg)

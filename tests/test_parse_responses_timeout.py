@@ -39,14 +39,14 @@ def test_parse_responses_timeout():
         controller.connected = True
         controller.serial_conn = mock_serial
         
-        # Call parse_responses - this should now timeout after 30 seconds
+        # Call parse_responses - this should now timeout after 15 seconds
         controller.parse_responses(mock_brewpi)
-        
+
         # Verify that time.time was called multiple times (at least 3)
         assert mock_time.call_count >= 3
-        
+
         # Verify logger.warning was called for the timeout
-        mock_logger.warning.assert_called_with("Maximum timeout (30s) reached while parsing responses")
+        mock_logger.warning.assert_called_with("Maximum timeout (15s) reached while parsing responses")
     
     finally:
         # Stop all patchers

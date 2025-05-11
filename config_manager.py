@@ -20,7 +20,7 @@ import argparse
 from pathlib import Path
 
 # Version information
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 # Configuration directory
 CONFIG_DIR = Path("serial_config")

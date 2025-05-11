@@ -9,8 +9,10 @@ import logging
 import time
 import signal
 import sys
+import os
 import argparse
 import uuid
+import threading
 from typing import Dict, Any, Optional, Tuple
 from utils.config import Config, ensure_directories, FERMENTRACK_NET_HOST, FERMENTRACK_NET_PORT, FERMENTRACK_NET_HTTPS
 from utils import setup_logging
@@ -27,6 +29,7 @@ logger = None  # Will be initialized in main() after config is loaded
 STATUS_UPDATE_INTERVAL = 30  # seconds, includes updating status & LCD
 FULL_CONFIG_UPDATE_INTERVAL = 300  # seconds
 FULL_CONFIG_RETRY = 30 # seconds, time to wait after a full config update failed to reattempt
+WATCHDOG_TIMEOUT = 60  # seconds, time to wait before considering the script unresponsive
 
 class BrewPiRest:
     """BrewPi REST application.
@@ -47,6 +50,11 @@ class BrewPiRest:
         self.last_status_update = time.time() - (STATUS_UPDATE_INTERVAL - 5)  # Trigger the initial update after 5 secs
         self.last_message_check = 0
         self.last_full_config_update = 0  # Trigger the initial config update immediately
+
+        # Watchdog attributes
+        self.last_heartbeat = time.time()
+        self.heartbeat_lock = threading.Lock()
+        self.watchdog_thread = None
 
     def setup(self) -> bool:
         """Set up controller and API client.
@@ -290,6 +298,7 @@ class BrewPiRest:
         1. Updates controller status to Fermentrack
         2. Checks for messages from Fermentrack
         3. Periodically updates full configuration
+        4. Maintains heartbeat for watchdog monitoring
         """
         self.running = True
 
@@ -297,10 +306,16 @@ class BrewPiRest:
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
 
+        # Start the watchdog thread
+        self.start_watchdog()
+
         logger.info("Starting Serial-to-Fermentrack main loop")
 
         while self.running:
             try:
+                # Update heartbeat at the start of each loop iteration
+                self.update_heartbeat()
+
                 # Check if it's time to update status
                 current_time = time.time()
 
@@ -483,6 +498,44 @@ class BrewPiRest:
             logger.error(f"Re-registration failed with error: {e}")
             return False
 
+    def update_heartbeat(self) -> None:
+        """Update the heartbeat timestamp to indicate the application is still alive."""
+        with self.heartbeat_lock:
+            self.last_heartbeat = time.time()
+
+    def _watchdog_thread(self) -> None:
+        """Watchdog thread function that monitors application heartbeat.
+
+        If the application doesn't update its heartbeat for WATCHDOG_TIMEOUT seconds,
+        logs a critical error and exits the application.
+        """
+        logger.info("Watchdog thread started")
+
+        while self.running:
+            time.sleep(5)  # Check every 5 seconds
+
+            with self.heartbeat_lock:
+                time_since_heartbeat = time.time() - self.last_heartbeat
+
+            if time_since_heartbeat > WATCHDOG_TIMEOUT:
+                logger.critical(f"WATCHDOG ALERT: Application appears unresponsive for {time_since_heartbeat:.1f} seconds")
+                logger.critical("Initiating emergency shutdown")
+
+                # Force exit with error code
+                # This will be detected by the daemon which can restart the script
+                os._exit(1)
+
+    def start_watchdog(self) -> None:
+        """Start the watchdog thread to monitor application health."""
+        if self.watchdog_thread is None or not self.watchdog_thread.is_alive():
+            self.watchdog_thread = threading.Thread(
+                target=self._watchdog_thread,
+                daemon=True,
+                name="WatchdogThread"
+            )
+            self.watchdog_thread.start()
+            logger.info("Watchdog monitoring started")
+
     def stop(self) -> None:
         """Stop the application."""
         logger.info("Stopping Serial-to-Fermentrack")
@@ -491,6 +544,8 @@ class BrewPiRest:
         # Clean up resources
         if self.controller:
             self.controller.disconnect()
+
+        # The watchdog thread is a daemon thread and will exit automatically
 
 
 def parse_args():
@@ -534,7 +589,7 @@ def main() -> int:
     )
 
     # Log startup information
-    logger.info(f"Starting Serial-to-Fermentrack with location: {args.location}")
+    logger.info(f"Starting Serial-to-Fermentrack v{__version__} with location: {args.location}")
     logger.info(f"Using serial port: {config.SERIAL_PORT}")
 
     # Log Fermentrack connection details
