@@ -3,6 +3,7 @@
 import logging
 from enum import Enum
 from typing import Dict, Any, Optional, List, Union
+
 from pydantic import BaseModel, Field, validator
 
 logger = logging.getLogger(__name__)
@@ -10,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class ControllerMode(str, Enum):
     """Controller operation modes."""
-    
+
     BEER_CONSTANT = "b"
     FRIDGE_CONSTANT = "f"
     PROFILE = "p"
@@ -19,7 +20,7 @@ class ControllerMode(str, Enum):
 
 class DeviceFunction(int, Enum):
     """Device functions matching the firmware enum."""
-    
+
     DEVICE_NONE = 0
     DEVICE_CHAMBER_DOOR = 1
     DEVICE_CHAMBER_HEAT = 2
@@ -41,7 +42,7 @@ class DeviceFunction(int, Enum):
 
 class DeviceHardware(int, Enum):
     """Device hardware types matching the firmware enum."""
-    
+
     DEVICE_HARDWARE_NONE = 0
     DEVICE_HARDWARE_PIN = 1
     DEVICE_HARDWARE_ONEWIRE_TEMP = 2
@@ -54,7 +55,7 @@ class DeviceHardware(int, Enum):
 
 class Device(BaseModel):
     """BrewPi device (sensor/actuator) matching the C++ DeviceDefinition struct."""
-    
+
     index: int = -1
     chamber: int = 0
     beer: int = 0
@@ -77,14 +78,14 @@ class Device(BaseModel):
         # check id/index, chamber, beer, or value, as all of these are subject to change on the controller itself,
         # and we are seeking equality in the definition of the device, not its state.
         return (
-            self.deviceFunction == other.deviceFunction and
-            self.deviceHardware == other.deviceHardware and
-            self.pinNr == other.pinNr and
-            self.invert == other.invert and
-            self.pio == other.pio and
-            self.deactivate == other.deactivate and
-            self.calibrationAdjust == other.calibrationAdjust and
-            self.address == other.address
+                self.deviceFunction == other.deviceFunction and
+                self.deviceHardware == other.deviceHardware and
+                self.pinNr == other.pinNr and
+                self.invert == other.invert and
+                self.pio == other.pio and
+                self.deactivate == other.deactivate and
+                self.calibrationAdjust == other.calibrationAdjust and
+                self.address == other.address
         )
 
     def to_controller_dict(self) -> Dict[str, Union[int, str]]:
@@ -117,7 +118,7 @@ class Device(BaseModel):
         # TODO - Determine if we need to conditionally add pio and/or calibrationAdjust
 
         return controller_dict
-        
+
     @classmethod
     def from_controller_dict(cls, controller_dict: Dict[str, Any]) -> 'Device':
         """Create a Device object from the controller's dictionary format.
@@ -177,7 +178,6 @@ class Device(BaseModel):
         else:
             return f"Unknown_HW{self.deviceHardware}_Addr_{self.address}_Pin_{self.pinNr}"
 
-
     def fix_pin_nr(self, existing_device_list: List['Device']) -> None:
         """Fix the pin number for this device if it is a OneWire device. Fermentrack does not send pins for OneWire
         devices, but legacy BrewPi firmware requires it. This function searches a list of existing devices (as received
@@ -213,13 +213,13 @@ class ControlSettings(BaseModel):
     This model matches the exact keys/values received from the controller and used in the 
     full config endpoint with "cs" key. The attribute names use camelCase as expected by Fermentrack.
     """
-    
+
     mode: ControllerMode
     beerSet: Optional[float] = 0.0
     fridgeSet: Optional[float] = 0.0
     heatEst: float = 0.0  # Heat estimator
     coolEst: float = 0.0  # Cool estimator
-    
+
     class Config:
         """Pydantic configuration."""
         populate_by_name = True
@@ -237,19 +237,19 @@ class ControlConstants(BaseModel):
     "coolTargetL":0.299,"maxHeatTimeForEst":600,"maxCoolTimeForEst":1200,"fridgeFastFilt":1,
     "fridgeSlowFilt":4,"fridgeSlopeFilt":3,"beerFastFilt":3,"beerSlowFilt":4,"beerSlopeFilt":4,"lah":0,"hs":0
     """
-    
+
     # Temperature settings
     tempFormat: str = "C"
     tempSetMin: float = 1.0
     tempSetMax: float = 30.0
-    
+
     # PID control parameters
     pidMax: float = 10.0
     Kp: float = 5.0
     Ki: float = 0.25
     Kd: float = 1.5
     iMaxErr: float = 0.5
-    
+
     # Control ranges
     idleRangeH: float = 1.0
     idleRangeL: float = 1.0
@@ -257,11 +257,11 @@ class ControlConstants(BaseModel):
     heatTargetL: float = 0.199
     coolTargetH: float = 0.199
     coolTargetL: float = 0.299
-    
+
     # Time estimation
     maxHeatTimeForEst: int = 600
     maxCoolTimeForEst: int = 1200
-    
+
     # Filter settings
     fridgeFastFilt: int = 1
     fridgeSlowFilt: int = 4
@@ -269,12 +269,12 @@ class ControlConstants(BaseModel):
     beerFastFilt: int = 3
     beerSlowFilt: int = 4
     beerSlopeFilt: int = 4
-    
+
     # Hardware settings
     # NOTE - lah and hs are sent as booleans from Fermentrack, but are sent as/expected to be integers in the controller
     lah: int = 0  # Light as heater
-    hs: int = 0   # Heating shared
-    
+    hs: int = 0  # Heating shared
+
     class Config:
         """Pydantic configuration."""
         populate_by_name = True
@@ -282,7 +282,7 @@ class ControlConstants(BaseModel):
 
 class MinimumTime(BaseModel):
     """Minimum time settings."""
-    
+
     min_cool_time: int = Field(300, alias="minCoolTime")
     min_cool_idle_time: int = Field(300, alias="minCoolIdleTime")
     min_heat_time: int = Field(300, alias="minHeatTime")
@@ -292,7 +292,7 @@ class MinimumTime(BaseModel):
 
 class TemperatureData(BaseModel):
     """Temperature data from controller."""
-    
+
     beer_temp: Optional[float] = Field(None, alias="beerTemp")
     beer_set: float = Field(0.0, alias="beerSet")
     fridge_temp: Optional[float] = Field(None, alias="fridgeTemp")
@@ -323,7 +323,7 @@ class ControllerStatus(BaseModel):
     temps: Dict[str, Optional[Union[float, str, int]]]  # Temperature readings
     temp_format: str  # Temperature format (C or F)
     mode: str  # Controller mode
-    
+
     @validator('temps')
     def validate_temps(cls, temps):
         """
@@ -336,7 +336,7 @@ class ControllerStatus(BaseModel):
             # Skip None values
             if value is None:
                 continue
-                
+
             # If it's a string, ensure it's only for allowed keys
             if isinstance(value, str):
                 if key not in ["FridgeAnn", "BeerAnn"]:
@@ -373,9 +373,10 @@ class MessageStatus(BaseModel):
         """Pydantic configuration."""
         populate_by_name = True
 
+
 class FullConfig(BaseModel):
     """Full controller configuration in Fermentrack format."""
-    
+
     cs: ControlSettings  # Control settings
     cc: ControlConstants  # Control constants
     devices: List[dict]  # Serialized device list

@@ -4,20 +4,19 @@ This module is the main entry point for the Serial-to-Fermentrack application.
 It integrates the serial-connected BrewPi controller with the Fermentrack REST API.
 """
 
-import json
-import logging
-import time
+import argparse
+import os
 import signal
 import sys
-import os
-import argparse
-import uuid
 import threading
-from typing import Dict, Any, Optional, Tuple
-from utils.config import Config, ensure_directories, FERMENTRACK_NET_HOST, FERMENTRACK_NET_PORT, FERMENTRACK_NET_HTTPS
-from utils import setup_logging
-from controller import BrewPiController, ControllerMode, MessageStatus
+import time
+import uuid
+from typing import Dict, Any
+
 from api import FermentrackClient, APIError
+from controller import BrewPiController, MessageStatus
+from utils import setup_logging
+from utils.config import Config, ensure_directories, FERMENTRACK_NET_HOST, FERMENTRACK_NET_PORT, FERMENTRACK_NET_HTTPS
 
 # Version information
 __version__ = "0.1.0"
@@ -28,8 +27,9 @@ logger = None  # Will be initialized in main() after config is loaded
 # Configuration Constants
 STATUS_UPDATE_INTERVAL = 30  # seconds, includes updating status & LCD
 FULL_CONFIG_UPDATE_INTERVAL = 300  # seconds
-FULL_CONFIG_RETRY = 30 # seconds, time to wait after a full config update failed to reattempt
+FULL_CONFIG_RETRY = 30  # seconds, time to wait after a full config update failed to reattempt
 WATCHDOG_TIMEOUT = 60  # seconds, time to wait before considering the script unresponsive
+
 
 class BrewPiRest:
     """BrewPi REST application.
@@ -157,7 +157,7 @@ class BrewPiRest:
         except (APIError, Exception) as e:
             error_msg = f"Failed to update status: {e}"
             logger.error(error_msg)
-            
+
             # Check if this is a device not found error (device unregistered in Fermentrack)
             if "Device ID associated with that API key not found" in str(e) or "msg_code" in str(e) and "3" in str(e):
                 logger.warning("Device appears to be unregistered from Fermentrack. Attempting to re-register...")
@@ -168,11 +168,11 @@ class BrewPiRest:
                     logger.error("Failed to re-register with Fermentrack. Initiating connection reset...")
                     self.controller.awaiting_connection_reset = True
                     self._handle_reset_connection()
-            
+
             # Check if this is a disconnected device error
             elif "Device not configured" in str(e) or "Input/output error" in str(e):
                 logger.warning("Device connection error detected. Attempting to reconnect...")
-                
+
                 # Try to reconnect to the controller
                 if self.controller and self.controller.reconnect(max_attempts=3):
                     logger.info("Successfully reconnected to controller")
@@ -181,7 +181,7 @@ class BrewPiRest:
                     logger.critical("Failed to reconnect to controller. Exiting application in 5 seconds...")
                     time.sleep(5)
                     sys.exit(1)
-                    
+
             time.sleep(5)
             return False
 
@@ -205,7 +205,6 @@ class BrewPiRest:
         if new_mode or new_setpoint:
             logger.info(f"Mode update from Fermentrack: mode {new_mode} at {new_setpoint}")
             self.controller.set_mode_and_temp(new_mode, new_setpoint)
-
 
     def check_messages(self) -> bool:
         """Check for messages from Fermentrack.
@@ -332,10 +331,10 @@ class BrewPiRest:
                     self.controller.awaiting_config_push = True  # Trigger a full config update
 
                 # Check if we need to fetch updated configuration
-                if self.controller.awaiting_settings_update or  self.controller.awaiting_constants_update or self.controller.awaiting_devices_update:
+                if self.controller.awaiting_settings_update or self.controller.awaiting_constants_update or self.controller.awaiting_devices_update:
                     logger.info("Fetching updated configuration from Fermentrack")
                     config_success = self.get_updated_config()
-                    
+
                     # Reset flags
                     self.controller.awaiting_settings_update = False
                     self.controller.awaiting_constants_update = False
@@ -345,7 +344,7 @@ class BrewPiRest:
                         self.controller.awaiting_config_push = True  # Presuming we updated something above, we need to tell Fermentrack
                     else:
                         logger.error("Failed to get updated configuration from Fermentrack")
-                
+
                 # Check if we need to push full config to Fermentrack
                 if self.controller.awaiting_config_push:
                     config_update_success = self.update_full_config()
@@ -387,7 +386,7 @@ class BrewPiRest:
         else:
             logger.error("Failed to delete device configuration")
             self.controller.awaiting_connection_reset = False
-            
+
     def _attempt_reregistration(self) -> bool:
         """Attempt to re-register the device with Fermentrack.
         
@@ -399,15 +398,15 @@ class BrewPiRest:
         """
         try:
             logger.info("Starting device re-registration with Fermentrack")
-            
+
             # Get device information from the controller
             if not self.controller or not self.controller.firmware_version or not self.controller.board_type:
                 logger.error("Unable to re-register: missing firmware information")
                 return False
-            
+
             # Use existing device ID from config
             device_id = self.config.DEVICE_ID
-            
+
             # Use existing GUID from device config if it exists, or generate a new one
             if "guid" in self.config.device_config:
                 device_guid = self.config.device_config["guid"]
@@ -415,14 +414,14 @@ class BrewPiRest:
             else:
                 device_guid = str(uuid.uuid4())
                 logger.info(f"Generated new device GUID: {device_guid}")
-            
+
             # Device name based on the first 8 chars of GUID
             device_name = f"BrewPi {device_guid[:8]}"
-            
+
             # Get firmware information
             firmware_version = self.controller.firmware_version
             board_type = self.controller.board_type
-            
+
             # Register with Fermentrack using same technique as config_manager
             # Use Fermentrack.net if configured, otherwise use local instance
             if self.config.app_config.get('use_fermentrack_net', False):
@@ -435,10 +434,10 @@ class BrewPiRest:
                 host = self.config.app_config.get('host', 'localhost')
                 port = self.config.app_config.get('port', '80')
                 use_https = self.config.app_config.get('use_https', False)
-            
+
             protocol = "https" if use_https else "http"
             url = f"{protocol}://{host}:{port}/api/brewpi/device/register/"
-            
+
             # Prepare registration data
             registration_data = {
                 'guid': device_guid,
@@ -448,44 +447,44 @@ class BrewPiRest:
                 'name': device_name,
                 'connection_type': 'Serial (S2F)'
             }
-            
+
             logger.info(f"Sending re-registration request to {url}")
-            
+
             # Make the registration request
             import requests
             response = requests.put(url, json=registration_data, timeout=10)
-            
+
             if response.status_code != 200:
                 logger.error(f"Re-registration failed with status code: {response.status_code}")
                 return False
-            
+
             data = response.json()
             if not data.get('success', False):
                 logger.error(f"Re-registration failed: {data.get('message', 'unknown error')}")
                 return False
-            
+
             # Get the new device ID and API key
             new_device_id = data.get('deviceID')
             new_api_key = data.get('apiKey')
-            
+
             if not new_device_id or not new_api_key:
                 logger.error("Re-registration response missing deviceID or apiKey")
                 return False
-            
+
             # Update the configuration
             self.config.app_config['fermentrack_api_key'] = new_api_key
             self.config.save_app_config()
-            
+
             # Update device config
             device_config = self.config.device_config.copy()
             device_config['fermentrack_id'] = new_device_id
             device_config['guid'] = device_guid
             self.config.save_device_config(device_config)
-            
+
             # Update the API client
             self.api_client.device_id = new_device_id
             self.api_client.fermentrack_api_key = new_api_key
-            
+
             # Don't try to set the properties directly, they're read-only properties
             # Reload the config to update the properties
             self.config.device_config = device_config  # Directly update the internal dict first
@@ -493,7 +492,7 @@ class BrewPiRest:
             
             logger.info(f"Device successfully re-registered with Fermentrack (Name: {device_name}, ID: {new_device_id})")
             return True
-            
+
         except Exception as e:
             logger.error(f"Re-registration failed with error: {e}")
             return False
@@ -555,7 +554,7 @@ def parse_args():
     # parser.add_argument('--location', '-l', required=True, help="Device location identifier (e.g. '1-1')")
     parser.add_argument('--location', '-l', required=False, help="Device location identifier (e.g. '1-1')")
     parser.add_argument('--verbose', '-v', action='store_true', help="Enable verbose logging")
-    
+
     return parser.parse_args()
 
 
@@ -582,7 +581,7 @@ def main() -> int:
     # Set up logging
     log_level = "DEBUG" if args.verbose else config.LOG_LEVEL
     logger = setup_logging(
-        log_level=log_level, 
+        log_level=log_level,
         log_file=config.LOG_FILE,
         max_bytes=config.LOG_MAX_BYTES,
         backup_count=config.LOG_BACKUP_COUNT

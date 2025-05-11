@@ -35,8 +35,9 @@ except ImportError:
 # Initialize logger - handlers will be set up in setup_logging()
 logger = logging.getLogger('serial_to_fermentrack_daemon')
 
-def setup_logging(log_dir: str = 'logs', log_level: int = logging.INFO, 
-                 max_bytes: int = 2 * 1024 * 1024, backup_count: int = 5) -> None:
+
+def setup_logging(log_dir: str = 'logs', log_level: int = logging.INFO,
+                  max_bytes: int = 2 * 1024 * 1024, backup_count: int = 5) -> None:
     """Set up logging with file and console handlers.
     
     Args:
@@ -47,22 +48,22 @@ def setup_logging(log_dir: str = 'logs', log_level: int = logging.INFO,
     """
     # Ensure log directory exists
     os.makedirs(log_dir, exist_ok=True)
-    
+
     # Configure logging
     log_file = os.path.join(log_dir, 'serial_to_fermentrack_daemon.log')
-    
+
     # Reset handlers if they exist
     for handler in logger.handlers[:]:
         logger.removeHandler(handler)
-    
+
     # Configure handlers
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    
+
     # Console handler
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
-    
+
     # File handler with rotation
     file_handler = logging.handlers.RotatingFileHandler(
         log_file,
@@ -71,11 +72,11 @@ def setup_logging(log_dir: str = 'logs', log_level: int = logging.INFO,
     )
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
-    
+
     # Set level
     logger.setLevel(log_level)
-    
-    logger.info(f"Logging to {log_file} with {backup_count} rotated backups (max size: {max_bytes/1024/1024:.1f} MB)")
+
+    logger.info(f"Logging to {log_file} with {backup_count} rotated backups (max size: {max_bytes / 1024 / 1024:.1f} MB)")
 
 
 class DeviceProcess:
@@ -118,7 +119,7 @@ class DeviceProcess:
         # Start the process with only location parameter
         cmd = ["serial_to_fermentrack", "--location", self.location]
         logger.info(f"Starting Serial-to-Fermentrack process for {self.location} with command: {' '.join(cmd)}")
-        
+
         try:
             # Use process groups to ensure child processes can be properly terminated
             self.process = subprocess.Popen(
@@ -146,7 +147,7 @@ class DeviceProcess:
                     if self.process.poll() is not None:
                         break
                     time.sleep(0.5)
-                    
+
                 # Force kill if it didn't terminate
                 if self.process.poll() is None:
                     logger.warning(f"Process for {self.location} didn't terminate, force killing")
@@ -280,33 +281,33 @@ class ConfigWatcher(FileSystemEventHandler):
     """
     Watches for changes in the config directory and manages device processes.
     """
-    
+
     def __init__(self, config_dir: Path, python_exec: str = sys.executable):
         self.config_dir = config_dir
         self.python_exec = python_exec
         self.devices: Dict[str, DeviceProcess] = {}
         self.observer = Observer()
-        
+
     def start(self) -> None:
         """Start watching the config directory and launch processes for existing configs."""
         # Load existing config files
         self._scan_config_directory()
-        
+
         # Start the file system observer
         self.observer.schedule(self, self.config_dir, recursive=False)
         self.observer.start()
         logger.info(f"Started watching config directory: {self.config_dir}")
-        
+
     def stop(self) -> None:
         """Stop all device processes and the file system observer."""
         logger.info("Stopping all Serial-to-Fermentrack processes")
         for device in self.devices.values():
             device.stop()
-        
+
         self.observer.stop()
         self.observer.join()
         logger.info("Serial-to-Fermentrack daemon stopped")
-    
+
     def _scan_config_directory(self) -> None:
         """Scan the config directory for device configuration files."""
         logger.info(f"Scanning config directory: {self.config_dir}")
@@ -314,7 +315,7 @@ class ConfigWatcher(FileSystemEventHandler):
             if config_file.name == "app_config.json":
                 continue  # Skip the main app config
             self._handle_config_file(config_file)
-    
+
     def _handle_config_file(self, config_file: Path) -> None:
         """Handle a device configuration file."""
         config_path = str(config_file)
@@ -324,12 +325,12 @@ class ConfigWatcher(FileSystemEventHandler):
                 logger.info(f"Found new device configuration: {device.location}")
                 self.devices[config_path] = device
                 device.start()
-    
+
     def check_processes(self) -> None:
         """Check all running processes and restart if necessary."""
         for device in list(self.devices.values()):
             device.check_and_restart()
-    
+
     def on_created(self, event) -> None:
         """Handle file creation events."""
         if not event.is_directory and event.src_path.endswith('.json'):
@@ -338,7 +339,7 @@ class ConfigWatcher(FileSystemEventHandler):
                 return
             logger.info(f"New config file detected: {event.src_path}")
             self._handle_config_file(Path(event.src_path))
-    
+
     def on_modified(self, event) -> None:
         """Handle file modification events."""
         if not event.is_directory and event.src_path.endswith('.json'):
@@ -348,7 +349,7 @@ class ConfigWatcher(FileSystemEventHandler):
             if event.src_path in self.devices:
                 logger.info(f"Config file modified: {event.src_path}")
                 self.devices[event.src_path].check_and_restart()
-    
+
     def on_deleted(self, event) -> None:
         """Handle file deletion events."""
         if not event.is_directory and event.src_path.endswith('.json'):
@@ -363,36 +364,36 @@ class ConfigWatcher(FileSystemEventHandler):
 
 class SerialToFermentrackDaemon:
     """Main daemon class to manage Serial-to-Fermentrack instances."""
-    
+
     def __init__(self, config_dir: Path = None, python_exec: str = sys.executable):
         # Default to local config directory
         self.config_dir = config_dir or Path('serial_config')
         self.python_exec = python_exec
         self.running = False
         self.watcher = ConfigWatcher(self.config_dir, self.python_exec)
-        
+
         # Setup signal handlers
         signal.signal(signal.SIGINT, self._handle_signal)
         signal.signal(signal.SIGTERM, self._handle_signal)
-    
+
     def _handle_signal(self, signum, frame) -> None:
         """Handle termination signals."""
         logger.info(f"Received signal {signum}, shutting down...")
         self.running = False
-    
+
     def run(self) -> None:
         """Run the daemon main loop."""
         logger.info("Starting Serial-to-Fermentrack daemon")
         self.running = True
-        
+
         # Ensure config directory exists
         if not self.config_dir.exists():
             logger.error(f"Config directory does not exist: {self.config_dir}")
             return
-        
+
         # Start watching config directory
         self.watcher.start()
-        
+
         try:
             # Main daemon loop
             while self.running:
@@ -406,46 +407,44 @@ class SerialToFermentrackDaemon:
             logger.info("Serial-to-Fermentrack daemon stopped")
 
 
-
-
 def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
         description='Serial-to-Fermentrack Multi-Device Daemon',
         epilog='This daemon monitors configured devices and manages their connections to Fermentrack.'
     )
-    
-    parser.add_argument('--version', action='version', 
+
+    parser.add_argument('--version', action='version',
                         version=f'Serial-to-Fermentrack Daemon v{__version__}')
-    
+
     parser.add_argument('--config-dir', type=str, default='serial_config',
                         help='Directory containing device configuration files (default: ./serial_config)')
-    
+
     parser.add_argument('--log-dir', type=str, default='logs',
                         help='Directory for log files (default: ./logs)')
-    
+
     parser.add_argument('--python', type=str, default=sys.executable,
                         help='Python executable to use for launching processes (default: current Python interpreter)')
-    
+
     parser.add_argument('--verbose', action='store_true',
                         help='Enable verbose logging')
-                        
+
     parser.add_argument('--max-log-size', type=int, default=10,
                         help='Maximum size of each log file in MB (default: 2)')
-                        
+
     parser.add_argument('--log-backups', type=int, default=5,
                         help='Number of backup log files to keep (default: 5)')
-    
+
     return parser.parse_args()
 
 
 def main():
     """Main entry point for the daemon."""
     args = parse_args()
-    
+
     # Ensure config directory exists
     config_dir = Path(args.config_dir)
-    
+
     try:
         # Try to create config directory if it doesn't exist (might require root)
         if not config_dir.exists():
@@ -455,11 +454,11 @@ def main():
         logger.error(f"Permission denied: Unable to create config directory: {config_dir}")
         logger.error("Try running with sudo or specify a different config directory with --config-dir")
         sys.exit(1)
-    
+
     # Use command line args for log rotation, but check app_config.json as fallback
     log_max_bytes = args.max_log_size * 1024 * 1024  # Convert MB to bytes
     log_backup_count = args.log_backups
-    
+
     # Try to read app_config.json for log rotation settings as fallback
     app_config_path = config_dir / "app_config.json"
     if app_config_path.exists():
@@ -473,20 +472,20 @@ def main():
                     log_backup_count = app_config.get("log_backup_count", log_backup_count)
         except (json.JSONDecodeError, FileNotFoundError):
             pass
-    
+
     # Setup logging
     log_level = logging.DEBUG if args.verbose else logging.INFO
     try:
-        setup_logging(log_dir=args.log_dir, log_level=log_level, 
-                     max_bytes=log_max_bytes, backup_count=log_backup_count)
+        setup_logging(log_dir=args.log_dir, log_level=log_level,
+                      max_bytes=log_max_bytes, backup_count=log_backup_count)
     except PermissionError:
         logger.error(f"Permission denied: Unable to write to log directory: {args.log_dir}")
         logger.error("Try running with sudo or specify a different log directory with --log-dir")
         sys.exit(1)
-    
+
     if args.verbose:
         logger.debug("Verbose logging enabled")
-    
+
     # Start the daemon
     logger.info(f"Starting Serial-to-Fermentrack Daemon v{__version__}")
     daemon = SerialToFermentrackDaemon(

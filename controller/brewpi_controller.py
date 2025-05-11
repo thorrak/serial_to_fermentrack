@@ -3,26 +3,25 @@
 import json
 import logging
 import time
-import uuid
-from typing import Dict, Any, Optional, List, Union, Tuple
-from .serial_controller import SerialController, SerialControllerError
+from typing import Dict, Any
+
 from .models import (
-    ControllerMode, ControlSettings, ControlConstants,
-    MinimumTime, Device, FullConfig, TemperatureData,
-    ControllerStatus, MessageStatus,
-    DeviceFunction, DeviceHardware
+    ControlSettings, ControlConstants,
+    Device, ControllerStatus, MessageStatus
 )
+from .serial_controller import SerialController, SerialControllerError
 
 logger = logging.getLogger(__name__)
+
 
 class BrewPiController:
     """Controls a BrewPi device via serial communication."""
 
     def __init__(
-        self,
-        port: str,
-        baud_rate: int = 57600,
-        auto_connect: bool = True
+            self,
+            port: str,
+            baud_rate: int = 57600,
+            auto_connect: bool = True
     ):
         """Initialize BrewPi controller.
 
@@ -86,7 +85,7 @@ class BrewPiController:
         except SerialControllerError as e:
             logger.error(f"Failed to connect to controller: {e}")
             return False
-            
+
     def reconnect(self, max_attempts: int = 3) -> bool:
         """Attempt to reconnect to the BrewPi controller.
         
@@ -99,7 +98,7 @@ class BrewPiController:
         try:
             # Try to reconnect at the serial level
             self.connected = self.serial.reconnect(max_attempts)
-            
+
             if self.connected:
                 # Request firmware version
                 self.firmware_version = None  # Unset the firmware version if it was set at the initial connection
@@ -121,9 +120,9 @@ class BrewPiController:
 
                 # Refresh controller state
                 self._refresh_controller_state()
-                
+
                 logger.info("Successfully reconnected and refreshed controller state")
-            
+
             return self.connected
         except SerialControllerError as e:
             logger.error(f"Failed to reconnect to controller: {e}")
@@ -203,9 +202,8 @@ class BrewPiController:
             "cc": self.control_constants.dict(by_alias=True) if self.control_constants else {},
             "devices": [device.to_controller_dict() for device in self.devices],
         }
-        
-        return config
 
+        return config
 
     def set_mode_and_temp(self, mode: str or None, temp: float or None) -> bool:
         """Set controller mode and temperature.
@@ -265,7 +263,6 @@ class BrewPiController:
             logger.error(f"Failed to set mode/temperature: {e}")
             return False
 
-
     def apply_settings(self, settings_data: Dict[str, Any]) -> bool:
         """Apply control settings to the controller.
         
@@ -283,10 +280,10 @@ class BrewPiController:
         try:
             # Create settings object from new data
             new_settings = ControlSettings(**settings_data)
-            
+
             # Determine which values have changed
             changed_values = {}
-            
+
             # If we don't have existing settings, send all values
             if self.control_settings is None:
                 logger.debug("No existing settings, sending all values")
@@ -297,7 +294,7 @@ class BrewPiController:
                     # Get current value if it exists
                     if hasattr(self.control_settings, field_name):
                         current_value = getattr(self.control_settings, field_name)
-                        
+
                         # Check if the value has changed (handle different types appropriately)
                         if isinstance(current_value, float) and isinstance(new_value, (int, float)):
                             # For float comparisons, allow for small differences
@@ -308,7 +305,7 @@ class BrewPiController:
                     else:
                         # If the field doesn't exist in current settings, it's new
                         changed_values[field_name] = new_value
-            
+
             # Only send if there are changes
             if changed_values:
                 logger.debug(f"Sending changed settings: {changed_values}")
@@ -316,10 +313,10 @@ class BrewPiController:
                 self.serial.parse_responses(self)
             else:
                 logger.debug("No settings have changed, skipping update")
-            
+
             # Update local state immediately with complete new settings
             self.control_settings = new_settings
-            
+
             return True
         except (SerialControllerError, ValueError) as e:
             logger.error(f"Failed to apply settings: {e}")
@@ -342,10 +339,10 @@ class BrewPiController:
         try:
             # Create constants object from new data
             new_constants = ControlConstants(**constants_data)
-            
+
             # Determine which values have changed
             changed_values = {}
-            
+
             # If we don't have existing constants, send all values
             if self.control_constants is None:
                 logger.debug("No existing constants, sending all values")
@@ -356,7 +353,7 @@ class BrewPiController:
                     # Get current value if it exists
                     if hasattr(self.control_constants, field_name):
                         current_value = getattr(self.control_constants, field_name)
-                        
+
                         # Check if the value has changed (handle different types appropriately)
                         if isinstance(current_value, float) and isinstance(new_value, (int, float)):
                             # For float comparisons, allow for small differences
@@ -367,7 +364,7 @@ class BrewPiController:
                     else:
                         # If the field doesn't exist in current constants, it's new
                         changed_values[field_name] = new_value
-            
+
             # Only send if there are changes
             if changed_values:
                 logger.debug(f"Sending changed constants: {changed_values}")
@@ -375,10 +372,10 @@ class BrewPiController:
                 self.serial.parse_responses(self)
             else:
                 logger.debug("No constants have changed, skipping update")
-            
+
             # Update local state immediately with complete new constants
             self.control_constants = new_constants
-            
+
             return True
         except (SerialControllerError, ValueError) as e:
             logger.error(f"Failed to apply constants: {e}")
@@ -412,7 +409,7 @@ class BrewPiController:
                 device = Device.from_controller_dict(d)
                 device.fix_pin_nr(self.devices)
                 new_devices.append(device)
-            
+
             # Identify devices that need to be sent (changed or new)
             changed_devices = []
 
@@ -441,7 +438,7 @@ class BrewPiController:
                         else:
                             logger.warning("No existing/related device found (which is strange, since we should have detected it before!)")
                         changed_devices.append(new_device)
-            
+
             # Only send if there are changes
             if changed_devices:
                 logger.info(f"Sending {len(changed_devices)} changed devices of {len(devices_data['devices'])} total devices received")
@@ -449,10 +446,10 @@ class BrewPiController:
                 self.serial.parse_responses(self)
             else:
                 logger.info("No devices have changed, skipping update")
-            
+
             # Update local state with all devices, even if we didn't send them all
             self.devices = new_devices
-            
+
             return True
         except (SerialControllerError, ValueError) as e:
             logger.error(f"Failed to apply device configuration: {e}")
@@ -546,7 +543,7 @@ class BrewPiController:
                 except json.JSONDecodeError as e:
                     logger.error(f"Invalid JSON in LCD response: {e}, response: {response}")
                     return False
-                    
+
             # Handle device update response (starts with U:)
             elif response.startswith('U:'):
                 logger.info(f"Device updated to: {response}")

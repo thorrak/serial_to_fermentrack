@@ -1,12 +1,10 @@
 """Configuration settings for Serial-to-Fermentrack."""
 
 import json
-import os
-import sys
-import time
 import logging
+import time
 from pathlib import Path
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Optional
 
 # Use only current working directory for config paths
 CURRENT_DIR = Path.cwd()
@@ -21,6 +19,7 @@ FERMENTRACK_NET_HTTPS = True  # Always use HTTPS for Fermentrack.net
 
 # Create a logger for this module
 logger = logging.getLogger(__name__)
+
 
 class Config:
     """Configuration manager for Serial-to-Fermentrack."""
@@ -40,7 +39,7 @@ class Config:
         self._load_app_config()
         if location:
             self._load_device_config(location)
-            
+
     # System-wide config support has been removed
 
     def _load_app_config(self) -> None:
@@ -52,7 +51,7 @@ class Config:
         """
         app_config_found = False
         config_location = None
-        
+
         for config_dir in self.config_dirs:
             app_config_path = config_dir / "app_config.json"
             if app_config_path.exists():
@@ -68,13 +67,13 @@ class Config:
                 except Exception as e:
                     logger.error(f"Error loading application config from {app_config_path}: {e}")
                     raise
-        
+
         if not app_config_found:
             config_paths = [d / "app_config.json" for d in self.config_dirs]
             logger.error(f"Application config file not found in: {config_paths}")
             logger.error(f"Current working directory is: {CURRENT_DIR}")
             raise FileNotFoundError(f"Required configuration file not found: app_config.json. Searched in current directory: {CURRENT_DIR}/serial_config")
-        
+
         # Verify required fields are present
         if self.app_config.get("use_fermentrack_net", False):
             required_fields = ["fermentrack_api_key"]
@@ -100,7 +99,7 @@ class Config:
         """
         device_config_found = False
         config_location = None
-        
+
         for config_dir in self.config_dirs:
             device_config_path = config_dir / f"{location}.json"
             if device_config_path.exists():
@@ -116,7 +115,7 @@ class Config:
                 except Exception as e:
                     logger.error(f"Error loading device config from {device_config_path}: {e}")
                     raise
-        
+
         if not device_config_found:
             config_paths = [d / f"{location}.json" for d in self.config_dirs]
             logger.error(f"Device config file not found: {config_paths}")
@@ -157,20 +156,20 @@ class Config:
 
         # Always save to the local config directory
         device_config_path = CONFIG_DIR / f"{self.location}.json"
-        
+
         # Make sure the directory exists
         CONFIG_DIR.mkdir(exist_ok=True)
-        
+
         # Use provided device_config or fall back to self.device_config
         config_to_save = device_config if device_config is not None else self.device_config
-        
+
         try:
             with open(device_config_path, 'w') as f:
                 json.dump(config_to_save, f, indent=2, sort_keys=True)
             logger.info(f"Saved device config to {device_config_path}")
         except Exception as e:
             logger.error(f"Error saving device config: {e}")
-            
+
     def save_app_config(self) -> None:
         """Save application configuration to file.
         
@@ -178,10 +177,10 @@ class Config:
         """
         # Always save to the local config directory
         app_config_path = CONFIG_DIR / "app_config.json"
-        
+
         # Make sure the directory exists
         CONFIG_DIR.mkdir(exist_ok=True)
-        
+
         try:
             with open(app_config_path, 'w') as f:
                 json.dump(self.app_config, f, indent=2, sort_keys=True)
@@ -198,9 +197,9 @@ class Config:
         if not self.location:
             logger.error("Cannot delete device config: No location specified")
             return False
-            
+
         device_config_path = CONFIG_DIR / f"{self.location}.json"
-        
+
         try:
             if device_config_path.exists():
                 device_config_path.unlink()
@@ -290,11 +289,11 @@ class Config:
         # If no matching device is found, log all available ports and raise an error
         available_ports = [f"{p.device} ({p.description}, {p.hwid})" for p in all_ports]
         logger.error(f"No device found with exact location match '{location}'. Available ports: {available_ports}")
-        
+
         # Add a 5-second delay before exiting to give the user time to read the error message
         logger.error(f"Waiting 5 seconds before exiting...")
         time.sleep(5)
-        
+
         raise ValueError(f"No device found with exact location match '{location}'.")
 
     @property
@@ -316,13 +315,13 @@ class Config:
             return str(LOG_DIR / f"{self.location}.log")
         # Fall back to default log file if no location
         return str(LOG_DIR / "brewpi_rest.log")
-    
+
     @property
     def LOG_MAX_BYTES(self) -> int:
         """Get maximum log file size from config."""
         # Default to 10 MB if not specified
         return int(self.app_config.get("log_max_bytes", 2 * 1024 * 1024))
-    
+
     @property
     def LOG_BACKUP_COUNT(self) -> int:
         """Get log backup count from config."""

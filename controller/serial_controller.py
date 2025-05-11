@@ -3,25 +3,29 @@
 import json
 import logging
 import time
-from typing import Dict, Any, Optional, Callable, List, Union, Tuple
+from typing import Dict, Any, Optional, List
+
 import serial
 from serial.tools import list_ports
+
 from .models import Device
 
 logger = logging.getLogger(__name__)
+
 
 class SerialControllerError(Exception):
     """Serial controller error."""
     pass
 
+
 class SerialController:
     """Handles serial communication with BrewPi controller."""
 
     def __init__(
-        self,
-        port: str,
-        baud_rate: int = 57600,
-        timeout: int = 5
+            self,
+            port: str,
+            baud_rate: int = 57600,
+            timeout: int = 5
     ):
         """Initialize serial controller.
 
@@ -104,7 +108,7 @@ class SerialController:
             logger.error(f"Failed to connect to port {self.port}: {e}")
             self.connected = False
             raise SerialControllerError(f"Failed to connect to port {self.port}: {e}")
-            
+
     def reconnect(self, max_attempts: int = 3) -> bool:
         """Attempt to reconnect to the BrewPi controller.
         
@@ -115,10 +119,10 @@ class SerialController:
             True if reconnected successfully
         """
         logger.info(f"Attempting to reconnect to BrewPi controller at {self.port}")
-        
+
         # First make sure we're disconnected
         self.disconnect()
-        
+
         # Try to reconnect multiple times
         for attempt in range(1, max_attempts + 1):
             logger.info(f"Reconnection attempt {attempt}/{max_attempts}")
@@ -128,11 +132,11 @@ class SerialController:
                     self.baud_rate,
                     timeout=self.timeout
                 )
-                
+
                 # Clear any existing data
                 self.serial_conn.flushInput()
                 self.serial_conn.flushOutput()
-                
+
                 # Mark as connected
                 self.connected = True
                 logger.info("Successfully reconnected to BrewPi controller")
@@ -140,7 +144,7 @@ class SerialController:
             except (serial.SerialException, OSError) as e:
                 logger.error(f"Reconnection attempt {attempt} failed: {e}")
                 time.sleep(1)  # Wait before next attempt
-                
+
         logger.error("All reconnection attempts failed")
         self.connected = False
         return False
@@ -171,7 +175,7 @@ class SerialController:
 
         try:
             time.sleep(0.1)
-            
+
             # Convert command to bytes and add newline
             cmd_bytes = (command + '\n').encode('cp437', errors='ignore')
 

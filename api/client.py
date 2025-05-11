@@ -1,25 +1,27 @@
 """REST API client for Fermentrack 2."""
 
-import json
 import logging
+from typing import Dict, Any, Optional
+
 import requests
-from typing import Dict, Any, Optional, List, Union
 
 logger = logging.getLogger(__name__)
+
 
 class APIError(Exception):
     """API communication error."""
     pass
 
+
 class FermentrackClient:
     """Client for the Fermentrack 2 REST API."""
 
     def __init__(
-        self,
-        base_url: str,
-        device_id: str,
-        fermentrack_api_key: str,
-        timeout: int = 10
+            self,
+            base_url: str,
+            device_id: str,
+            fermentrack_api_key: str,
+            timeout: int = 10
     ):
         """Initialize the API client.
 
@@ -83,7 +85,6 @@ class FermentrackClient:
         except requests.exceptions.RequestException as e:
             logger.error(f"Request error: {e}")
             raise APIError(f"Request failed: {e}")
-
 
     def send_status_raw(self, status_data: Dict[str, Any]) -> Dict[str, Any]:
         """Send raw controller status to Fermentrack.
@@ -177,11 +178,11 @@ class FermentrackClient:
         formatted_data["cs"] = config_data["cs"]  # Add control settings (cs)
         formatted_data["cc"] = config_data["cc"]  # Add control constants (cc)
         formatted_data["devices"] = config_data["devices"]  # Add devices array
-        
+
         # Add S2F version if provided
         if s2f_version:
             formatted_data["s2f"] = s2f_version
-        
+
         # Add auth params
         formatted_data["deviceID"] = auth_params["deviceID"]
         formatted_data["apiKey"] = auth_params["apiKey"]
@@ -213,10 +214,10 @@ class FermentrackClient:
         )
 
         response_data = self._handle_response(response)
-        
+
         # The API returns the config inside a 'config' field
         if 'config' in response_data:
             return response_data['config']
-        
+
         # Fallback to the old format if 'config' field is not present
         return response_data
