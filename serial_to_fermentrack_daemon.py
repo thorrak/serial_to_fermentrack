@@ -167,8 +167,9 @@ class DeviceProcess:
         if not self.location:
             return None
 
-        # Uses the same log file pattern as in utils/config.py
-        log_dir = Path('logs')
+        # Calculate log dir relative to config dir (../logs)
+        # This matches the expected log file location based on the config directory
+        log_dir = self.config_file.parent.parent / "logs"
         return log_dir / f"{self.location}.log"
 
     def _check_log_activity(self) -> bool:
@@ -178,8 +179,16 @@ class DeviceProcess:
             True if log is active, False if it's stale or doesn't exist
         """
         log_file = self._get_log_file_path()
-        if not log_file or not log_file.exists():
-            logger.warning(f"Log file for {self.location} not found at {log_file}")
+        if not log_file:
+            logger.warning(f"Unable to determine log file path for {self.location}")
+            return False
+
+        # Log the full absolute path for debugging purposes
+        abs_log_path = log_file.resolve()
+        logger.debug(f"Checking log activity for {self.location} at {abs_log_path}")
+
+        if not log_file.exists():
+            logger.warning(f"Log file for {self.location} not found at {abs_log_path}")
             return False
 
         try:
@@ -189,6 +198,9 @@ class DeviceProcess:
 
             # Check if log file is too old (hasn't been written to in max_log_age minutes)
             log_age_minutes = (current_time - log_mtime) / 60
+
+            # Always log the current age at debug level
+            logger.debug(f"Log file for {self.location} is {log_age_minutes:.1f} minutes old (max allowed: {self.max_log_age} minutes)")
 
             if log_age_minutes > self.max_log_age:
                 logger.warning(f"Log file for {self.location} is stale ({log_age_minutes:.1f} minutes old, max allowed: {self.max_log_age} minutes)")
