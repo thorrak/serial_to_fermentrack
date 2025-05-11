@@ -95,40 +95,46 @@ class TestDeviceProcess:
         assert result is False
         mock_popen.assert_not_called()
 
+    @patch('time.sleep')  # Add patch for time.sleep
     @patch('subprocess.Popen')
     @patch('os.killpg')
-    def test_stop_process(self, mock_killpg, mock_popen, valid_config_file):
+    def test_stop_process(self, mock_killpg, mock_popen, mock_sleep, valid_config_file):
         """Test stopping a process."""
         # Mock process that hasn't terminated
         mock_process = MagicMock()
         mock_process.poll.return_value = None
         mock_popen.return_value = mock_process
-        
+
         device = DeviceProcess(valid_config_file)
         device.start()
         device.stop()
-        
-        assert mock_killpg.called
 
+        assert mock_killpg.called
+        # Verify sleep was called but didn't actually sleep
+        assert mock_sleep.called
+
+    @patch('time.sleep')  # Add patch for time.sleep
     @patch('subprocess.Popen')
     @patch('os.path.getmtime')
     @patch('os.killpg')
-    def test_check_and_restart_config_changed(self, mock_killpg, mock_getmtime, mock_popen, valid_config_file):
+    def test_check_and_restart_config_changed(self, mock_killpg, mock_getmtime, mock_popen, mock_sleep, valid_config_file):
         """Test restarting when config changes."""
         mock_process = MagicMock()
         mock_process.poll.return_value = None
         mock_popen.return_value = mock_process
-        
+
         # Set up mtime side effect with enough values for all calls
         mock_getmtime.side_effect = [1000, 2000, 2000]
-        
+
         device = DeviceProcess(valid_config_file)
         device.start()
         device.check_and_restart()
-        
+
         # Should be called twice (once for stop, once for start)
         assert mock_popen.call_count == 2
         assert mock_killpg.called
+        # Verify sleep was called but didn't actually sleep
+        assert mock_sleep.called
 
 
 class TestConfigWatcher:
@@ -300,29 +306,32 @@ class TestConfigWatcher:
 class TestSerialToFermentrackDaemon:
     """Tests for the SerialToFermentrackDaemon class."""
 
+    @patch('time.sleep')  # Add patch for time.sleep
     @patch.object(ConfigWatcher, 'start')
     @patch.object(ConfigWatcher, 'check_processes')
     @patch.object(ConfigWatcher, 'stop')
-    def test_run(self, mock_stop, mock_check, mock_start, tmp_path):
+    def test_run(self, mock_stop, mock_check, mock_start, mock_sleep, tmp_path):
         """Test running the daemon."""
         config_dir = tmp_path / "config"
         config_dir.mkdir()
-        
+
         # Create a daemon that will run once then exit
         daemon = SerialToFermentrackDaemon(config_dir=config_dir)
-        
+
         # Set running to False after one iteration
         def set_running_false():
             daemon.running = False
-            
+
         mock_check.side_effect = set_running_false
-        
+
         # Run the daemon
         daemon.run()
-        
+
         # Watcher should be started and stopped
         assert mock_start.called
         assert mock_stop.called
+        # Sleep should be called once in the main loop before we exit
+        mock_sleep.assert_called_once_with(1)
 
 
 class TestMainFunctions:

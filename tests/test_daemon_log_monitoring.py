@@ -108,103 +108,119 @@ class TestLogActivityMonitoring:
         assert result is False
         mock_exists.assert_called_once()
 
+    @patch('time.sleep')  # Add patch for time.sleep
     @patch('os.killpg')
     @patch('os.getpgid')
-    def test_force_kill_process(self, mock_getpgid, mock_killpg, valid_config_file):
+    def test_force_kill_process(self, mock_getpgid, mock_killpg, mock_sleep, valid_config_file):
         """Test force killing a process."""
         mock_process = MagicMock()
         mock_process.poll.side_effect = [None, None, None, 0]  # Process terminates after kill
         mock_process.pid = 12345
-        
+
         mock_getpgid.return_value = 12345
-        
+
         device = DeviceProcess(valid_config_file)
         device.process = mock_process
-        
+
         device._force_kill_process()
-        
+
         # Should kill the process group
         mock_getpgid.assert_called_once_with(12345)
         mock_killpg.assert_called_once_with(12345, 9)  # SIGKILL = 9
-        
+
         # Should call poll() to check if process terminated
         assert mock_process.poll.call_count >= 1
 
+        # Verify sleep was called (but doesn't actually sleep in test)
+        # We get 2 sleep calls because the poll() returns 0 on the 4th call
+        # (after 3 None values) which breaks the loop before the third sleep
+        assert mock_sleep.call_count == 2
+
+    @patch('time.sleep')  # Add patch for time.sleep
     @patch('os.killpg')
     @patch('os.getpgid')
-    def test_force_kill_already_terminated(self, mock_getpgid, mock_killpg, valid_config_file):
+    def test_force_kill_already_terminated(self, mock_getpgid, mock_killpg, mock_sleep, valid_config_file):
         """Test force killing a process that's already terminated."""
         mock_process = MagicMock()
         mock_process.poll.return_value = 0  # Process already terminated
         mock_process.pid = 12345
-        
+
         device = DeviceProcess(valid_config_file)
         device.process = mock_process
-        
+
         device._force_kill_process()
-        
+
         # Shouldn't try to kill already terminated process
         mock_getpgid.assert_not_called()
         mock_killpg.assert_not_called()
 
+        # Sleep should not be called since process already terminated
+        mock_sleep.assert_not_called()
+
+    @patch('time.sleep')  # Add patch for time.sleep
     @patch('os.path.getmtime')
     @patch.object(DeviceProcess, '_check_log_activity')
     @patch.object(DeviceProcess, '_force_kill_process')
     @patch.object(DeviceProcess, 'start')
     def test_check_and_restart_stale_process(self, mock_start, mock_force_kill,
-                                            mock_check_log, mock_getmtime, valid_config_file):
+                                            mock_check_log, mock_getmtime, mock_sleep, valid_config_file):
         """Test checking and restarting a stale process."""
         # Process is running
         mock_process = MagicMock()
         mock_process.poll.return_value = None
-        
+
         # Log check interval passed
         current_time = time.time()
-        
+
         # Log activity check returns False (stale log)
         mock_check_log.return_value = False
-        
+
         device = DeviceProcess(valid_config_file)
         device.process = mock_process
         device.last_check_time = current_time - 120  # Last check was 2 minutes ago
-        
+
         device.check_and_restart()
-        
+
         # Should check log activity
         assert mock_check_log.called
         # Should force kill and restart
         assert mock_force_kill.called
         assert mock_start.called
+        # Sleep should not be called directly in this method
+        mock_sleep.assert_not_called()
 
+    @patch('time.sleep')  # Add patch for time.sleep
     @patch('os.path.getmtime')
     @patch.object(DeviceProcess, '_check_log_activity')
     @patch.object(DeviceProcess, '_force_kill_process')
     @patch.object(DeviceProcess, 'start')
     def test_check_and_restart_active_log(self, mock_start, mock_force_kill,
-                                         mock_check_log, mock_getmtime, valid_config_file):
+                                         mock_check_log, mock_getmtime, mock_sleep, valid_config_file):
         """Test checking a process with active log shouldn't restart it."""
         # Process is running
         mock_process = MagicMock()
         mock_process.poll.return_value = None
-        
+
         # Log check interval passed
         current_time = time.time()
-        
+
         # Log activity check returns True (fresh log)
         mock_check_log.return_value = True
-        
+
         # Config file mtime hasn't changed
         mock_getmtime.return_value = 1000
-        
+
         device = DeviceProcess(valid_config_file)
         device.process = mock_process
         device.last_check_time = current_time - 120  # Last check was 2 minutes ago
         device.config_mtime = 1000
-        
+
         device.check_and_restart()
-        
+
         # Should check log activity
         assert mock_check_log.called
         # Shouldn't force kill or restart
         assert not mock_force_kill.called
         assert not mock_start.called
+        # Sleep should not be called directly in this method
+        mock_sleep.assert_not_called()

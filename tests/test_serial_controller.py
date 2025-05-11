@@ -4,7 +4,7 @@ import pytest
 import json
 import time
 import serial
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, PropertyMock
 from bpr.controller.serial_controller import SerialController, SerialControllerError
 
 
@@ -191,25 +191,21 @@ def test_parse_responses(mock_serial):
     controller = SerialController('/dev/ttyUSB0')
     controller.connect()
 
-    # Set up mock to return a response only once
-    # First set in_waiting to have data
-    mock_serial.in_waiting = 10
+    # Create a proper mocking setup for the parse_responses method
+    # We need to mock:
+    # 1. The _read_response method of the controller to avoid the loop
+    # 2. time.sleep to prevent actual waiting
 
-    # Use side_effect to control the sequence of returns
-    read_called = False
-    def read_side_effect(size):
-        nonlocal read_called
-        if not read_called:
-            read_called = True
-            return b'test response\n'
-        # Return empty after first read
-        mock_serial.in_waiting = 0
-        return b''
+    # Mock the controller's _read_response method directly
+    with patch.object(controller, '_read_response') as mock_read_response, \
+         patch('time.sleep'):  # Prevent any real sleeping
 
-    mock_serial.read.side_effect = read_side_effect
+        # Configure _read_response to return a response once then None
+        # This pattern will cause the loop to exit immediately
+        mock_read_response.side_effect = ['test response', None]
 
-    # Call parse_responses
-    controller.parse_responses(mock_brewpi)
+        # Call parse_responses
+        controller.parse_responses(mock_brewpi)
 
     # Verify the response was passed to brewpi.parse_response
     mock_brewpi.parse_response.assert_called_once_with('test response')
