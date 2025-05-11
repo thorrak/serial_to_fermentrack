@@ -1,13 +1,10 @@
 """Tests for log activity monitoring in the daemon."""
 
-import os
-import time
 import json
-import logging
+import time
+from unittest.mock import patch, MagicMock
+
 import pytest
-import tempfile
-from pathlib import Path
-from unittest.mock import patch, MagicMock, mock_open, call
 
 from serial_to_fermentrack_daemon import DeviceProcess
 
@@ -28,7 +25,7 @@ class TestLogActivityMonitoring:
         """Test getting the log file path."""
         device = DeviceProcess(valid_config_file)
         log_path = device._get_log_file_path()
-        
+
         assert log_path is not None
         assert log_path.name == "1-1.log"
         assert str(log_path).endswith("logs/1-1.log")
@@ -39,10 +36,10 @@ class TestLogActivityMonitoring:
         config = {"some_key": "some_value"}
         with open(config_file, 'w') as f:
             json.dump(config, f)
-            
+
         device = DeviceProcess(config_file)
         log_path = device._get_log_file_path()
-        
+
         assert log_path is None
 
     @patch('pathlib.Path.exists')
@@ -163,7 +160,7 @@ class TestLogActivityMonitoring:
     @patch.object(DeviceProcess, '_force_kill_process')
     @patch.object(DeviceProcess, 'start')
     def test_check_and_restart_stale_process(self, mock_start, mock_force_kill,
-                                            mock_check_log, mock_getmtime, mock_sleep, valid_config_file):
+                                             mock_check_log, mock_getmtime, mock_sleep, valid_config_file):
         """Test checking and restarting a stale process."""
         # Process is running
         mock_process = MagicMock()
@@ -195,7 +192,7 @@ class TestLogActivityMonitoring:
     @patch.object(DeviceProcess, '_force_kill_process')
     @patch.object(DeviceProcess, 'start')
     def test_check_and_restart_active_log(self, mock_start, mock_force_kill,
-                                         mock_check_log, mock_getmtime, mock_sleep, valid_config_file):
+                                          mock_check_log, mock_getmtime, mock_sleep, valid_config_file):
         """Test checking a process with active log shouldn't restart it."""
         # Process is running
         mock_process = MagicMock()

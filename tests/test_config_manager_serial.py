@@ -2,12 +2,12 @@
 Tests for serial communication functions in config_manager.py
 """
 import os
-import json
-import pytest
-from unittest.mock import patch, MagicMock
-
 # Import the module to test
 import sys
+from unittest.mock import patch, MagicMock
+
+import pytest
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config_manager
 
@@ -95,9 +95,9 @@ def test_detect_brewpi_firmware_missing_fields(mock_serial):
     # Call the function four times to get the fourth response
     mock_serial.return_value.readline.reset_mock()
     mock_serial.return_value.readline.call_count = 3
-    
+
     is_brewpi, firmware_info = config_manager.detect_brewpi_firmware("/dev/ttyUSB0")
-    
+
     # Verify the function returned False (missing 'v' and 'b' fields)
     assert is_brewpi is False
     assert firmware_info is None
@@ -108,9 +108,9 @@ def test_detect_brewpi_firmware_invalid_json(mock_serial):
     # Call the function five times to get the fifth response
     mock_serial.return_value.readline.reset_mock()
     mock_serial.return_value.readline.call_count = 4
-    
+
     is_brewpi, firmware_info = config_manager.detect_brewpi_firmware("/dev/ttyUSB0")
-    
+
     # Verify the function returned False
     assert is_brewpi is False
     assert firmware_info is None
@@ -121,14 +121,14 @@ def test_detect_brewpi_firmware_serial_exception(mock_serial):
     # Make serial.Serial raise a SerialException
     import serial
     mock_serial.side_effect = serial.SerialException("Serial error")
-    
+
     with patch('builtins.print') as mock_print:
         is_brewpi, firmware_info = config_manager.detect_brewpi_firmware("/dev/ttyUSB0")
-    
+
     # Verify the function returned False
     assert is_brewpi is False
     assert firmware_info is None
-    
+
     # Verify error was printed (note: function also prints "Connecting to device...")
     assert mock_print.call_count == 2
     mock_print.assert_any_call("Serial connection error: Serial error")

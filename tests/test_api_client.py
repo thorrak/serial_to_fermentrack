@@ -1,9 +1,10 @@
 """Tests for API client."""
 
+import json
+
 import pytest
 import requests_mock
-import json
-from unittest.mock import patch, MagicMock
+
 from ..api.client import FermentrackClient, APIError
 
 
@@ -233,7 +234,7 @@ def test_send_full_config_with_version():
             "cc": {"Kp": 20.0, "Ki": 0.5},
             "devices": []
         }
-        
+
         # Version string
         version = "0.1.0"
 
@@ -316,7 +317,7 @@ def test_get_full_config():
         request = m.request_history[0]
         assert "test123" in request.url
         assert "abc456" in request.url
-        
+
     # Test 2: Response with 'config' field (new format)
     with requests_mock.Mocker() as m:
         # Mock successful response with config field
@@ -325,11 +326,11 @@ def test_get_full_config():
             "cc": {"Kp": 10.0, "Ki": 0.25, "tempFormat": "C"},
             "devices": []
         }
-        
+
         response_data = {
-            "success": True, 
-            "message": "Full config retrieved", 
-            "msg_code": 0, 
+            "success": True,
+            "message": "Full config retrieved",
+            "msg_code": 0,
             "config": config_data
         }
 

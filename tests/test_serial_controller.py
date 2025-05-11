@@ -1,10 +1,9 @@
 """Tests for SerialController."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-import json
-import time
 import serial
-from unittest.mock import MagicMock, patch, PropertyMock
 from bpr.controller.serial_controller import SerialController, SerialControllerError
 
 
@@ -89,6 +88,7 @@ def test_send_command_not_connected():
 
 def test_read_response(mock_serial):
     """Test reading a response."""
+
     # Set up the mock to return data on first read
     def read_side_effect(size):
         mock_serial.in_waiting = 0
@@ -198,7 +198,7 @@ def test_parse_responses(mock_serial):
 
     # Mock the controller's _read_response method directly
     with patch.object(controller, '_read_response') as mock_read_response, \
-         patch('time.sleep'):  # Prevent any real sleeping
+            patch('time.sleep'):  # Prevent any real sleeping
 
         # Configure _read_response to return a response once then None
         # This pattern will cause the loop to exit immediately
@@ -396,37 +396,38 @@ def test_reset_eeprom_esp(mock_serial):
     assert 'E{"confirmReset": true}' in call_args
     mock_serial.flush.assert_called_once()
 
+
 def test_reset_eeprom_arduino(mock_serial):
     """Test resetting the EEPROM for Arduino-based controllers."""
     controller = SerialController('/dev/ttyUSB0')
     controller.connect()
-    
+
     # Clear previous calls
     mock_serial.reset_mock()
-    
+
     # Test with Arduino board type "s"
     controller.reset_eeprom("s")
-    
+
     # Check that the simple command was sent for Arduino
     mock_serial.write.assert_called_once_with(b'E\n')
     mock_serial.flush.assert_called_once()
-    
+
     # Clear previous calls
     mock_serial.reset_mock()
-    
+
     # Test with Arduino board type "l" (Leonardo)
     controller.reset_eeprom("l")
-    
+
     # Check that the simple command was sent for Arduino
     mock_serial.write.assert_called_once_with(b'E\n')
     mock_serial.flush.assert_called_once()
-    
+
     # Clear previous calls
     mock_serial.reset_mock()
-    
+
     # Test with Arduino board type "m" (Mega)
     controller.reset_eeprom("m")
-    
+
     # Check that the simple command was sent for Arduino
     mock_serial.write.assert_called_once_with(b'E\n')
     mock_serial.flush.assert_called_once()
@@ -534,16 +535,16 @@ def test_set_json_setting(mock_serial):
     """Test setting JSON settings directly."""
     controller = SerialController('/dev/ttyUSB0')
     controller.connect()
-    
+
     # Test data for settings
     settings_data = {
-        "mode": "b", 
-        "beerSet": 20.5, 
+        "mode": "b",
+        "beerSet": 20.5,
         "fridgeSet": 18.5
     }
-    
+
     controller.set_json_setting(settings_data)
-    
+
     # Check that the command was sent with the correct format
     mock_serial.write.assert_called_once()
     call_args = mock_serial.write.call_args[0][0].decode('utf-8')
@@ -556,8 +557,8 @@ def test_set_json_setting(mock_serial):
 def test_set_json_setting_not_connected():
     """Test setting JSON settings when not connected."""
     controller = SerialController('/dev/ttyUSB0')
-    
+
     settings_data = {"mode": "b", "beerSet": 20.5}
-    
+
     with pytest.raises(SerialControllerError):
         controller.set_json_setting(settings_data)

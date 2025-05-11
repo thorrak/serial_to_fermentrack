@@ -1,10 +1,10 @@
-import os
 import json
 import logging
-import pytest
+import os
 import tempfile
-from pathlib import Path
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import patch, MagicMock
+
+import pytest
 
 from serial_to_fermentrack_daemon import (
     setup_logging,
@@ -24,18 +24,18 @@ class TestSetupLogging:
         with tempfile.TemporaryDirectory() as temp_dir:
             # Call the function
             setup_logging(log_dir=temp_dir)
-            
+
             # Get the logger
             logger = logging.getLogger('serial_to_fermentrack_daemon')
-            
+
             # Check that we have two handlers
             assert len(logger.handlers) == 2
-            
+
             # Check handler types
             handlers_by_type = {type(h): h for h in logger.handlers}
             assert logging.StreamHandler in handlers_by_type
             assert logging.handlers.RotatingFileHandler in handlers_by_type
-            
+
             # Check log file exists
             log_file = os.path.join(temp_dir, 'serial_to_fermentrack_daemon.log')
             assert os.path.exists(log_file)
@@ -78,10 +78,10 @@ class TestDeviceProcess:
         """Test starting a process."""
         mock_process = MagicMock()
         mock_popen.return_value = mock_process
-        
+
         device = DeviceProcess(valid_config_file)
         result = device.start()
-        
+
         assert result is True
         mock_popen.assert_called_once()
         assert mock_popen.call_args[0][0] == ["serial_to_fermentrack", "--location", "1-1"]
@@ -91,7 +91,7 @@ class TestDeviceProcess:
         """Test starting a process with no location fails."""
         device = DeviceProcess(invalid_config_file)
         result = device.start()
-        
+
         assert result is False
         mock_popen.assert_not_called()
 
@@ -117,7 +117,8 @@ class TestDeviceProcess:
     @patch('subprocess.Popen')
     @patch('os.path.getmtime')
     @patch('os.killpg')
-    def test_check_and_restart_config_changed(self, mock_killpg, mock_getmtime, mock_popen, mock_sleep, valid_config_file):
+    def test_check_and_restart_config_changed(self, mock_killpg, mock_getmtime, mock_popen, mock_sleep,
+                                              valid_config_file):
         """Test restarting when config changes."""
         mock_process = MagicMock()
         mock_process.poll.return_value = None
@@ -342,7 +343,7 @@ class TestMainFunctions:
         # Test with no arguments
         with patch('sys.argv', ['serial_to_fermentrack_daemon']):
             args = parse_args()
-            
+
             assert args.config_dir == 'serial_config'
             assert args.log_dir == 'logs'
             assert args.verbose is False
@@ -355,10 +356,10 @@ class TestMainFunctions:
         """Test the main function."""
         config_dir = tmp_path / "config"
         config_dir.mkdir()
-        
+
         with patch('sys.argv', ['serial_to_fermentrack_daemon', '--config-dir', str(config_dir)]):
             main()
-            
+
             # Setup should be called
             assert mock_setup_logging.called
             # Daemon should be run

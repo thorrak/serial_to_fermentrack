@@ -5,8 +5,6 @@ import os
 import tempfile
 from unittest.mock import patch, MagicMock
 
-import pytest
-
 from ..utils.logging import setup_logging
 
 
@@ -42,7 +40,7 @@ def test_setup_logging_custom_level():
 def test_setup_logging_with_file():
     """Test setup_logging with log file."""
     with patch('logging.StreamHandler') as mock_stream_handler, \
-         patch('logging.handlers.RotatingFileHandler') as mock_file_handler:
+            patch('logging.handlers.RotatingFileHandler') as mock_file_handler:
         # Set up mocks
         mock_stream = MagicMock()
         mock_stream_handler.return_value = mock_stream
@@ -52,10 +50,10 @@ def test_setup_logging_with_file():
         # Use a temporary file for testing
         with tempfile.TemporaryDirectory() as temp_dir:
             log_file = os.path.join(temp_dir, "logs", "test.log")
-            
+
             # Call with log file
             root_logger = setup_logging(log_level="INFO", log_file=log_file)
-            
+
             # Verify both handlers were added
             mock_stream_handler.assert_called_once()
             mock_file_handler.assert_called_once_with(
@@ -63,7 +61,7 @@ def test_setup_logging_with_file():
                 maxBytes=1024 * 1024 * 2,  # 2 MB
                 backupCount=5
             )
-            
+
             # Verify log directory was created
             assert os.path.exists(os.path.dirname(log_file))
 
@@ -74,13 +72,13 @@ def test_setup_logging_clears_existing_handlers():
     root_logger = logging.getLogger()
     dummy_handler = logging.StreamHandler()
     root_logger.addHandler(dummy_handler)
-    
+
     # Count handlers before
     handlers_before = len(root_logger.handlers)
-    
+
     # Set up logging again
     setup_logging()
-    
+
     # Verify handlers were cleared and new ones added
     assert len(root_logger.handlers) == 1  # Only the new stream handler
     assert dummy_handler not in root_logger.handlers
