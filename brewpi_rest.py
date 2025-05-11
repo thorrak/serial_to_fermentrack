@@ -589,7 +589,7 @@ def main() -> int:
     )
 
     # Log startup information
-    logger.info(f"Starting Serial-to-Fermentrack with location: {args.location}")
+    logger.info(f"Starting Serial-to-Fermentrack v{__version__} with location: {args.location}")
     logger.info(f"Using serial port: {config.SERIAL_PORT}")
 
     # Log Fermentrack connection details
