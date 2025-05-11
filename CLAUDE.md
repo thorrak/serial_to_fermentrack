@@ -32,9 +32,6 @@ uv run serial_to_fermentrack --location 1-1 --verbose
 # Show help
 uv run serial_to_fermentrack --help
 
-# Run with a specific location parameter
-uv run serial_to_fermentrack --location 1-1
-
 # Run the daemon
 serial_to_fermentrack_daemon
 ```
@@ -75,7 +72,8 @@ The application uses JSON configuration files stored in the `serial_config` dire
 ```json
 {
   "location": "1-1",               # Required - must match filename and defines the USB port
-  "fermentrack_id": "device-id-from-fermentrack" # Required
+  "fermentrack_id": "device-id-from-fermentrack", # Required
+  "guid": "globally-unique-identifier" # Required for device recognition in Fermentrack
 }
 ```
 
@@ -131,12 +129,6 @@ c - ESP32-C3
 3. Firmware information is required for Fermentrack registration
 4. Configuration is stored in JSON files in the serial_config directory
 
-#### Future Development Areas
-- Daemon mode for continuous operation
-- Multi-threading for parallel device communication
-- UI improvements for better user experience
-- Error logging and statistics
-
 ## Architecture
 
 ### Main Components
@@ -185,6 +177,7 @@ The serial communication model is fully asynchronous:
 - API key is stored in app_config.json rather than device config
 - Baud rate is fixed at 57600 and not configurable
 - Each device config is stored in a separate file named after its location identifier
+- Device GUID is essential for Fermentrack device recognition and re-registration capability
 
 ### Directory Structure
 - `data/`: Fixed directory for application data
@@ -198,9 +191,33 @@ The serial communication model is fully asynchronous:
 4. Sets up logging based on configuration
 5. Connects to the controller
 6. Verifies configuration values are valid
-7. Runs main loop
+7. Runs main loop with status updates, message checks, and watchdog monitoring
 
-## Recent Changes
+## Recent Features
+
+### Watchdog Functionality
+- Implemented watchdog thread to monitor application health
+- Automatically restarts application if it becomes unresponsive
+- Checks every 5 seconds with a 60-second timeout
+- Logs critical error and initiates emergency shutdown if needed
+
+### Auto-Reconnection
+- Detects serial connection issues and attempts to reconnect
+- Implements multiple reconnection attempts with backoff
+- Maintains device state during reconnection
+- Refreshes controller state after successful reconnection
+
+### Device Re-Registration
+- Detects when device has been unregistered from Fermentrack
+- Automatically attempts to re-register with existing or new GUID
+- Preserves device configuration during re-registration
+- Updates API key and device ID after successful re-registration
+
+### Failover Handling
+- Implements graceful error handling for API communication failures
+- Automatically retries failed config updates after delay
+- Provides diagnostic logging for troubleshooting
+- Handles device disconnection and reconnection scenarios
 
 ### Configuration Manager Integration
 - Added dedicated configuration manager (`config_manager.py`) for handling device identification and registration
@@ -212,20 +229,8 @@ The serial communication model is fully asynchronous:
 ### Fully Asynchronous Serial Communication
 - Refactored serial communication to use a fully asynchronous request/response model
 - All communications between the application and controller are now asynchronous
-- Updated controller commands to use the correct single-character format:
-  - `n` for requesting version (previously used `getControlSettings`)
-  - `t` for requesting temperatures (unchanged)
-  - `l` for requesting LCD content (unchanged)
-  - `s` for requesting settings (previously used `getControlSettings`)
-  - `c` for requesting control constants (previously used `getControlConstants`)
-  - `h{}` for requesting device list (previously used `getDeviceList`)
-- Updated response parsing to handle proper response formats:
-  - `N:` prefix for version responses
-  - `T:` prefix for temperature responses 
-  - `L:` prefix for LCD content responses (as JSON arrays)
-  - `S:` prefix for settings responses
-  - `C:` prefix for control constants responses
-  - `h:` prefix for device list responses
+- Updated controller commands to use the correct single-character format
+- Updated response parsing to handle proper response formats
 - Added `DeviceListItem` model to handle the compact format of device list responses
 - Updated all setter methods to be asynchronous with no return value
 - Simplified `_send_json_command()` to always use asynchronous mode
@@ -240,9 +245,6 @@ The serial communication model is fully asynchronous:
   - `temp_format`: Temperature format (C or F)
   - `mode`: Controller mode
 - Updated API client with `send_status_raw` method to support new status format
-- Kept backwards compatibility with the old status format using a deprecated `send_status` method
-- Updated all tests to work with the new status format
-- Updated `mock_controller` fixture in test_brewpi_rest.py to use the new model structure
 - Fixed field mappings between response and model attributes
 
 ### Package Management
@@ -259,8 +261,6 @@ The serial communication model is fully asynchronous:
 - Eliminated global config object and passed config as needed to components
 
 ### Code Organization
-- Moved config.py from config/ to utils/ directory
-- Simplified interface by removing device registration
 - Made serial baud rate fixed at 57600
 - Dependency injection pattern used instead of global configuration object
 - Serial port is now determined by finding a connected device with a location that exactly matches the configuration
