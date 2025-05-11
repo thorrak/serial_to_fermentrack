@@ -91,7 +91,7 @@ class DeviceProcess:
         self.stopping: bool = False
         self.last_check_time: float = time.time()  # For limiting log checks
         self.log_check_interval: int = 60  # Check logs once per minute at most
-        self.max_log_age: int = 12 * 60  # Max log age in minutes (12 minutes)
+        self.max_log_age: int = 12  # Max log age in minutes (12 minutes)
         self._read_config()
 
     def _read_config(self) -> bool:
