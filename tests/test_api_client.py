@@ -3,9 +3,11 @@
 import json
 
 import pytest
+import requests
 import requests_mock
+from unittest.mock import patch, MagicMock
 
-from ..api.client import FermentrackClient, APIError
+from bpr.api.client import FermentrackClient, APIError
 
 
 def test_send_status_raw():
@@ -415,8 +417,37 @@ def test_json_decode_error():
             client.get_messages()
 
 
-# Let's skip this test since it's causing issues but we have good coverage anyway
-@pytest.mark.skip(reason="Testing request exceptions is covered by other tests")
 def test_request_exception():
-    """Test handling request exceptions."""
-    pass
+    """Test the _handle_response method directly with request exceptions."""
+    client = FermentrackClient(
+        base_url="http://localhost:8000",
+        device_id="test123",
+        fermentrack_api_key="abc456"
+    )
+    
+    # Test directly with a ConnectionError
+    response = MagicMock()
+    error = requests.exceptions.ConnectionError("Failed to establish connection")
+    
+    # When .raise_for_status() is called on our mock, raise the ConnectionError
+    response.raise_for_status.side_effect = error
+    
+    # Call _handle_response directly with our mocked response
+    with pytest.raises(APIError, match="Request failed: Failed to establish connection"):
+        client._handle_response(response)
+    
+    # Test with Timeout
+    response = MagicMock()
+    timeout_error = requests.exceptions.Timeout("Request timed out")
+    response.raise_for_status.side_effect = timeout_error
+    
+    with pytest.raises(APIError, match="Request failed: Request timed out"):
+        client._handle_response(response)
+    
+    # Test with RequestException
+    response = MagicMock()
+    request_error = requests.exceptions.RequestException("Generic request error")
+    response.raise_for_status.side_effect = request_error
+    
+    with pytest.raises(APIError, match="Request failed: Generic request error"):
+        client._handle_response(response)
