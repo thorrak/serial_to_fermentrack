@@ -333,12 +333,18 @@ class ConfigWatcher(FileSystemEventHandler):
     def on_created(self, event) -> None:
         """Handle file creation events."""
         if not event.is_directory and event.src_path.endswith('.json'):
+            # Skip the main app config
+            if Path(event.src_path).name == "app_config.json":
+                return
             logger.info(f"New config file detected: {event.src_path}")
             self._handle_config_file(Path(event.src_path))
     
     def on_modified(self, event) -> None:
         """Handle file modification events."""
         if not event.is_directory and event.src_path.endswith('.json'):
+            # Skip the main app config
+            if Path(event.src_path).name == "app_config.json":
+                return
             if event.src_path in self.devices:
                 logger.info(f"Config file modified: {event.src_path}")
                 self.devices[event.src_path].check_and_restart()
@@ -346,6 +352,9 @@ class ConfigWatcher(FileSystemEventHandler):
     def on_deleted(self, event) -> None:
         """Handle file deletion events."""
         if not event.is_directory and event.src_path.endswith('.json'):
+            # Skip the main app config
+            if Path(event.src_path).name == "app_config.json":
+                return
             if event.src_path in self.devices:
                 logger.info(f"Config file deleted: {event.src_path}")
                 self.devices[event.src_path].stop()

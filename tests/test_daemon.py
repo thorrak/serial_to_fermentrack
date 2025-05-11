@@ -139,17 +139,17 @@ class TestConfigWatcher:
         """Create a temporary config directory with files."""
         config_dir = tmp_path / "config"
         config_dir.mkdir()
-        
+
         # Main app config
         app_config = config_dir / "app_config.json"
         with open(app_config, 'w') as f:
             json.dump({"key": "value"}, f)
-        
+
         # Device config
         device_config = config_dir / "1-1.json"
         with open(device_config, 'w') as f:
             json.dump({"location": "1-1"}, f)
-            
+
         return config_dir
 
     @patch.object(DeviceProcess, 'start')
@@ -157,7 +157,7 @@ class TestConfigWatcher:
         """Test scanning config directory loads device configs."""
         watcher = ConfigWatcher(config_dir)
         watcher._scan_config_directory()
-        
+
         # Should have one device
         assert len(watcher.devices) == 1
         # Start should be called for the device
@@ -169,7 +169,7 @@ class TestConfigWatcher:
         watcher = ConfigWatcher(config_dir)
         device_config = config_dir / "1-1.json"
         watcher._handle_config_file(device_config)
-        
+
         # Should have one device
         assert len(watcher.devices) == 1
         # Device should have location set
@@ -184,11 +184,117 @@ class TestConfigWatcher:
         watcher = ConfigWatcher(config_dir)
         device_config = config_dir / "1-1.json"
         watcher._handle_config_file(device_config)
-        
+
         watcher.check_processes()
-        
+
         # Check should be called for the device
         assert mock_check.called
+
+    @patch.object(DeviceProcess, 'start')
+    def test_on_created_ignores_app_config(self, mock_start, config_dir):
+        """Test on_created event handler ignores app_config.json."""
+        watcher = ConfigWatcher(config_dir)
+
+        # Create a mock event for app_config.json
+        mock_event = MagicMock()
+        mock_event.is_directory = False
+        mock_event.src_path = str(config_dir / "app_config.json")
+
+        # Call the event handler
+        watcher.on_created(mock_event)
+
+        # Should not have any devices
+        assert len(watcher.devices) == 0
+        # Start should not be called
+        assert not mock_start.called
+
+    @patch.object(DeviceProcess, 'start')
+    def test_on_created_handles_device_config(self, mock_start, config_dir):
+        """Test on_created event handler processes device config files."""
+        watcher = ConfigWatcher(config_dir)
+
+        # Create a mock event for a device config
+        device_path = str(config_dir / "2-1.json")
+        with open(device_path, 'w') as f:
+            json.dump({"location": "2-1"}, f)
+
+        mock_event = MagicMock()
+        mock_event.is_directory = False
+        mock_event.src_path = device_path
+
+        # Call the event handler
+        watcher.on_created(mock_event)
+
+        # Should have one device
+        assert len(watcher.devices) == 1
+        # Start should be called
+        assert mock_start.called
+
+    @patch.object(DeviceProcess, 'check_and_restart')
+    def test_on_modified_ignores_app_config(self, mock_check, config_dir):
+        """Test on_modified event handler ignores app_config.json."""
+        watcher = ConfigWatcher(config_dir)
+
+        # Create a mock event for app_config.json
+        mock_event = MagicMock()
+        mock_event.is_directory = False
+        mock_event.src_path = str(config_dir / "app_config.json")
+
+        # Call the event handler
+        watcher.on_modified(mock_event)
+
+        # check_and_restart should not be called
+        assert not mock_check.called
+
+    @patch.object(DeviceProcess, 'stop')
+    def test_on_deleted_ignores_app_config(self, mock_stop, config_dir):
+        """Test on_deleted event handler ignores app_config.json."""
+        watcher = ConfigWatcher(config_dir)
+
+        # Create a mock event for app_config.json
+        mock_event = MagicMock()
+        mock_event.is_directory = False
+        mock_event.src_path = str(config_dir / "app_config.json")
+
+        # Call the event handler
+        watcher.on_deleted(mock_event)
+
+        # stop should not be called
+        assert not mock_stop.called
+
+    def test_integration_app_config_not_processed(self, config_dir):
+        """Integration test to verify app_config.json is never processed as a device."""
+        watcher = ConfigWatcher(config_dir)
+
+        # Initial scan should pick up the device config but not app_config.json
+        watcher._scan_config_directory()
+        assert len(watcher.devices) == 1
+
+        # Verify app_config.json is not in the devices dictionary
+        app_config_path = str(config_dir / "app_config.json")
+        assert app_config_path not in watcher.devices
+
+        # Simulate file events for app_config.json
+        mock_create_event = MagicMock()
+        mock_create_event.is_directory = False
+        mock_create_event.src_path = app_config_path
+
+        mock_modify_event = MagicMock()
+        mock_modify_event.is_directory = False
+        mock_modify_event.src_path = app_config_path
+
+        mock_delete_event = MagicMock()
+        mock_delete_event.is_directory = False
+        mock_delete_event.src_path = app_config_path
+
+        # Call all event handlers
+        watcher.on_created(mock_create_event)
+        watcher.on_modified(mock_modify_event)
+        watcher.on_deleted(mock_delete_event)
+
+        # Verify app_config.json is still not in the devices dictionary
+        assert len(watcher.devices) == 1
+        assert app_config_path not in watcher.devices
 
 
 class TestSerialToFermentrackDaemon:
