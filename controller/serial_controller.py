@@ -229,41 +229,6 @@ class SerialController:
                 logger.critical("Device disconnected during read. Continuing to allow exit logic to handle.")
             raise SerialControllerError(error_msg)
 
-    # TODO - Eliminate uses of _send_json_command, as they don't really work with the controller
-    def _send_json_command(self, command: str, data: Dict[str, Any] = None) -> None:
-        """Send JSON command to controller asynchronously.
-
-        Args:
-            command: JSON command name
-            data: JSON data to send
-
-        Raises:
-            SerialControllerError: If communication failed
-        """
-        if not self.connected:
-            raise SerialControllerError("Not connected to controller")
-
-        try:
-            # Construct JSON command
-            json_cmd = {"cmd": command}
-            if data:
-                json_cmd["data"] = data
-
-            # Convert to string
-            cmd_str = json.dumps(json_cmd)
-
-            # Send command - all commands are asynchronous
-            self._send_command(cmd_str)
-
-            # No waiting for response - responses will be handled by parse_responses
-            return None
-
-        except SerialControllerError:
-            raise
-        except Exception as e:
-            logger.error(f"Error sending JSON command: {e}")
-            raise SerialControllerError(f"Error sending JSON command: {e}")
-
     def request_version(self):
         """Request controller firmware version.
 
@@ -363,23 +328,6 @@ class SerialController:
         """
         try:
             self._send_command("s")
-        except SerialControllerError:
-            raise
-
-    # TODO - Eliminate set_parameter
-    def set_parameter(self, parameter: str, value: Any) -> None:
-        """Set a control parameter asynchronously.
-
-        Args:
-            parameter: Parameter name
-            value: Parameter value
-
-        Raises:
-            SerialControllerError: If communication failed
-        """
-        try:
-            data = {"parameter": parameter, "value": value}
-            self._send_json_command("setParameter", data)
         except SerialControllerError:
             raise
 
