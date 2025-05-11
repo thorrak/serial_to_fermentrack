@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Dict, Optional
 
 # Version information
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 # Import watchdog for file system monitoring
 try:
@@ -479,11 +479,12 @@ def main():
         logger.debug("Verbose logging enabled")
     
     # Start the daemon
+    logger.info(f"Starting Serial-to-Fermentrack Daemon v{__version__}")
     daemon = SerialToFermentrackDaemon(
         config_dir=config_dir,
         python_exec=args.python
     )
-    
+
     try:
         daemon.run()
     except KeyboardInterrupt:
