@@ -25,7 +25,7 @@ __version__ = "0.1.0"
 logger = None  # Will be initialized in main() after config is loaded
 
 # Configuration Constants
-STATUS_UPDATE_INTERVAL = 30  # seconds, includes updating status & LCD
+STATUS_UPDATE_INTERVAL = 20  # seconds, includes updating status & LCD
 FULL_CONFIG_UPDATE_INTERVAL = 300  # seconds
 FULL_CONFIG_RETRY = 30  # seconds, time to wait after a full config update failed to reattempt
 WATCHDOG_TIMEOUT = 60  # seconds, time to wait before considering the script unresponsive
