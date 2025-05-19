@@ -439,9 +439,24 @@ def test_brewpi_controller_set_mode_and_temp_invalid_input(mock_serial_controlle
     with pytest.raises(ValueError):
         controller.set_mode_and_temp(None, None)
 
-    # Attempt to set non-off mode without a temperature
-    with pytest.raises(ValueError):
+    # Attempt to set non-off modes without a temperature
+    # Test each mode that requires a temperature
+    with pytest.raises(ValueError) as exc_info:
         controller.set_mode_and_temp('b', None)
+    assert "Temperature must be specified if mode is not off" in str(exc_info.value)
+    
+    with pytest.raises(ValueError) as exc_info:
+        controller.set_mode_and_temp('f', None)
+    assert "Temperature must be specified if mode is not off" in str(exc_info.value)
+    
+    with pytest.raises(ValueError) as exc_info:
+        controller.set_mode_and_temp('p', None)
+    assert "Temperature must be specified if mode is not off" in str(exc_info.value)
+    
+    # Verify 'off' mode works without a temperature
+    result = controller.set_mode_and_temp('o', None)
+    assert result is True
+    mock_serial_controller.set_mode_and_temp.assert_called_with('o', None)
 
     # Attempt to set invalid mode
     with pytest.raises(SerialControllerError):

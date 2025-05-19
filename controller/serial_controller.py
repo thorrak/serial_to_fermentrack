@@ -347,12 +347,21 @@ class SerialController:
             None
         """
         try:
+            if mode in ["b", "f", "p"] and temp is None:
+                raise ValueError("Temperature must be provided when mode is set to 'b', 'f', or 'p'")
+
             if mode == "b":
-                msg = f'j{{mode:"b", beerSet:{temp}}}'
+                # Format temperature to 1 decimal place and as a string
+                # Using round() to get standard rounding behavior
+                msg = f'j{{mode:"b", beerSet:"{round(temp, 1)}"}}'
             elif mode == "f":
-                msg = f'j{{mode:"f", fridgeSet:{temp}}}'
+                # Format temperature to 1 decimal place and as a string
+                # Using round() to get standard rounding behavior
+                msg = f'j{{mode:"f", fridgeSet:"{round(temp, 1)}"}}'
             elif mode == "p":
-                msg = f'j{{mode:"p", beerSet:{temp}}}'
+                # Format temperature to 1 decimal place and as a string
+                # Using round() to get standard rounding behavior
+                msg = f'j{{mode:"p", beerSet:"{round(temp, 1)}"}}'
             elif mode == "o":
                 msg = 'j{mode:"o"}'
             else:
@@ -370,7 +379,9 @@ class SerialController:
 
         """
         try:
-            msg = f'j{{beerSet:{temp}}}'
+            # Format temperature to 1 decimal place and as a string
+            # Using round() to get standard rounding behavior
+            msg = f'j{{beerSet:"{round(temp, 1)}"}}'
             self._send_command(msg)
         except SerialControllerError:
             raise
@@ -383,7 +394,9 @@ class SerialController:
 
         """
         try:
-            msg = f'j{{fridgeSet:{temp}}}'
+            # Format temperature to 1 decimal place and as a string
+            # Using round() to get standard rounding behavior
+            msg = f'j{{fridgeSet:"{round(temp, 1)}"}}'
             self._send_command(msg)
         except SerialControllerError:
             raise

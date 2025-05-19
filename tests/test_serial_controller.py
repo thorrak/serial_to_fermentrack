@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import serial
 from bpr.controller.serial_controller import SerialController, SerialControllerError
+from bpr.controller.models import Device
 
 
 @pytest.fixture
@@ -259,9 +260,10 @@ def test_set_mode_and_temp_beer_mode(mock_serial):
     controller.set_mode_and_temp('b', 20.5)
 
     # Check that the command was sent with the correct format
+    # Temperature should be formatted to 1 decimal place and as a string
     mock_serial.write.assert_called_once()
     call_args = mock_serial.write.call_args[0][0].decode('utf-8')
-    assert 'j{mode:"b", beerSet:20.5}' in call_args
+    assert 'j{mode:"b", beerSet:"20.5"}' in call_args
 
 
 def test_set_mode_and_temp_fridge_mode(mock_serial):
@@ -272,9 +274,10 @@ def test_set_mode_and_temp_fridge_mode(mock_serial):
     controller.set_mode_and_temp('f', 18.5)
 
     # Check that the command was sent with the correct format
+    # Temperature should be formatted to 1 decimal place and as a string
     mock_serial.write.assert_called_once()
     call_args = mock_serial.write.call_args[0][0].decode('utf-8')
-    assert 'j{mode:"f", fridgeSet:18.5}' in call_args
+    assert 'j{mode:"f", fridgeSet:"18.5"}' in call_args
 
 
 def test_set_mode_and_temp_profile_mode(mock_serial):
@@ -285,9 +288,10 @@ def test_set_mode_and_temp_profile_mode(mock_serial):
     controller.set_mode_and_temp('p', 21.0)
 
     # Check that the command was sent with the correct format
+    # Temperature should be formatted to 1 decimal place and as a string
     mock_serial.write.assert_called_once()
     call_args = mock_serial.write.call_args[0][0].decode('utf-8')
-    assert 'j{mode:"p", beerSet:21.0}' in call_args
+    assert 'j{mode:"p", beerSet:"21.0"}' in call_args
 
 
 def test_set_mode_and_temp_off_mode(mock_serial):
@@ -310,6 +314,31 @@ def test_set_mode_and_temp_invalid_mode(mock_serial):
 
     with pytest.raises(ValueError):
         controller.set_mode_and_temp('x', 20.0)
+        
+        
+def test_set_mode_and_temp_missing_temperature(mock_serial):
+    """Test setting modes that require temperature without providing one."""
+    controller = SerialController('/dev/ttyUSB0')
+    controller.connect()
+    
+    # Test each mode that requires a temperature
+    with pytest.raises(ValueError) as exc_info:
+        controller.set_mode_and_temp('b', None)
+    assert "Temperature must be provided" in str(exc_info.value)
+    
+    with pytest.raises(ValueError) as exc_info:
+        controller.set_mode_and_temp('f', None)
+    assert "Temperature must be provided" in str(exc_info.value)
+    
+    with pytest.raises(ValueError) as exc_info:
+        controller.set_mode_and_temp('p', None)
+    assert "Temperature must be provided" in str(exc_info.value)
+    
+    # Off mode should work without a temperature
+    controller.set_mode_and_temp('o', None)
+    mock_serial.write.assert_called_once()
+    call_args = mock_serial.write.call_args[0][0].decode('utf-8')
+    assert 'j{mode:"o"}' in call_args
 
 
 def test_set_mode_and_temp_not_connected():
@@ -328,9 +357,10 @@ def test_set_beer_temp(mock_serial):
     controller.set_beer_temp(20.5)
 
     # Check that the command was sent with the correct format
+    # Temperature should be formatted to 1 decimal place and as a string
     mock_serial.write.assert_called_once()
     call_args = mock_serial.write.call_args[0][0].decode('utf-8')
-    assert 'j{beerSet:20.5}' in call_args
+    assert 'j{beerSet:"20.5"}' in call_args
 
 
 def test_set_beer_temp_not_connected():
@@ -349,9 +379,10 @@ def test_set_fridge_temp(mock_serial):
     controller.set_fridge_temp(18.5)
 
     # Check that the command was sent with the correct format
+    # Temperature should be formatted to 1 decimal place and as a string
     mock_serial.write.assert_called_once()
     call_args = mock_serial.write.call_args[0][0].decode('utf-8')
-    assert 'j{fridgeSet:18.5}' in call_args
+    assert 'j{fridgeSet:"18.5"}' in call_args
 
 
 def test_set_fridge_temp_not_connected():
@@ -360,6 +391,56 @@ def test_set_fridge_temp_not_connected():
 
     with pytest.raises(SerialControllerError):
         controller.set_fridge_temp(18.0)
+        
+        
+def test_set_mode_and_temp_negative_value(mock_serial):
+    """Test setting temperature with a negative value."""
+    controller = SerialController('/dev/ttyUSB0')
+    controller.connect()
+
+    controller.set_mode_and_temp('b', -21.49)
+
+    # Check that the command was sent with the correct format
+    # Temperature should be rounded to 1 decimal place and sent as a string
+    mock_serial.write.assert_called_once()
+    call_args = mock_serial.write.call_args[0][0].decode('utf-8')
+    assert 'j{mode:"b", beerSet:"-21.5"}' in call_args
+    
+    # Test another negative temperature with Python's round() behavior
+    # Note: Python's round() behavior for negative numbers can vary by platform
+    mock_serial.reset_mock()
+    controller.set_mode_and_temp('b', -21.44)  # Should round to -21.4
+    
+    call_args = mock_serial.write.call_args[0][0].decode('utf-8')
+    assert 'j{mode:"b", beerSet:"-21.4"}' in call_args
+    
+    
+def test_set_mode_and_temp_rounding(mock_serial):
+    """Test rounding behavior for temperatures."""
+    controller = SerialController('/dev/ttyUSB0')
+    controller.connect()
+    
+    # Test various rounding cases with round(value, 1)
+    test_cases = [
+        (0.04, '"0.0"'),      # Rounds down
+        (0.05, '"0.1"'),      # Rounds up 
+        (0.15, '"0.1"'),      # Python's round() rounds to even digit
+        (0.151, '"0.2"'),     # Rounds up
+        (10.249, '"10.2"'),   # Rounds down
+        (10.250, '"10.2"'),   # Python's round() rounds to even digit for .5
+        (10.251, '"10.3"'),   # Rounds up
+        (-5.45, '"-5.5"'),    # Python's round() behavior for negative numbers is platform-dependent
+        (-5.451, '"-5.5"'),   # Rounds down (more negative)
+        (-5.44, '"-5.4"')     # Rounds toward zero
+    ]
+    
+    for temp_value, expected_formatted in test_cases:
+        mock_serial.reset_mock()
+        controller.set_mode_and_temp('f', temp_value)
+        
+        call_args = mock_serial.write.call_args[0][0].decode('utf-8')
+        expected = f'fridgeSet:{expected_formatted}'
+        assert expected in call_args, f"Failed for {temp_value}, expected {expected} but got {call_args}"
 
 
 def test_restart_device(mock_serial):
@@ -487,7 +568,6 @@ def test_set_device_list(mock_serial):
     controller.connect()
 
     # Create a list of Device objects
-    from bpr.controller.models import Device
     devices = [
         Device(index=0, chamber=1, beer=0, deviceFunction=3, deviceHardware=1, pinNr=5, invert=1),
         Device(index=-1, chamber=1, beer=0, deviceFunction=0, deviceHardware=1, pinNr=7, invert=True),  # Boolean invert
