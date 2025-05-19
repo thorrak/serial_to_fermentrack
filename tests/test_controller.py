@@ -252,14 +252,17 @@ def test_brewpi_controller_set_mode_and_temp_beer_mode(mock_serial_controller):
     controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
     controller.connected = True
     controller.control_settings = MagicMock()
+    # Add control_constants with tempFormat
+    controller.control_constants = MagicMock()
+    controller.control_constants.tempFormat = "C"
 
-    # Set beer mode and temperature
-    result = controller.set_mode_and_temp('b', 20.5)
+    # Set beer mode and temperature with the new string format
+    result = controller.set_mode_and_temp('b', "20.5 C")
 
     # Check result
     assert result is True
 
-    # Check method calls
+    # Check method calls - the controller should receive the numeric value
     mock_serial_controller.set_mode_and_temp.assert_called_once_with('b', 20.5)
     mock_serial_controller.parse_responses.assert_called_once_with(controller)
 
@@ -273,9 +276,11 @@ def test_brewpi_controller_set_mode_and_temp_fridge_mode(mock_serial_controller)
     controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
     controller.connected = True
     controller.control_settings = MagicMock()
+    controller.control_constants = MagicMock()
+    controller.control_constants.tempFormat = "C"
 
     # Set fridge mode and temperature
-    result = controller.set_mode_and_temp('f', 18.5)
+    result = controller.set_mode_and_temp('f', "18.5 C")
 
     # Check result
     assert result is True
@@ -294,6 +299,9 @@ def test_brewpi_controller_set_mode_and_temp_off_mode(mock_serial_controller):
     controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
     controller.connected = True
     controller.control_settings = MagicMock()
+    # Even for off mode, we need control_constants
+    controller.control_constants = MagicMock()
+    controller.control_constants.tempFormat = "C"
 
     # Set off mode
     result = controller.set_mode_and_temp('o', None)
@@ -311,6 +319,77 @@ def test_brewpi_controller_set_mode_and_temp_off_mode(mock_serial_controller):
     assert controller.control_settings.fridgeSet == 0
 
 
+def test_brewpi_controller_set_mode_and_temp_celsius_to_fahrenheit(mock_serial_controller):
+    """Test set_mode_and_temp with temperature conversion from Celsius to Fahrenheit."""
+    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+    controller.connected = True
+    controller.control_settings = MagicMock()
+    controller.control_constants = MagicMock()
+    controller.control_constants.tempFormat = "F"  # Controller expects Fahrenheit
+
+    # Set beer mode with Celsius temperature
+    result = controller.set_mode_and_temp('b', "20.0 C")
+
+    # Check result
+    assert result is True
+
+    # Check method calls with converted temperature (C to F: (20.0 * 9/5) + 32 = 68.0)
+    expected_f_temp = (20.0 * 9/5) + 32
+    mock_serial_controller.set_mode_and_temp.assert_called_once_with('b', expected_f_temp)
+    mock_serial_controller.parse_responses.assert_called_once_with(controller)
+
+    # Check local state update with converted value
+    assert controller.control_settings.mode == 'b'
+    assert controller.control_settings.beerSet == expected_f_temp
+
+
+def test_brewpi_controller_set_mode_and_temp_fahrenheit_to_celsius(mock_serial_controller):
+    """Test set_mode_and_temp with temperature conversion from Fahrenheit to Celsius."""
+    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+    controller.connected = True
+    controller.control_settings = MagicMock()
+    controller.control_constants = MagicMock()
+    controller.control_constants.tempFormat = "C"  # Controller expects Celsius
+
+    # Set fridge mode with Fahrenheit temperature
+    result = controller.set_mode_and_temp('f', "68.0 F")
+
+    # Check result
+    assert result is True
+
+    # Check method calls with converted temperature (F to C: (68.0 - 32) * 5/9 = 20.0)
+    expected_c_temp = (68.0 - 32) * 5/9
+    mock_serial_controller.set_mode_and_temp.assert_called_once_with('f', expected_c_temp)
+    mock_serial_controller.parse_responses.assert_called_once_with(controller)
+
+    # Check local state update with converted value
+    assert controller.control_settings.mode == 'f'
+    assert controller.control_settings.fridgeSet == expected_c_temp
+
+
+def test_brewpi_controller_set_mode_and_temp_matching_units(mock_serial_controller):
+    """Test set_mode_and_temp with matching temperature units (no conversion needed)."""
+    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+    controller.connected = True
+    controller.control_settings = MagicMock()
+    controller.control_constants = MagicMock()
+    controller.control_constants.tempFormat = "C"  # Controller expects Celsius
+
+    # Set beer mode with Celsius temperature (matches controller format)
+    result = controller.set_mode_and_temp('b', "22.5 C")
+
+    # Check result
+    assert result is True
+
+    # Check method calls with no conversion (units already match)
+    mock_serial_controller.set_mode_and_temp.assert_called_once_with('b', 22.5)
+    mock_serial_controller.parse_responses.assert_called_once_with(controller)
+
+    # Check local state update with the same value
+    assert controller.control_settings.mode == 'b'
+    assert controller.control_settings.beerSet == 22.5
+
+
 def test_brewpi_controller_set_mode_and_temp_update_beer_only(mock_serial_controller):
     """Test set_mode_and_temp with only temperature update in beer mode."""
     controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
@@ -318,11 +397,13 @@ def test_brewpi_controller_set_mode_and_temp_update_beer_only(mock_serial_contro
     # Create a MagicMock with specific attributes instead of a pure MagicMock
     controller.control_settings = MagicMock()
     controller.control_settings.mode = "b"
+    controller.control_constants = MagicMock()
+    controller.control_constants.tempFormat = "C"
     # Explicitly store the original mock to check later
     original_mock = controller.control_settings
 
     # Update only temperature, not mode
-    result = controller.set_mode_and_temp(None, 21.0)
+    result = controller.set_mode_and_temp(None, "21.0 C")
 
     # Check result
     assert result is True
@@ -351,6 +432,8 @@ def test_brewpi_controller_set_mode_and_temp_invalid_input(mock_serial_controlle
     """Test set_mode_and_temp with invalid input."""
     controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
     controller.connected = True
+    controller.control_constants = MagicMock()
+    controller.control_constants.tempFormat = "C"
 
     # Attempt to set with both mode and temp as None
     with pytest.raises(ValueError):
@@ -362,7 +445,36 @@ def test_brewpi_controller_set_mode_and_temp_invalid_input(mock_serial_controlle
 
     # Attempt to set invalid mode
     with pytest.raises(SerialControllerError):
-        controller.set_mode_and_temp('x', 20.0)
+        controller.set_mode_and_temp('x', "20.0 C")
+        
+    # Attempt to set with invalid temperature format (returns False instead of raising)
+    result = controller.set_mode_and_temp('b', "20.0X")
+    assert result is False
+        
+    # Attempt to set with invalid temperature value (returns False instead of raising)
+    result = controller.set_mode_and_temp('b', "notanumber C")
+    assert result is False
+        
+    # Attempt to set with invalid temperature unit (returns False instead of raising)
+    result = controller.set_mode_and_temp('b', "20.0 X")
+    assert result is False
+        
+        
+def test_brewpi_controller_set_mode_and_temp_invalid_controller_format(mock_serial_controller):
+    """Test set_mode_and_temp with invalid controller temperature format."""
+    controller = BrewPiController(port="/dev/ttyUSB0", auto_connect=False)
+    controller.connected = True
+    controller.control_settings = MagicMock()
+    controller.control_constants = MagicMock()
+    controller.control_constants.tempFormat = "X"  # Invalid format
+    
+    # Attempt to set with invalid controller temperature format (returns False instead of raising)
+    result = controller.set_mode_and_temp('b', "20.0 C")
+    assert result is False
+        
+    # Even with the same (invalid) format, it should fail
+    result = controller.set_mode_and_temp('b', "20.0 X")
+    assert result is False
 
 
 def test_controller_status_with_special_temps():

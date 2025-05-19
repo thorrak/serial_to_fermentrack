@@ -567,7 +567,7 @@ def main() -> int:
     # Parse command line arguments
     args = parse_args()
     # TODO - Disable this later
-    args.location = args.location or "2-1"  # Default to '0-1' if not provided
+    args.location = args.location or "1-1"  # Default to '0-1' if not provided
 
     # Initialize configuration with location
     global logger

@@ -205,12 +205,12 @@ class BrewPiController:
 
         return config
 
-    def set_mode_and_temp(self, mode: str or None, temp: float or None) -> bool:
+    def set_mode_and_temp(self, mode: str or None, temp: str or None) -> bool:
         """Set controller mode and temperature.
 
         Args:
             mode: Controller mode (b=beer, f=fridge, p=profile, o=off)
-            temp: Temperature setpoint (None if mode is off)
+            temp: Temperature setpoint as string in format "XX.XX C" or "XX.XX F" (None if mode is off)
 
         Returns:
             True if mode and temperature was set successfully
@@ -232,17 +232,53 @@ class BrewPiController:
             raise SerialControllerError("Invalid mode")
 
         try:
+            # Process temperature string if provided
+            # temp is in format "XX.XX C" or "XX.XX F"
+            numeric_temp = None
+            if temp is not None:
+                # Extract numeric value and units from the string
+                temp_parts = temp.strip().split(" ")
+                if len(temp_parts) != 2:
+                    raise ValueError(f"Invalid temperature format: {temp}. Expected format 'XX.XX C' or 'XX.XX F'")
+                
+                try:
+                    value = float(temp_parts[0])
+                    unit = temp_parts[1]
+                except ValueError:
+                    raise ValueError(f"Invalid temperature value: {temp_parts[0]}")
+                
+                # Ensure unit is valid
+                if unit not in ["C", "F"]:
+                    raise ValueError(f"Invalid temperature unit: {unit}. Expected 'C' or 'F'")
+                
+                # Convert to target temperature format if necessary
+                target_format = self.control_constants.tempFormat if self.control_constants else None
+                
+                if not target_format or target_format not in ["C", "F"]:
+                    raise ValueError(f"Invalid controller temperature format: {target_format}. Expected 'C' or 'F'")
+                
+                # Convert if the units don't match
+                if unit == "C" and target_format == "F":
+                    # Convert Celsius to Fahrenheit
+                    numeric_temp = (value * 9/5) + 32
+                elif unit == "F" and target_format == "C":
+                    # Convert Fahrenheit to Celsius
+                    numeric_temp = (value - 32) * 5/9
+                else:
+                    # Units match, no conversion needed
+                    numeric_temp = value
+
             # Send command to controller asynchronously
             if mode:
-                self.serial.set_mode_and_temp(mode, temp)
+                self.serial.set_mode_and_temp(mode, numeric_temp)
                 # Update local state immediately (will be confirmed by response)
                 if self.control_settings:
                     # Update with new camelCase field names
                     self.control_settings.mode = mode
                     if mode == "b" or mode == "p":
-                        self.control_settings.beerSet = temp
+                        self.control_settings.beerSet = numeric_temp
                     elif mode == "f":
-                        self.control_settings.fridgeSet = temp
+                        self.control_settings.fridgeSet = numeric_temp
                     elif mode == "o":
                         # In off mode, set both to 0 (consistent with example)
                         self.control_settings.beerSet = 0
@@ -250,17 +286,20 @@ class BrewPiController:
             else:
                 if self.control_settings.mode == "b" or self.control_settings.mode == "p":
                     # In practice, this will only get hit when the mode is "p"
-                    self.serial.set_beer_temp(temp)
-                    self.control_settings.beerSet = temp
+                    self.serial.set_beer_temp(numeric_temp)
+                    self.control_settings.beerSet = numeric_temp
                 elif self.control_settings.mode == "f":
                     # In practice, this branch will never get hit, but things may change at some point
-                    self.serial.set_fridge_temp(temp)
-                    self.control_settings.fridgeSet = temp
+                    self.serial.set_fridge_temp(numeric_temp)
+                    self.control_settings.fridgeSet = numeric_temp
             self.serial.parse_responses(self)
 
             return True
         except SerialControllerError as e:
             logger.error(f"Failed to set mode/temperature: {e}")
+            return False
+        except ValueError as e:
+            logger.error(f"Failed to parse temperature: {e}")
             return False
 
     def apply_settings(self, settings_data: Dict[str, Any]) -> bool:

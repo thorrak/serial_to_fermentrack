@@ -340,10 +340,11 @@ class SerialController:
 
         Args:
             mode: Controller mode (b=beer, f=fridge, p=profile, o=off)
-            temp: Temperature setpoint (None if mode is off)
+            temp: Temperature setpoint as float (already converted to controller's target format)
+                  None if mode is off
 
         Returns:
-            True if mode and temperature was set successfully
+            None
         """
         try:
             if mode == "b":
@@ -365,7 +366,7 @@ class SerialController:
         """Set beer temperature set point without changing mode. Used when running an active profile.
 
         Args:
-            temp: Temperature setpoint
+            temp: Temperature setpoint as float (already converted to controller's target format)
 
         """
         try:
@@ -378,7 +379,7 @@ class SerialController:
         """Set fridge temperature set point without changing mode. This currently never gets used in practice.
 
         Args:
-            temp: Temperature setpoint
+            temp: Temperature setpoint as float (already converted to controller's target format)
 
         """
         try:
