@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Dict, Optional
 
 # Version information
-__version__ = "0.0.3"
+__version__ = "0.0.4"
 
 # Import watchdog for file system monitoring
 try:

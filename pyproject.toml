@@ -1,6 +1,6 @@
 [project]
 name = "serial-to-fermentrack"
-version = "0.0.3"
+version = "0.0.4"
 description = "Fermentrack REST API client for serial-connected BrewPi devices"
 readme = "README.md"
 requires-python = ">=3.9"

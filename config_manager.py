@@ -20,7 +20,7 @@ import serial
 import serial.tools.list_ports
 
 # Version information
-__version__ = "0.0.3"
+__version__ = "0.0.4"
 
 # Configuration directory
 CONFIG_DIR = Path("serial_config")
