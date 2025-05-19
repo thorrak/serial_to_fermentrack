@@ -334,6 +334,7 @@ class BrewPiRest:
                 if self.controller.awaiting_settings_update or self.controller.awaiting_constants_update or self.controller.awaiting_devices_update:
                     logger.info("Fetching updated configuration from Fermentrack")
                     config_success = self.get_updated_config()
+                    self.last_status_update = current_time - STATUS_UPDATE_INTERVAL + 1  # Trigger the next status update after 1 second
 
                     # Reset flags
                     self.controller.awaiting_settings_update = False
