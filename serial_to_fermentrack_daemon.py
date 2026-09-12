@@ -446,13 +446,13 @@ def main():
     config_dir = Path(args.config_dir)
 
     try:
-        # Try to create config directory if it doesn't exist (might require root)
+        # Try to create config directory if it doesn't exist
         if not config_dir.exists():
             logger.warning(f"Config directory does not exist, attempting to create: {config_dir}")
             os.makedirs(config_dir, exist_ok=True)
     except PermissionError:
         logger.error(f"Permission denied: Unable to create config directory: {config_dir}")
-        logger.error("Try running with sudo or specify a different config directory with --config-dir")
+        logger.error("Check permissions on the working directory, or point --config-dir at a writable location")
         sys.exit(1)
 
     # Use command line args for log rotation, but check app_config.json as fallback
@@ -480,7 +480,7 @@ def main():
                       max_bytes=log_max_bytes, backup_count=log_backup_count)
     except PermissionError:
         logger.error(f"Permission denied: Unable to write to log directory: {args.log_dir}")
-        logger.error("Try running with sudo or specify a different log directory with --log-dir")
+        logger.error("Check permissions on the working directory, or point --log-dir at a writable location")
         sys.exit(1)
 
     if args.verbose:

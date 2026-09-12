@@ -180,28 +180,35 @@ serial_to_fermentrack_daemon --log-dir=/path/to/logs
 serial_to_fermentrack_daemon --help
 ```
 
-Note: By default, the daemon looks for configuration files in the `serial_config` directory and logs to the local `log` directory.
+**Note:** the daemon looks for configuration files in `serial_config` and writes logs to `logs`,
+both resolved relative to the **current working directory** - not to where the package is
+installed. Run the daemon and the configuration manager from the same directory, or they will
+silently use different config directories. The wrapper scripts created by the FT2 Tools
+installer handle this for you.
 
-### Installing as a Systemd Service
+### Running at Boot
 
-To run as a system service on Linux:
+The [FT2 Tools installer](https://github.com/thorrak/ft2_tools) can register the daemon with
+supervisor so it starts at boot, running as the installing user with its working directory set to
+the install directory:
 
 ```bash
-# Generate and install the service using the provided script
-sudo ./create_systemd_service.sh
+# Check status of the supervisor-managed daemon
+sudo supervisorctl status serial_to_fermentrack
 
-# Or customize the installation
-sudo ./create_systemd_service.sh --user=myuser --install-dir=/opt/serial-to-fermentrack
-
-# Check status
-sudo systemctl status serial-to-fermentrack-daemon.service
+# Restart it
+sudo supervisorctl restart serial_to_fermentrack
 ```
+
+If you set this up by hand instead (systemd unit, init script, cron `@reboot`), the supervising
+process **must** set the working directory to the directory containing `serial_config` - see the
+note above.
 
 ## Architecture
 
 The application consists of the following main components:
 
-1. **Configuration Manager (`utils/config.py`)**: Manages application and device configuration from JSON files in either local or system-wide directories.
+1. **Configuration Manager (`utils/config.py`)**: Manages application and device configuration from JSON files in the `serial_config` directory.
 2. **API Client (`api/client.py`)**: Handles communication with Fermentrack 2's REST API using the provided device ID and API key.
 3. **Serial Controller (`controller/serial_controller.py`)**: Manages serial communication with the BrewPi controller at a fixed 57600 baud rate.
 4. **BrewPi Controller (`controller/brewpi_controller.py`)**: Provides a high-level interface to the BrewPi controller.
