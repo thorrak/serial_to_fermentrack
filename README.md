@@ -25,30 +25,53 @@ BrewPi-Script with a more modern and maintainable implementation that leverages 
 
 ## Installation
 
-1. Clone this repository:
-   ```
-   git clone https://github.com/brewpi/brewpi-serial-rest.git
-   cd brewpi-serial-rest
-   ```
+### Recommended: the Fermentrack 2 Tools installer
 
-2. Install dependencies:
-   ```
-   # Install uv (if not already installed)
-   # On Mac or Linux (including Raspberry Pi):
-   curl -LsSf https://astral.sh/uv/install.sh | sh
-   
-   # Create the virtual environment (by default, in .venv)
-   uv venv
-   
-   # Sync dependencies for the virtual environment
-   uv sync
+Serial-to-Fermentrack is normally installed by the
+[Fermentrack 2 Tools installer](https://github.com/thorrak/ft2_tools), which creates a virtualenv
+under `~/fermentrack_tools`, installs the release wheel, sets up the `serial_to_fermentrack*`
+commands, and can register the daemon with supervisor so it starts at boot. On a Raspberry Pi
+(or any Linux host):
 
-   # Activate the virtual environment
-   source .venv/bin/activate
-   
-   ```
+```bash
+bash <(curl -sSL https://localtools.fermentrack.net/)
+```
 
-3. Configure the application by creating configuration files in the `serial_config` directory.
+The installer handles everything below - skip ahead to [Usage](#usage).
+
+### Manual install from a release wheel
+
+To install just this package into an existing environment, use the wheel from the
+[releases page](https://github.com/thorrak/serial_to_fermentrack/releases):
+
+```bash
+uv pip install https://github.com/thorrak/serial_to_fermentrack/releases/download/v0.0.4/serial_to_fermentrack-0.0.4-py3-none-any.whl
+```
+
+(Plain `pip install` works as well.) This provides the `serial_to_fermentrack`,
+`serial_to_fermentrack_daemon`, and `serial_to_fermentrack_config` commands.
+
+### From source (development)
+
+```bash
+git clone https://github.com/thorrak/serial_to_fermentrack.git
+cd serial_to_fermentrack
+
+# Install uv if you don't already have it (Mac or Linux, including Raspberry Pi):
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Create the virtual environment (by default, in .venv)
+uv venv
+
+# Sync dependencies for the virtual environment
+uv sync
+
+# Activate the virtual environment
+source .venv/bin/activate
+```
+
+Configuration files live in the `serial_config` directory - see [Configuration](#configuration)
+below.
 
 ## Configuration
 
